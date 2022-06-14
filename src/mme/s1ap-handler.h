@@ -72,6 +72,8 @@ void s1ap_handle_enb_status_transfer(
         mme_enb_t *enb, ogs_s1ap_message_t *message);
 void s1ap_handle_enb_configuration_transfer(
         mme_enb_t *enb, ogs_s1ap_message_t *message, ogs_pkbuf_t *pkbuf);
+void s1ap_handle_enb_configuration_update(
+        mme_enb_t *enb, ogs_s1ap_message_t *message);        
 void s1ap_handle_handover_notification(
         mme_enb_t *enb, ogs_s1ap_message_t *message);
 

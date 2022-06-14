@@ -108,6 +108,9 @@ void s1ap_state_operational(ogs_fsm_t *s, mme_event_t *e)
 
                 s1ap_handle_enb_configuration_transfer(enb, pdu, pkbuf);
                 break;
+            case S1AP_ProcedureCode_id_ENBConfigurationUpdate:
+                s1ap_handle_enb_configuration_update(enb, pdu);
+                break;                
             case S1AP_ProcedureCode_id_HandoverPreparation:
                 s1ap_handle_handover_required(enb, pdu);
                 break;
