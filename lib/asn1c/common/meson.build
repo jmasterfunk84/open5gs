@@ -124,6 +124,20 @@ libasn1c_common_sources = files('''
     constr_CHOICE_rfill.c
     constr_SEQUENCE_rfill.c
     constr_SET_OF_rfill.c
+    ANY_jer.c
+	BIT_STRING_jer.c
+	INTEGER_jer.c
+	NULL_jer.c
+	NativeEnumerated_jer.c
+	NativeInteger_jer.c
+	OBJECT_IDENTIFIER_jer.c
+	OCTET_STRING_jer.c
+	jer_encoder.c
+	jer_encoder.h
+	constr_CHOICE_jer.c
+	constr_SEQUENCE_OF_jer.c
+	constr_SEQUENCE_jer.c
+	constr_SET_OF_jer.c
 '''.split())
 
 libasn1c_common_cc_flags = ['-DASN_DISABLE_BER_SUPPORT',
@@ -157,10 +171,10 @@ libasn1c_common = library('ogsasn1c-common',
     version : libogslib_version,
     c_args : libasn1c_common_cc_flags,
     include_directories : libasn1c_common_inc,
-    dependencies : libcore_dep,
+    dependencies : libproto_dep,
     install : true)
 
 libasn1c_common_dep = declare_dependency(
     link_with : libasn1c_common,
     include_directories : libasn1c_common_inc,
-    dependencies : libcore_dep)
+    dependencies : libproto_dep)

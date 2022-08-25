@@ -26,13 +26,20 @@
 extern "C" {
 #endif
 
-bool ogs_sbi_send(ogs_sbi_nf_instance_t *nf_instance,
+bool ogs_sbi_send_request(ogs_sbi_nf_instance_t *nf_instance,
         ogs_sbi_client_cb_f client_cb, ogs_sbi_xact_t *xact);
-bool ogs_sbi_discover_and_send(ogs_sbi_xact_t *xact,
-        ogs_fsm_handler_t nf_state_registered, ogs_sbi_client_cb_f client_cb);
+bool ogs_sbi_discover_and_send(
+        ogs_sbi_object_t *sbi_object,
+        OpenAPI_nf_type_e target_nf_type,
+        OpenAPI_nf_type_e requester_nf_type,
+        ogs_sbi_discovery_option_t *discovery_option,
+        ogs_sbi_client_cb_f client_cb, void *data);
 
+bool ogs_nnrf_nfm_send_nf_register(ogs_sbi_nf_instance_t *nf_instance);
 bool ogs_nnrf_nfm_send_nf_update(ogs_sbi_nf_instance_t *nf_instance);
 bool ogs_nnrf_nfm_send_nf_de_register(ogs_sbi_nf_instance_t *nf_instance);
+bool ogs_nnrf_nfm_send_nf_profile_retrieve(ogs_sbi_nf_instance_t *nf_instance,
+        char *nf_instance_id, void *data);
 
 bool ogs_nnrf_nfm_send_nf_status_subscribe(ogs_sbi_client_t *client,
         OpenAPI_nf_type_e req_nf_type, char *req_nf_instance_id,
@@ -40,8 +47,12 @@ bool ogs_nnrf_nfm_send_nf_status_subscribe(ogs_sbi_client_t *client,
 bool ogs_nnrf_nfm_send_nf_status_unsubscribe(
         ogs_sbi_subscription_t *subscription);
 
-bool ogs_nnrf_disc_send_nf_discover(ogs_sbi_nf_instance_t *nf_instance,
-        OpenAPI_nf_type_e target_nf_type, void *data);
+bool ogs_nnrf_disc_send_nf_discover(
+        ogs_sbi_nf_instance_t *nf_instance,
+        OpenAPI_nf_type_e target_nf_type,
+        OpenAPI_nf_type_e requester_nf_type,
+        ogs_sbi_discovery_option_t *discovery_option,
+        void *data);
 
 #define ogs_sbi_send_http_status_no_content(__sTREAM) \
         ogs_sbi_send_response(__sTREAM, OGS_SBI_HTTP_STATUS_NO_CONTENT)

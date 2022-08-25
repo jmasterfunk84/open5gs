@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019,2020 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2022 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -70,8 +70,6 @@ ausf_context_t *ausf_self(void)
 
 static int ausf_context_prepare(void)
 {
-    self.nf_type = OpenAPI_nf_type_AUSF;
-
     return OGS_OK;
 }
 
@@ -103,6 +101,8 @@ int ausf_context_parse_config(void)
                 const char *ausf_key = ogs_yaml_iter_key(&ausf_iter);
                 ogs_assert(ausf_key);
                 if (!strcmp(ausf_key, "sbi")) {
+                    /* handle config in sbi library */
+                } else if (!strcmp(ausf_key, "service_name")) {
                     /* handle config in sbi library */
                 } else
                     ogs_warn("unknown key `%s`", ausf_key);
@@ -141,8 +141,7 @@ ausf_ue_t *ausf_ue_add(char *suci)
 
     memset(&e, 0, sizeof(e));
     e.ausf_ue = ausf_ue;
-    ogs_fsm_create(&ausf_ue->sm, ausf_ue_state_initial, ausf_ue_state_final);
-    ogs_fsm_init(&ausf_ue->sm, &e);
+    ogs_fsm_init(&ausf_ue->sm, ausf_ue_state_initial, ausf_ue_state_final, &e);
 
     ogs_list_add(&self.ausf_ue_list, ausf_ue);
 
@@ -160,7 +159,6 @@ void ausf_ue_remove(ausf_ue_t *ausf_ue)
     memset(&e, 0, sizeof(e));
     e.ausf_ue = ausf_ue;
     ogs_fsm_fini(&ausf_ue->sm, &e);
-    ogs_fsm_delete(&ausf_ue->sm);
 
     /* Free SBI object memory */
     ogs_sbi_object_free(&ausf_ue->sbi);
@@ -223,16 +221,4 @@ ausf_ue_t *ausf_ue_find_by_ctx_id(char *ctx_id)
 ausf_ue_t *ausf_ue_cycle(ausf_ue_t *ausf_ue)
 {
     return ogs_pool_cycle(&ausf_ue_pool, ausf_ue);
-}
-
-void ausf_ue_select_nf(ausf_ue_t *ausf_ue, OpenAPI_nf_type_e nf_type)
-{
-    ogs_assert(ausf_ue);
-    ogs_assert(nf_type);
-
-    if (nf_type == OpenAPI_nf_type_NRF)
-        ogs_sbi_select_nrf(&ausf_ue->sbi, ausf_nf_state_registered);
-    else
-        ogs_sbi_select_first_nf(
-                &ausf_ue->sbi, nf_type, ausf_nf_state_registered);
 }

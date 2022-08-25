@@ -48,17 +48,17 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
     udm_ue = e->udm_ue;
     ogs_assert(udm_ue);
 
-    switch (e->id) {
+    switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
         break;
 
     case OGS_FSM_EXIT_SIG:
         break;
 
-    case UDM_EVT_SBI_SERVER:
-        message = e->sbi.message;
+    case OGS_EVENT_SBI_SERVER:
+        message = e->h.sbi.message;
         ogs_assert(message);
-        stream = e->sbi.data;
+        stream = e->h.sbi.data;
         ogs_assert(stream);
 
         SWITCH(message->h.service.name)
@@ -143,9 +143,9 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
                 CASE(OGS_SBI_RESOURCE_NAME_SMF_SELECT_DATA)
                 CASE(OGS_SBI_RESOURCE_NAME_SM_DATA)
                     ogs_assert(true ==
-                        udm_sbi_discover_and_send(
-                            OpenAPI_nf_type_UDR, udm_ue, stream, message,
-                            udm_nudr_dr_build_query_subscription_provisioned));
+                        udm_sbi_discover_and_send(OpenAPI_nf_type_UDR, NULL,
+                            udm_nudr_dr_build_query_subscription_provisioned,
+                            udm_ue, stream, message));
                     break;
 
                 CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMF_DATA)
@@ -181,13 +181,13 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
         END
         break;
 
-    case UDM_EVT_SBI_CLIENT:
-        message = e->sbi.message;
+    case OGS_EVENT_SBI_CLIENT:
+        message = e->h.sbi.message;
         ogs_assert(message);
 
         udm_ue = e->udm_ue;
         ogs_assert(udm_ue);
-        stream = e->sbi.data;
+        stream = e->h.sbi.data;
         ogs_assert(stream);
 
         SWITCH(message->h.service.name)
@@ -252,7 +252,7 @@ void udm_ue_state_exception(ogs_fsm_t *s, udm_event_t *e)
     udm_ue = e->udm_ue;
     ogs_assert(udm_ue);
 
-    switch (e->id) {
+    switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
         break;
 

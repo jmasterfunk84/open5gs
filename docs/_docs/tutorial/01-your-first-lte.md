@@ -190,14 +190,14 @@ Title : sysmocom SIM Card Details / AM93\PICK\00859
 
 IMSI    ICCID   ACC PIN1    PUK1    PIN2    PUK2    Ki  OPC ADM1    KIC1    KID1    KIK1
 ...
-901700000017408	8988211000000174089	0100	3623	84724035	8774	57473966	B1233463AB9BC2AD2DB1830EB6417E7B	625150E2A943E3353DD23554101CAFD4	47190711	C865CAA0A54542333929B29B116F4375	7D7F65DCD99003C0A0D5D31CA3E5253E	5B27983AF628FC3FCB36B89300012944
+999700000017408	8988211000000174089	0100	3623	84724035	8774	57473966	B1233463AB9BC2AD2DB1830EB6417E7B	625150E2A943E3353DD23554101CAFD4	47190711	C865CAA0A54542333929B29B116F4375	7D7F65DCD99003C0A0D5D31CA3E5253E	5B27983AF628FC3FCB36B89300012944
 ```
 
 Here's my subscriber information from above.
 
 ```
-MCC/MNC : 901/70
-IMSI : 901700000017408
+MCC/MNC : 999/70
+IMSI : 999700000017408
 K : B1233463AB9BC2AD2DB1830EB6417E7B
 OPc : 625150E2A943E3353DD23554101CAFD4  
 ```
@@ -222,6 +222,9 @@ Then proceed as follows:
   3. Fill the IMSI, security context(K, OPc, AMF), and APN of the subscriber.
   4. Click `SAVE` Button
 
+**Note:** Subscribers added with this tool immediately register in the Open5GS HSS/UDR without the need to restart any daemon. However, if you use the WebUI to change subscriber profile, you must restart the Open5GS AMF/MME daemon for the changes to take effect.
+{: .notice--warning}
+
 Modify [install/etc/open5gs/mme.yaml](https://github.com/{{ site.github_username }}/open5gs/blob/main/configs/open5gs/mme.yaml.in) to set the S1AP IP address, PLMN ID, and TAC.
 
 ```diff
@@ -238,7 +241,7 @@ $ diff -u /etc/open5gs/mme.yaml.old /etc/open5gs/mme.yaml
        addr: 127.0.0.2
      gummei:
        plmn_id:
--        mcc: 901
+-        mcc: 999
 -        mnc: 70
 +        mcc: 310
 +        mnc: 789
@@ -246,7 +249,7 @@ $ diff -u /etc/open5gs/mme.yaml.old /etc/open5gs/mme.yaml
        mme_code: 1
      tai:
        plmn_id:
--        mcc: 901
+-        mcc: 999
 -        mnc: 70
 -      tac: 1
 +        mcc: 310

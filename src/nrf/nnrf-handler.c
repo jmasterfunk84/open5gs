@@ -23,7 +23,6 @@ bool nrf_nnrf_handle_nf_register(ogs_sbi_nf_instance_t *nf_instance,
         ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
     int status;
-    bool handled;
     ogs_sbi_response_t *response = NULL;
 
     OpenAPI_nf_profile_t *NFProfile = NULL;
@@ -46,9 +45,7 @@ bool nrf_nnrf_handle_nf_register(ogs_sbi_nf_instance_t *nf_instance,
             nf_instance->nf_profile, NFProfile);
 
     /* ogs_sbi_nnrf_handle_nf_profile() sends error response */
-    handled = ogs_sbi_nnrf_handle_nf_profile(
-                nf_instance, NFProfile, stream, recvmsg);
-    if (!handled) return false;
+    ogs_sbi_nnrf_handle_nf_profile(nf_instance, NFProfile, stream, recvmsg);
 
     if (OGS_FSM_CHECK(&nf_instance->sm, nrf_nf_state_will_register)) {
         recvmsg->http.location = recvmsg->h.uri;
@@ -400,6 +397,7 @@ bool nrf_nnrf_handle_nf_discover(
     ogs_sbi_message_t sendmsg;
     ogs_sbi_response_t *response = NULL;
     ogs_sbi_nf_instance_t *nf_instance = NULL;
+    ogs_sbi_discovery_option_t *discovery_option = NULL;
 
     OpenAPI_search_result_t *SearchResult = NULL;
     int i;
@@ -437,12 +435,36 @@ bool nrf_nnrf_handle_nf_discover(
     SearchResult->nf_instances = OpenAPI_list_create();
     ogs_assert(SearchResult->nf_instances);
 
+    if (recvmsg->param.discovery_option)
+        discovery_option = recvmsg->param.discovery_option;
+
+    if (discovery_option) {
+        if (discovery_option->target_nf_instance_id) {
+            ogs_debug("target-nf-instance-id[%s]",
+                discovery_option->target_nf_instance_id);
+        }
+        if (discovery_option->requester_nf_instance_id) {
+            ogs_debug("requester-nf-instance-id[%s]",
+                discovery_option->requester_nf_instance_id);
+        }
+        if (discovery_option->num_of_service_names) {
+            for (i = 0; i < discovery_option->num_of_service_names; i++)
+                ogs_debug("[%d] service-names[%s]", i,
+                    discovery_option->service_names[i]);
+        }
+    }
+
     i = 0;
     ogs_list_for_each(&ogs_sbi_self()->nf_instance_list, nf_instance) {
         if (nf_instance->nf_type != recvmsg->param.target_nf_type)
             continue;
-        if (nf_instance->nf_type == recvmsg->param.requester_nf_type)
-            continue;
+
+        if (discovery_option) {
+            if (discovery_option->target_nf_instance_id &&
+                strcmp(nf_instance->id,
+                    discovery_option->target_nf_instance_id) != 0)
+                continue;
+        }
 
         if (!recvmsg->param.limit ||
              (recvmsg->param.limit && i < recvmsg->param.limit)) {

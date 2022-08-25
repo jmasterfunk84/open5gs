@@ -62,7 +62,7 @@ void gmm_state_de_registered(ogs_fsm_t *s, amf_event_t *e)
     amf_ue = e->amf_ue;
     ogs_assert(amf_ue);
 
-    switch (e->id) {
+    switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
         AMF_UE_CLEAR_PAGING_INFO(amf_ue);
         AMF_UE_CLEAR_N2_TRANSFER(amf_ue, pdu_session_resource_setup_request);
@@ -91,6 +91,7 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
 static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
 {
     int rv, xact_count = 0;
+    ogs_nas_5gmm_cause_t gmm_cause;
 
     amf_ue_t *amf_ue = NULL;
     amf_sess_t *sess = NULL;
@@ -102,7 +103,7 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
     ogs_sbi_message_t *sbi_message = NULL;
 
     ogs_assert(e);
-        
+
     if (e->sess) {
         sess = e->sess;
         amf_ue = sess->amf_ue;
@@ -112,13 +113,13 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
         ogs_assert(amf_ue);
     }
 
-    switch (e->id) {
+    switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
         break;
     case OGS_FSM_EXIT_SIG:
         break;
 
-    case AMF_EVT_5GMM_MESSAGE:
+    case AMF_EVENT_5GMM_MESSAGE:
         nas_message = e->nas.message;
         ogs_assert(nas_message);
 
@@ -132,11 +133,14 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
         switch (nas_message->gmm.h.message_type) {
         case OGS_NAS_5GS_REGISTRATION_REQUEST:
             ogs_info("Registration request");
-            rv = gmm_handle_registration_request(
+            gmm_cause = gmm_handle_registration_request(
                     amf_ue, h, e->ngap.code,
                     &nas_message->gmm.registration_request);
-            if (rv != OGS_OK) {
-                ogs_error("gmm_handle_registration_request() failed");
+            if (gmm_cause != OGS_5GMM_CAUSE_REQUEST_ACCEPTED) {
+                ogs_error("gmm_handle_registration_request() failed [%d]",
+                            gmm_cause);
+                ogs_assert(OGS_OK ==
+                    nas_5gs_send_registration_reject(amf_ue, gmm_cause));
                 OGS_FSM_TRAN(s, gmm_state_exception);
                 break;
             }
@@ -150,10 +154,13 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
 
             if (h.integrity_protected && SECURITY_CONTEXT_IS_VALID(amf_ue)) {
 
-                rv = gmm_handle_registration_update(
+                gmm_cause = gmm_handle_registration_update(
                         amf_ue, &nas_message->gmm.registration_request);
-                if (rv != OGS_OK) {
-                    ogs_error("gmm_handle_registration_update() failed");
+                if (gmm_cause != OGS_5GMM_CAUSE_REQUEST_ACCEPTED) {
+                    ogs_error("[%s] gmm_handle_registration_update() "
+                                "failed [%d]", amf_ue->suci, gmm_cause);
+                    ogs_assert(OGS_OK ==
+                        nas_5gs_send_registration_reject(amf_ue, gmm_cause));
                     OGS_FSM_TRAN(s, gmm_state_exception);
                     break;
                 }
@@ -170,8 +177,9 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
                     if (!PCF_AM_POLICY_ASSOCIATED(amf_ue)) {
                         ogs_assert(true ==
                             amf_ue_sbi_discover_and_send(
-                                OpenAPI_nf_type_PCF, amf_ue, NULL,
-                                amf_npcf_am_policy_control_build_create));
+                                OpenAPI_nf_type_PCF, NULL,
+                                amf_npcf_am_policy_control_build_create,
+                                amf_ue, NULL));
                         OGS_FSM_TRAN(s, &gmm_state_initial_context_setup);
                         break;
                     }
@@ -192,9 +200,8 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
                         amf_ue, AMF_RELEASE_SM_CONTEXT_NO_STATE);
                 if (amf_sess_xact_count(amf_ue) == xact_count) {
                     ogs_assert(true ==
-                        amf_ue_sbi_discover_and_send(
-                            OpenAPI_nf_type_AUSF, amf_ue, NULL,
-                            amf_nausf_auth_build_authenticate));
+                        amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, NULL,
+                            amf_nausf_auth_build_authenticate, amf_ue, NULL));
                 }
 
                 OGS_FSM_TRAN(s, &gmm_state_authentication);
@@ -204,10 +211,13 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
         case OGS_NAS_5GS_SERVICE_REQUEST:
             ogs_info("Service request");
 
-            rv = gmm_handle_service_request(
+            gmm_cause = gmm_handle_service_request(
                     amf_ue, h, e->ngap.code, &nas_message->gmm.service_request);
-            if (rv != OGS_OK) {
-                ogs_error("gmm_handle_service_request() failed");
+            if (gmm_cause != OGS_5GMM_CAUSE_REQUEST_ACCEPTED) {
+                ogs_error("[%s] gmm_handle_service_request() failed [%d]",
+                            amf_ue->suci, gmm_cause);
+                ogs_assert(OGS_OK ==
+                    nas_5gs_send_service_reject(amf_ue, gmm_cause));
                 OGS_FSM_TRAN(s, gmm_state_exception);
                 break;
             }
@@ -232,10 +242,13 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
                 break;
             }
 
-            rv = gmm_handle_service_update(
+            gmm_cause = gmm_handle_service_update(
                     amf_ue, &nas_message->gmm.service_request);
-            if (rv != OGS_OK) {
-                ogs_error("gmm_handle_service_update() failed");
+            if (gmm_cause != OGS_5GMM_CAUSE_REQUEST_ACCEPTED) {
+                ogs_error("[%s] gmm_handle_service_update() failed [%d]",
+                            amf_ue->suci, gmm_cause);
+                ogs_assert(OGS_OK ==
+                    nas_5gs_send_service_reject(amf_ue, gmm_cause));
                 OGS_FSM_TRAN(s, gmm_state_exception);
             }
 
@@ -264,9 +277,8 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
                     amf_ue, AMF_RELEASE_SM_CONTEXT_NO_STATE);
             if (amf_sess_xact_count(amf_ue) == xact_count) {
                 ogs_assert(true ==
-                    amf_ue_sbi_discover_and_send(
-                        OpenAPI_nf_type_AUSF, amf_ue, NULL,
-                        amf_nausf_auth_build_authenticate));
+                    amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, NULL,
+                        amf_nausf_auth_build_authenticate, amf_ue, NULL));
             }
 
             OGS_FSM_TRAN(s, &gmm_state_authentication);
@@ -278,11 +290,26 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
             OGS_FSM_TRAN(s, &gmm_state_exception);
             break;
 
-        case OGS_NAS_5GS_DEREGISTRATION_REQUEST:
+        case OGS_NAS_5GS_DEREGISTRATION_REQUEST_FROM_UE:
             ogs_info("[%s] Deregistration request", amf_ue->supi);
 
             gmm_handle_deregistration_request(
                     amf_ue, &nas_message->gmm.deregistration_request_from_ue);
+            OGS_FSM_TRAN(s, &gmm_state_de_registered);
+            break;
+
+        case OGS_NAS_5GS_DEREGISTRATION_ACCEPT_TO_UE:
+            ogs_info("[%s] Deregistration accept", amf_ue->supi);
+            CLEAR_AMF_UE_TIMER(amf_ue->t3522);
+
+            /* De-associate NG with NAS/EMM */
+            ran_ue_deassociate(amf_ue->ran_ue);
+
+            ogs_assert(OGS_OK ==
+                ngap_send_ran_ue_context_release_command(amf_ue->ran_ue,
+                    NGAP_Cause_PR_misc, NGAP_CauseMisc_om_intervention,
+                    NGAP_UE_CTX_REL_NG_CONTEXT_REMOVE, 0));
+
             OGS_FSM_TRAN(s, &gmm_state_de_registered);
             break;
 
@@ -340,8 +367,8 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
         }
         break;
 
-    case AMF_EVT_5GMM_TIMER:
-        switch (e->timer_id) {
+    case AMF_EVENT_5GMM_TIMER:
+        switch (e->h.timer_id) {
         case AMF_TIMER_T3513:
             if (amf_ue->t3513.retry_count >=
                     amf_timer_cfg(AMF_TIMER_T3513)->max_count) {
@@ -414,16 +441,30 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
             }
             break;
 
+        case AMF_TIMER_T3522:
+            if (amf_ue->t3522.retry_count >=
+                    amf_timer_cfg(AMF_TIMER_T3522)->max_count) {
+                ogs_warn("Retransmission of Deregistration-Request failed. "
+                        "Stop retransmission");
+                CLEAR_AMF_UE_TIMER(amf_ue->t3522);
+                OGS_FSM_TRAN(&amf_ue->t3522, &gmm_state_exception);
+            } else {
+                amf_ue->t3522.retry_count++;
+                ogs_assert(OGS_OK ==
+                    nas_5gs_send_de_registration_request(amf_ue));
+            }
+            break;
+
         default:
             ogs_error("Unknown timer[%s:%d]",
-                    amf_timer_get_name(e->timer_id), e->timer_id);
+                    amf_timer_get_name(e->h.timer_id), e->h.timer_id);
         }
         break;
 
-    case AMF_EVT_SBI_CLIENT:
-        sbi_response = e->sbi.response;
+    case OGS_EVENT_SBI_CLIENT:
+        sbi_response = e->h.sbi.response;
         ogs_assert(sbi_response);
-        sbi_message = e->sbi.message;
+        sbi_message = e->h.sbi.message;
         ogs_assert(sbi_message);
 
         SWITCH(sbi_message->h.service.name)
@@ -432,8 +473,10 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
             CASE(OGS_SBI_RESOURCE_NAME_POLICIES)
                 SWITCH(sbi_message->h.method)
                 CASE(OGS_SBI_HTTP_METHOD_DELETE)
-                    ogs_assert(OGS_OK ==
-                        nas_5gs_send_de_registration_accept(amf_ue));
+
+                    if (!amf_ue->network_initiated_de_reg)
+                        ogs_assert(OGS_OK ==
+                            nas_5gs_send_de_registration_accept(amf_ue));
 
                     PCF_AM_POLICY_CLEAR(amf_ue);
                     break;
@@ -450,39 +493,6 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
             END
             break;
 
-        CASE(OGS_SBI_SERVICE_NAME_NUDM_UECM)
-            SWITCH(sbi_message->h.resource.component[1])
-            CASE(OGS_SBI_RESOURCE_NAME_REGISTRATIONS)
-                SWITCH(sbi_message->h.resource.component[2])
-                CASE(OGS_SBI_RESOURCE_NAME_AMF_3GPP_ACCESS)
-                    SWITCH(sbi_message->h.method)
-                    CASE(OGS_SBI_HTTP_METHOD_PATCH)
-
-                        ogs_assert(true ==
-                            amf_ue_sbi_discover_and_send(
-                                OpenAPI_nf_type_PCF, amf_ue,
-                                NULL, amf_npcf_am_policy_control_build_delete));
-
-                        break;
-
-                    DEFAULT
-                        ogs_error("Unknown method [%s]", sbi_message->h.method);
-                        ogs_assert_if_reached();
-                    END
-                    break;
-                DEFAULT
-                    ogs_error("Invalid resource name [%s]",
-                            sbi_message->h.resource.component[2]);
-                    ogs_assert_if_reached();
-                END
-                break;
-
-            DEFAULT
-                ogs_error("Invalid resource name [%s]",
-                        sbi_message->h.resource.component[1]);
-                ogs_assert_if_reached();
-            END
-            break;
         DEFAULT
             ogs_error("Invalid service name [%s]", sbi_message->h.service.name);
             ogs_assert_if_reached();
@@ -497,6 +507,8 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e)
 void gmm_state_authentication(ogs_fsm_t *s, amf_event_t *e)
 {
     int rv;
+    ogs_nas_5gmm_cause_t gmm_cause;
+
     amf_ue_t *amf_ue = NULL;
     amf_sess_t *sess = NULL;
 
@@ -512,7 +524,7 @@ void gmm_state_authentication(ogs_fsm_t *s, amf_event_t *e)
 
     ogs_assert(s);
     ogs_assert(e);
-    
+
     amf_sm_debug(e);
 
     if (e->sess) {
@@ -524,12 +536,12 @@ void gmm_state_authentication(ogs_fsm_t *s, amf_event_t *e)
         ogs_assert(amf_ue);
     }
 
-    switch (e->id) {
+    switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
         break;
     case OGS_FSM_EXIT_SIG:
         break;
-    case AMF_EVT_5GMM_MESSAGE:
+    case AMF_EVENT_5GMM_MESSAGE:
         nas_message = e->nas.message;
         ogs_assert(nas_message);
 
@@ -572,9 +584,8 @@ void gmm_state_authentication(ogs_fsm_t *s, amf_event_t *e)
             case OGS_5GMM_CAUSE_NGKSI_ALREADY_IN_USE:
                 ogs_warn("Authentication failure(ngKSI already in use)");
                 ogs_assert(true ==
-                    amf_ue_sbi_discover_and_send(
-                        OpenAPI_nf_type_AUSF, amf_ue, NULL,
-                        amf_nausf_auth_build_authenticate));
+                    amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, NULL,
+                        amf_nausf_auth_build_authenticate, amf_ue, NULL));
                 return;
 
             case OGS_5GMM_CAUSE_SYNCH_FAILURE:
@@ -585,9 +596,9 @@ void gmm_state_authentication(ogs_fsm_t *s, amf_event_t *e)
                     break;
                 }
                 ogs_assert(true ==
-                    amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, amf_ue,
-                        authentication_failure_parameter->auts,
-                        amf_nausf_auth_build_authenticate));
+                    amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, NULL,
+                        amf_nausf_auth_build_authenticate,
+                        amf_ue, authentication_failure_parameter->auts));
                 return;
 
             default:
@@ -604,19 +615,21 @@ void gmm_state_authentication(ogs_fsm_t *s, amf_event_t *e)
             break;
         case OGS_NAS_5GS_REGISTRATION_REQUEST:
             ogs_warn("Registration request");
-            rv = gmm_handle_registration_request(
+            gmm_cause = gmm_handle_registration_request(
                     amf_ue, h, e->ngap.code,
                     &nas_message->gmm.registration_request);
-            if (rv != OGS_OK) {
-                ogs_error("[%s] gmm_handle_registration_request() failed",
-                            amf_ue->suci);
+            if (gmm_cause != OGS_5GMM_CAUSE_REQUEST_ACCEPTED) {
+                ogs_error("[%s] gmm_handle_registration_request() failed [%d]",
+                            amf_ue->suci, gmm_cause);
+                ogs_assert(OGS_OK ==
+                    nas_5gs_send_registration_reject(amf_ue, gmm_cause));
                 OGS_FSM_TRAN(s, gmm_state_exception);
                 break;
             }
 
             ogs_assert(true ==
-                amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, amf_ue, NULL,
-                    amf_nausf_auth_build_authenticate));
+                amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, NULL,
+                    amf_nausf_auth_build_authenticate, amf_ue, NULL));
             break;
 
         case OGS_NAS_5GS_5GMM_STATUS:
@@ -625,7 +638,7 @@ void gmm_state_authentication(ogs_fsm_t *s, amf_event_t *e)
             OGS_FSM_TRAN(s, &gmm_state_exception);
             break;
 
-        case OGS_NAS_5GS_DEREGISTRATION_REQUEST:
+        case OGS_NAS_5GS_DEREGISTRATION_REQUEST_FROM_UE:
             ogs_warn("[%s] Deregistration request", amf_ue->supi);
 
             gmm_handle_deregistration_request(
@@ -638,8 +651,8 @@ void gmm_state_authentication(ogs_fsm_t *s, amf_event_t *e)
             break;
         }
         break;
-    case AMF_EVT_5GMM_TIMER:
-        switch (e->timer_id) {
+    case AMF_EVENT_5GMM_TIMER:
+        switch (e->h.timer_id) {
         case AMF_TIMER_T3560:
             if (amf_ue->t3560.retry_count >=
                     amf_timer_cfg(AMF_TIMER_T3560)->max_count) {
@@ -660,14 +673,14 @@ void gmm_state_authentication(ogs_fsm_t *s, amf_event_t *e)
             break;
         default:
             ogs_error("[%s] Unknown timer[%s:%d]", amf_ue->suci,
-                    amf_timer_get_name(e->timer_id), e->timer_id);
+                    amf_timer_get_name(e->h.timer_id), e->h.timer_id);
             break;
         }
         break;
-    case AMF_EVT_SBI_CLIENT:
-        sbi_response = e->sbi.response;
+    case OGS_EVENT_SBI_CLIENT:
+        sbi_response = e->h.sbi.response;
         ogs_assert(sbi_response);
-        sbi_message = e->sbi.message;
+        sbi_message = e->h.sbi.message;
         ogs_assert(sbi_message);
 
         SWITCH(sbi_message->h.service.name)
@@ -746,6 +759,7 @@ void gmm_state_authentication(ogs_fsm_t *s, amf_event_t *e)
 void gmm_state_security_mode(ogs_fsm_t *s, amf_event_t *e)
 {
     int rv;
+    ogs_nas_5gmm_cause_t gmm_cause;
     amf_ue_t *amf_ue = NULL;
     ogs_nas_5gs_message_t *nas_message = NULL;
     ogs_nas_security_header_type_t h;
@@ -758,7 +772,7 @@ void gmm_state_security_mode(ogs_fsm_t *s, amf_event_t *e)
     amf_ue = e->amf_ue;
     ogs_assert(amf_ue);
 
-    switch (e->id) {
+    switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
         CLEAR_AMF_UE_TIMER(amf_ue->t3560);
         ogs_assert(OGS_OK ==
@@ -766,7 +780,7 @@ void gmm_state_security_mode(ogs_fsm_t *s, amf_event_t *e)
         break;
     case OGS_FSM_EXIT_SIG:
         break;
-    case AMF_EVT_5GMM_MESSAGE:
+    case AMF_EVENT_5GMM_MESSAGE:
         nas_message = e->nas.message;
         ogs_assert(nas_message);
 
@@ -799,13 +813,14 @@ void gmm_state_security_mode(ogs_fsm_t *s, amf_event_t *e)
                 break;
             }
 
-            rv = gmm_handle_security_mode_complete(
+            gmm_cause = gmm_handle_security_mode_complete(
                     amf_ue, &nas_message->gmm.security_mode_complete);
-            if (rv != OGS_OK) {
-                ogs_error("[%s] Cannot handle NAS message", amf_ue->suci);
+            if (gmm_cause != OGS_5GMM_CAUSE_REQUEST_ACCEPTED) {
+                ogs_error("[%s] gmm_handle_security_mode_complete() "
+                            "failed [%d] in type [%d]",
+                            amf_ue->suci, gmm_cause, amf_ue->nas.message_type);
                 ogs_assert(OGS_OK ==
-                    nas_5gs_send_gmm_reject(amf_ue,
-                        OGS_5GMM_CAUSE_5GS_SERVICES_NOT_ALLOWED));
+                    nas_5gs_send_gmm_reject(amf_ue, gmm_cause));
                 OGS_FSM_TRAN(s, gmm_state_exception);
                 break;
             }
@@ -817,8 +832,8 @@ void gmm_state_security_mode(ogs_fsm_t *s, amf_event_t *e)
             amf_ue->nhcc = 1;
 
             ogs_assert(true ==
-                amf_ue_sbi_discover_and_send(OpenAPI_nf_type_UDM, amf_ue, NULL,
-                    amf_nudm_uecm_build_registration));
+                amf_ue_sbi_discover_and_send(OpenAPI_nf_type_UDM, NULL,
+                    amf_nudm_uecm_build_registration, amf_ue, NULL));
 
             if (amf_ue->nas.message_type == OGS_NAS_5GS_REGISTRATION_REQUEST) {
                 OGS_FSM_TRAN(s, &gmm_state_initial_context_setup);
@@ -839,18 +854,21 @@ void gmm_state_security_mode(ogs_fsm_t *s, amf_event_t *e)
             break;
         case OGS_NAS_5GS_REGISTRATION_REQUEST:
             ogs_warn("Registration request");
-            rv = gmm_handle_registration_request(
+            gmm_cause = gmm_handle_registration_request(
                     amf_ue, h, e->ngap.code,
                     &nas_message->gmm.registration_request);
-            if (rv != OGS_OK) {
-                ogs_error("[%s] Cannot handle NAS message", amf_ue->suci);
+            if (gmm_cause != OGS_5GMM_CAUSE_REQUEST_ACCEPTED) {
+                ogs_error("[%s] gmm_handle_registration_request() failed [%d]",
+                            amf_ue->suci, gmm_cause);
+                ogs_assert(OGS_OK ==
+                    nas_5gs_send_registration_reject(amf_ue, gmm_cause));
                 OGS_FSM_TRAN(s, gmm_state_exception);
                 break;
             }
 
             ogs_assert(true ==
-                amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, amf_ue, NULL,
-                    amf_nausf_auth_build_authenticate));
+                amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, NULL,
+                    amf_nausf_auth_build_authenticate, amf_ue, NULL));
 
             OGS_FSM_TRAN(s, &gmm_state_authentication);
             break;
@@ -870,7 +888,7 @@ void gmm_state_security_mode(ogs_fsm_t *s, amf_event_t *e)
             OGS_FSM_TRAN(s, &gmm_state_exception);
             break;
 
-        case OGS_NAS_5GS_DEREGISTRATION_REQUEST:
+        case OGS_NAS_5GS_DEREGISTRATION_REQUEST_FROM_UE:
             ogs_warn("[%s] Deregistration request", amf_ue->supi);
 
             gmm_handle_deregistration_request(
@@ -883,8 +901,8 @@ void gmm_state_security_mode(ogs_fsm_t *s, amf_event_t *e)
             break;
         }
         break;
-    case AMF_EVT_5GMM_TIMER:
-        switch (e->timer_id) {
+    case AMF_EVENT_5GMM_TIMER:
+        switch (e->h.timer_id) {
         case AMF_TIMER_T3560:
             if (amf_ue->t3560.retry_count >=
                     amf_timer_cfg(AMF_TIMER_T3560)->max_count) {
@@ -905,7 +923,7 @@ void gmm_state_security_mode(ogs_fsm_t *s, amf_event_t *e)
             break;
         default:
             ogs_error("Unknown timer[%s:%d]",
-                    amf_timer_get_name(e->timer_id), e->timer_id);
+                    amf_timer_get_name(e->h.timer_id), e->h.timer_id);
             break;
         }
         break;
@@ -918,6 +936,8 @@ void gmm_state_security_mode(ogs_fsm_t *s, amf_event_t *e)
 void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
 {
     int rv, xact_count = 0;
+    ogs_nas_5gmm_cause_t gmm_cause;
+
     amf_ue_t *amf_ue = NULL;
     amf_sess_t *sess = NULL;
     ogs_nas_5gs_message_t *nas_message = NULL;
@@ -942,16 +962,16 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
         ogs_assert(amf_ue);
     }
 
-    switch (e->id) {
+    switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
         break;
     case OGS_FSM_EXIT_SIG:
         break;
 
-    case AMF_EVT_SBI_CLIENT:
-        sbi_response = e->sbi.response;
+    case OGS_EVENT_SBI_CLIENT:
+        sbi_response = e->h.sbi.response;
         ogs_assert(sbi_response);
-        sbi_message = e->sbi.message;
+        sbi_message = e->h.sbi.message;
         ogs_assert(sbi_message);
 
         SWITCH(sbi_message->h.service.name)
@@ -974,9 +994,9 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
                 CASE(OGS_SBI_HTTP_METHOD_PUT)
                     ogs_assert(true ==
                         amf_ue_sbi_discover_and_send(
-                            OpenAPI_nf_type_UDM, amf_ue,
-                            (char *)OGS_SBI_RESOURCE_NAME_AM_DATA,
-                            amf_nudm_sdm_build_get));
+                            OpenAPI_nf_type_UDM, NULL,
+                            amf_nudm_sdm_build_get,
+                            amf_ue, (char *)OGS_SBI_RESOURCE_NAME_AM_DATA));
                     break;
 
                 DEFAULT
@@ -1085,7 +1105,7 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
         END
         break;
 
-    case AMF_EVT_5GMM_MESSAGE:
+    case AMF_EVENT_5GMM_MESSAGE:
         nas_message = e->nas.message;
         ogs_assert(nas_message);
 
@@ -1158,11 +1178,14 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
 
         case OGS_NAS_5GS_REGISTRATION_REQUEST:
             ogs_warn("Registration request");
-            rv = gmm_handle_registration_request(
+            gmm_cause = gmm_handle_registration_request(
                     amf_ue, h, e->ngap.code,
                     &nas_message->gmm.registration_request);
-            if (rv != OGS_OK) {
-                ogs_error("[%s] Cannot handle NAS message", amf_ue->suci);
+            if (gmm_cause != OGS_5GMM_CAUSE_REQUEST_ACCEPTED) {
+                ogs_error("[%s] gmm_handle_registration_request() failed [%d]",
+                            amf_ue->suci, gmm_cause);
+                ogs_assert(OGS_OK ==
+                    nas_5gs_send_registration_reject(amf_ue, gmm_cause));
                 OGS_FSM_TRAN(s, gmm_state_exception);
                 break;
             }
@@ -1171,9 +1194,8 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
                     amf_ue, AMF_RELEASE_SM_CONTEXT_NO_STATE);
             if (amf_sess_xact_count(amf_ue) == xact_count) {
                 ogs_assert(true ==
-                    amf_ue_sbi_discover_and_send(
-                        OpenAPI_nf_type_AUSF, amf_ue, NULL,
-                        amf_nausf_auth_build_authenticate));
+                    amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, NULL,
+                        amf_nausf_auth_build_authenticate, amf_ue, NULL));
             }
             OGS_FSM_TRAN(s, &gmm_state_authentication);
             break;
@@ -1193,7 +1215,7 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
             OGS_FSM_TRAN(s, &gmm_state_exception);
             break;
 
-        case OGS_NAS_5GS_DEREGISTRATION_REQUEST:
+        case OGS_NAS_5GS_DEREGISTRATION_REQUEST_FROM_UE:
             ogs_warn("[%s] Deregistration request", amf_ue->supi);
 
             gmm_handle_deregistration_request(
@@ -1206,8 +1228,8 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
             break;
         }
         break;
-    case AMF_EVT_5GMM_TIMER:
-        switch (e->timer_id) {
+    case AMF_EVENT_5GMM_TIMER:
+        switch (e->h.timer_id) {
         case AMF_TIMER_T3550:
             if (amf_ue->t3550.retry_count >=
                     amf_timer_cfg(AMF_TIMER_T3550)->max_count) {
@@ -1226,7 +1248,7 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
             break;
         default:
             ogs_error("[%s] Unknown timer[%s:%d]", amf_ue->suci,
-                    amf_timer_get_name(e->timer_id), e->timer_id);
+                    amf_timer_get_name(e->h.timer_id), e->h.timer_id);
             break;
         }
         break;
@@ -1238,7 +1260,8 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
 
 void gmm_state_exception(ogs_fsm_t *s, amf_event_t *e)
 {
-    int rv, xact_count = 0;
+    int xact_count = 0;
+    ogs_nas_5gmm_cause_t gmm_cause;
 
     amf_ue_t *amf_ue = NULL;
     amf_sess_t *sess = NULL;
@@ -1258,7 +1281,7 @@ void gmm_state_exception(ogs_fsm_t *s, amf_event_t *e)
         ogs_assert(amf_ue);
     }
 
-    switch (e->id) {
+    switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
         AMF_UE_CLEAR_PAGING_INFO(amf_ue);
         AMF_UE_CLEAR_N2_TRANSFER(amf_ue, pdu_session_resource_setup_request);
@@ -1277,7 +1300,7 @@ void gmm_state_exception(ogs_fsm_t *s, amf_event_t *e)
     case OGS_FSM_EXIT_SIG:
         break;
 
-    case AMF_EVT_5GMM_MESSAGE:
+    case AMF_EVENT_5GMM_MESSAGE:
         nas_message = e->nas.message;
         ogs_assert(nas_message);
 
@@ -1291,11 +1314,14 @@ void gmm_state_exception(ogs_fsm_t *s, amf_event_t *e)
         switch (nas_message->gmm.h.message_type) {
         case OGS_NAS_5GS_REGISTRATION_REQUEST:
             ogs_info("Registration request");
-            rv = gmm_handle_registration_request(
+            gmm_cause = gmm_handle_registration_request(
                     amf_ue, h, e->ngap.code,
                     &nas_message->gmm.registration_request);
-            if (rv != OGS_OK) {
-                ogs_error("gmm_handle_registration_request() failed");
+            if (gmm_cause != OGS_5GMM_CAUSE_REQUEST_ACCEPTED) {
+                ogs_error("gmm_handle_registration_request() failed [%d]",
+                            gmm_cause);
+                ogs_assert(OGS_OK ==
+                    nas_5gs_send_registration_reject(amf_ue, gmm_cause));
                 OGS_FSM_TRAN(s, gmm_state_exception);
                 break;
             }
@@ -1311,10 +1337,13 @@ void gmm_state_exception(ogs_fsm_t *s, amf_event_t *e)
 
             if (h.integrity_protected && SECURITY_CONTEXT_IS_VALID(amf_ue)) {
 
-                rv = gmm_handle_registration_update(
+                gmm_cause = gmm_handle_registration_update(
                         amf_ue, &nas_message->gmm.registration_request);
-                if (rv != OGS_OK) {
-                    ogs_error("gmm_handle_registration_update() failed");
+                if (gmm_cause != OGS_5GMM_CAUSE_REQUEST_ACCEPTED) {
+                    ogs_error("[%s] gmm_handle_registration_update() "
+                                "failed [%d]", amf_ue->suci, gmm_cause);
+                    ogs_assert(OGS_OK ==
+                        nas_5gs_send_registration_reject(amf_ue, gmm_cause));
                     OGS_FSM_TRAN(s, gmm_state_exception);
                     break;
                 }
@@ -1329,8 +1358,9 @@ void gmm_state_exception(ogs_fsm_t *s, amf_event_t *e)
                     if (!PCF_AM_POLICY_ASSOCIATED(amf_ue)) {
                         ogs_assert(true ==
                             amf_ue_sbi_discover_and_send(
-                                OpenAPI_nf_type_PCF, amf_ue, NULL,
-                                amf_npcf_am_policy_control_build_create));
+                                OpenAPI_nf_type_PCF, NULL,
+                                amf_npcf_am_policy_control_build_create,
+                                amf_ue, NULL));
                         OGS_FSM_TRAN(s, &gmm_state_initial_context_setup);
                         break;
                     }
@@ -1351,9 +1381,8 @@ void gmm_state_exception(ogs_fsm_t *s, amf_event_t *e)
                         amf_ue, AMF_RELEASE_SM_CONTEXT_NO_STATE);
                 if (amf_sess_xact_count(amf_ue) == xact_count) {
                     ogs_assert(true ==
-                        amf_ue_sbi_discover_and_send(
-                            OpenAPI_nf_type_AUSF, amf_ue, NULL,
-                            amf_nausf_auth_build_authenticate));
+                        amf_ue_sbi_discover_and_send(OpenAPI_nf_type_AUSF, NULL,
+                            amf_nausf_auth_build_authenticate, amf_ue, NULL));
                 }
 
                 OGS_FSM_TRAN(s, &gmm_state_authentication);

@@ -19,16 +19,6 @@
 
 #include "context.h"
 
-static nrf_timer_cfg_t g_nrf_timer_cfg[MAX_NUM_OF_NRF_TIMER] = {
-    /* Nothing */
-};
-
-nrf_timer_cfg_t *nrf_timer_cfg(nrf_timer_e id)
-{
-    ogs_assert(id < MAX_NUM_OF_NRF_TIMER);
-    return &g_nrf_timer_cfg[id];
-}
-
 const char *nrf_timer_get_name(nrf_timer_e id)
 {
     switch (id) {
@@ -68,7 +58,7 @@ static void timer_send_event(int timer_id, void *data)
 
     rv = ogs_queue_push(ogs_app()->queue, e);
     if (rv != OGS_OK) {
-        ogs_warn("ogs_queue_push() failed:%d", (int)rv);
+        ogs_error("ogs_queue_push() failed:%d", (int)rv);
         nrf_event_free(e);
     }
 }

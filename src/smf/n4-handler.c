@@ -18,7 +18,6 @@
  */
 
 #include "context.h"
-#include "timer.h"
 #include "s5c-build.h"
 #include "pfcp-path.h"
 #include "gtp-path.h"
@@ -280,7 +279,7 @@ void smf_5gc_n4_handle_session_modification_response(
     status = OGS_SBI_HTTP_STATUS_OK;
 
     if (!sess) {
-        ogs_warn("No Context");
+        ogs_error("No Context");
         status = OGS_SBI_HTTP_STATUS_NOT_FOUND;
     }
 
@@ -624,10 +623,7 @@ int smf_5gc_n4_handle_session_deletion_response(
 
     status = OGS_SBI_HTTP_STATUS_OK;
 
-    if (!sess) {
-        ogs_warn("No Context");
-        status = OGS_SBI_HTTP_STATUS_NOT_FOUND;
-    }
+    ogs_assert(sess);
 
     if (rsp->cause.presence) {
         if (rsp->cause.u8 != OGS_PFCP_CAUSE_REQUEST_ACCEPTED) {
@@ -668,8 +664,6 @@ int smf_5gc_n4_handle_session_deletion_response(
         ogs_free(strerror);
         return status;
     }
-
-    ogs_assert(sess);
 
     return status;
 }
@@ -1119,7 +1113,7 @@ void smf_n4_handle_session_report_request(
     cause_value = OGS_GTP2_CAUSE_REQUEST_ACCEPTED;
 
     if (!sess) {
-        ogs_warn("No Context");
+        ogs_error("No Context");
         cause_value = OGS_PFCP_CAUSE_SESSION_CONTEXT_NOT_FOUND;
     }
 

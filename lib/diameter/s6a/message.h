@@ -76,9 +76,13 @@ extern struct dict_object *ogs_diam_s6a_cmd_ulr;
 extern struct dict_object *ogs_diam_s6a_cmd_ula;
 extern struct dict_object *ogs_diam_s6a_cmd_pur;
 extern struct dict_object *ogs_diam_s6a_cmd_pua;
+extern struct dict_object *ogs_diam_s6a_cmd_clr;
+extern struct dict_object *ogs_diam_s6a_cmd_cla;
 
 extern struct dict_object *ogs_diam_s6a_ulr_flags;
 extern struct dict_object *ogs_diam_s6a_ula_flags;
+extern struct dict_object *ogs_diam_s6a_clr_flags;
+extern struct dict_object *ogs_diam_s6a_cancellation_type;
 extern struct dict_object *ogs_diam_s6a_subscription_data;
 extern struct dict_object *ogs_diam_s6a_req_eutran_auth_info;
 extern struct dict_object *ogs_diam_s6a_number_of_requested_vectors;
@@ -103,6 +107,7 @@ extern struct dict_object *ogs_diam_s6a_apn_configuration;
 extern struct dict_object *ogs_diam_s6a_max_bandwidth_ul;
 extern struct dict_object *ogs_diam_s6a_max_bandwidth_dl;
 extern struct dict_object *ogs_diam_s6a_pdn_type;
+extern struct dict_object *ogs_diam_s6a_3gpp_charging_characteristics;
 extern struct dict_object *ogs_diam_s6a_served_party_ip_address;
 extern struct dict_object *ogs_diam_s6a_eps_subscribed_qos_profile;
 extern struct dict_object *ogs_diam_s6a_qos_class_identifier;
@@ -139,8 +144,15 @@ typedef struct ogs_diam_s6a_ula_message_s {
     ogs_subscription_data_t subscription_data;
 } ogs_diam_s6a_ula_message_t;
 
+typedef struct ogs_diam_s6a_clr_message_s {
+#define OGS_DIAM_S6A_CLR_FLAGS_S6A_S6D_INDICATOR            (1)
+#define OGS_DIAM_S6A_CLR_FLAGS_REATTACH_REQUIRED            (1 << 1)
+    uint32_t clr_flags;
+} ogs_diam_s6a_clr_message_t;
+
 typedef struct ogs_diam_s6a_message_s {
 #define OGS_DIAM_S6A_CMD_CODE_UPDATE_LOCATION               316
+#define OGS_DIAM_S6A_CMD_CODE_CANCEL_LOCATION               317
 #define OGS_DIAM_S6A_CMD_CODE_AUTHENTICATION_INFORMATION    318
     uint16_t                        cmd_code;
 
@@ -156,6 +168,7 @@ typedef struct ogs_diam_s6a_message_s {
     uint32_t                        *err;
     uint32_t                        *exp_err;
 
+    ogs_diam_s6a_clr_message_t      clr_message;
     ogs_diam_s6a_aia_message_t      aia_message;
     ogs_diam_s6a_ula_message_t      ula_message;
 } ogs_diam_s6a_message_t;

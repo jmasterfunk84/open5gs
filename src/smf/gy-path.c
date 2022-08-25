@@ -834,13 +834,15 @@ void smf_gy_send_ccr(smf_sess_t *sess, void *xact,
     ogs_assert(ret == 0);
 
     /* Multiple-Services-Indicator */
-    ret = fd_msg_avp_new(ogs_diam_gy_multiple_services_ind, 0, &avp);
-    ogs_assert(ret == 0);
-    val.i32 = OGS_DIAM_GY_MULTIPLE_SERVICES_NOT_SUPPORTED;
-    ret = fd_msg_avp_setvalue(avp, &val);
-    ogs_assert(ret == 0);
-    ret = fd_msg_avp_add(req, MSG_BRW_LAST_CHILD, avp);
-    ogs_assert(ret == 0);
+    if (cc_request_type == OGS_DIAM_GY_CC_REQUEST_TYPE_INITIAL_REQUEST) {
+        ret = fd_msg_avp_new(ogs_diam_gy_multiple_services_ind, 0, &avp);
+        ogs_assert(ret == 0);
+        val.i32 = OGS_DIAM_GY_MULTIPLE_SERVICES_NOT_SUPPORTED;
+        ret = fd_msg_avp_setvalue(avp, &val);
+        ogs_assert(ret == 0);
+        ret = fd_msg_avp_add(req, MSG_BRW_LAST_CHILD, avp);
+        ogs_assert(ret == 0);
+    }
 
     /* TS 32.299 7.1.9 Multiple-Services-Credit-Control AVP */
     fill_multiple_services_credit_control_ccr(sess, cc_request_type, req);
@@ -1102,9 +1104,9 @@ out:
         }
         rv = ogs_queue_push(ogs_app()->queue, e);
         if (rv != OGS_OK) {
-            ogs_warn("ogs_queue_push() failed:%d", (int)rv);
+            ogs_error("ogs_queue_push() failed:%d", (int)rv);
             ogs_free(gy_message);
-            smf_event_free(e);
+            ogs_event_free(e);
         } else {
             ogs_pollset_notify(ogs_app()->pollset);
         }
@@ -1231,9 +1233,9 @@ static int smf_gy_rar_cb( struct msg **msg, struct avp *avp,
     e->gy_message = gy_message;
     rv = ogs_queue_push(ogs_app()->queue, e);
     if (rv != OGS_OK) {
-        ogs_warn("ogs_queue_push() failed:%d", (int)rv);
+        ogs_error("ogs_queue_push() failed:%d", (int)rv);
         ogs_free(gy_message);
-        smf_event_free(e);
+        ogs_event_free(e);
     } else {
         ogs_pollset_notify(ogs_app()->pollset);
     }

@@ -61,7 +61,7 @@ static bool maximum_number_of_enbs_is_reached(void)
         }
     }
 
-    return number_of_enbs_online >= ogs_app()->max.gnb;
+    return number_of_enbs_online >= ogs_app()->max.peer;
 }
 
 void s1ap_handle_s1_setup_request(mme_enb_t *enb, ogs_s1ap_message_t *message)
@@ -764,15 +764,8 @@ void s1ap_handle_initial_context_setup_response(
         }
     }
 
-    if (mme_ue->nas_eps.type != MME_EPS_TYPE_ATTACH_REQUEST)
-        mme_send_after_paging(mme_ue, OGS_GTP2_CAUSE_REQUEST_ACCEPTED);
-
-    if (SMS_SERVICE_INDICATOR(mme_ue)) {
-        ogs_assert(OGS_OK ==
-            sgsap_send_service_request(mme_ue, SGSAP_EMM_CONNECTED_MODE));
-    }
-
-    CLEAR_SERVICE_INDICATOR(mme_ue);
+    if (MME_PAGING_ONGOING(mme_ue))
+        mme_send_after_paging(mme_ue, false);
 }
 
 void s1ap_handle_initial_context_setup_failure(

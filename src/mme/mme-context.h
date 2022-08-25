@@ -312,13 +312,22 @@ struct mme_ue_s {
 #define MME_EPS_TYPE_DETACH_REQUEST_TO_UE           6
         uint8_t     type;
         uint8_t     ksi;
-        union {
-            ogs_nas_eps_attach_type_t attach;
-            ogs_nas_eps_update_type_t update;
-            ogs_nas_service_type_t service;
-            ogs_nas_detach_type_t detach;
-            uint8_t data;
-        };
+        ogs_nas_eps_attach_type_t attach;
+        ogs_nas_eps_update_type_t update;
+        ogs_nas_service_type_t service;
+        ogs_nas_detach_type_t detach;
+
+        /* 1. MME initiated detach request to the UE.
+         *    (nas_eps.type = MME_EPS_TYPE_DETACH_REQUEST_TO_UE)
+         * 2. If UE is IDLE, Paging sent to the UE
+         * 3. If UE is wake-up, UE will send Server Request.
+         *    (nas_eps.type = MME_EPS_TYPE_SERVICE_REQUEST)
+         *
+         * So, we will lose the MME_EPS_TYPE_DETACH_REQUEST_TO_UE.
+         *
+         * We need more variable(nas_eps.detach_type)
+         * to keep Detach-Type whether UE-initiated or MME-initiaed.  */
+        uint8_t     detach_type;
     } nas_eps;
 
     /* UE identity */
@@ -422,6 +431,8 @@ struct mme_ue_s {
     /* HSS Info */
     ogs_bitrate_t   ambr; /* UE-AMBR */
     uint32_t        network_access_mode; /* Permitted EPS Attach Type */
+    uint8_t         charging_characteristics[OGS_CHRGCHARS_LEN]; /* Subscription Level Charging Characteristics */
+    bool            charging_characteristics_presence;
 
     uint32_t        context_identifier; /* default APN */
 
@@ -448,6 +459,34 @@ struct mme_ue_s {
     ((__mME) && \
      (((__mME)->enb_ue == NULL) || (enb_ue_cycle((__mME)->enb_ue) == NULL)))
     enb_ue_t        *enb_ue;    /* S1 UE context */
+
+    struct {
+#define MME_CLEAR_PAGING_INFO(__mME) \
+    do { \
+        ogs_assert(__mME); \
+        (__mME)->paging.type = 0; \
+    } while(0)
+
+#define MME_STORE_PAGING_INFO(__mME, __tYPE, __dATA) \
+    do { \
+        ogs_assert(__mME); \
+        ogs_assert(__tYPE); \
+        (__mME)->paging.type = __tYPE; \
+        (__mME)->paging.data = __dATA; \
+    } while(0)
+
+#define MME_PAGING_ONGOING(__mME) ((__mME) && ((__mME)->paging.type))
+
+#define MME_PAGING_TYPE_DOWNLINK_DATA_NOTIFICATION 1
+#define MME_PAGING_TYPE_CREATE_BEARER 2
+#define MME_PAGING_TYPE_UPDATE_BEARER 3
+#define MME_PAGING_TYPE_DELETE_BEARER 4
+#define MME_PAGING_TYPE_CS_CALL_SERVICE 5
+#define MME_PAGING_TYPE_SMS_SERVICE 6
+#define MME_PAGING_TYPE_DETACH_TO_UE 7
+        int type;
+        void *data;
+    } paging;
 
     /* SGW UE context */
     sgw_ue_t        *sgw_ue;
@@ -682,9 +721,10 @@ typedef struct mme_bearer_s {
     /* Related Context */
     mme_ue_t        *mme_ue;
     mme_sess_t      *sess;
+
     struct {
         ogs_gtp_xact_t  *xact;
-    } create, update, delete, notify, current;
+    } create, update, delete, notify;
 } mme_bearer_t;
 
 void mme_context_init(void);
@@ -704,7 +744,7 @@ void mme_pgw_remove_all(void);
 ogs_sockaddr_t *mme_pgw_addr_find_by_apn(
         ogs_list_t *list, int family, char *apn);
 
-mme_vlr_t *mme_vlr_add(ogs_sockaddr_t *addr, ogs_sockopt_t *option);
+mme_vlr_t *mme_vlr_add(ogs_sockaddr_t *sa_list, ogs_sockopt_t *option);
 void mme_vlr_remove(mme_vlr_t *vlr);
 void mme_vlr_remove_all(void);
 void mme_vlr_close(mme_vlr_t *vlr);
@@ -724,6 +764,7 @@ mme_enb_t *mme_enb_find_by_addr(ogs_sockaddr_t *addr);
 mme_enb_t *mme_enb_find_by_enb_id(uint32_t enb_id);
 int mme_enb_set_enb_id(mme_enb_t *enb, uint32_t enb_id);
 int mme_enb_sock_type(ogs_sock_t *sock);
+mme_enb_t *mme_enb_cycle(mme_enb_t *enb);
 
 enb_ue_t *enb_ue_add(mme_enb_t *enb, uint32_t enb_ue_s1ap_id);
 void enb_ue_remove(enb_ue_t *enb_ue);
@@ -754,6 +795,7 @@ mme_ue_t *mme_ue_add(enb_ue_t *enb_ue);
 void mme_ue_hash_remove(mme_ue_t *mme_ue);
 void mme_ue_remove(mme_ue_t *mme_ue);
 void mme_ue_remove_all(void);
+mme_ue_t *mme_ue_cycle(mme_ue_t *mme_ue);
 
 void mme_ue_fsm_init(mme_ue_t *mme_ue);
 void mme_ue_fsm_fini(mme_ue_t *mme_ue);

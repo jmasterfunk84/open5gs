@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019,2020 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2022 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -56,7 +56,7 @@ void amf_context_init(void)
     ogs_list_init(&self.ngap_list6);
 
     /* Allocate TWICE the pool to check if maximum number of gNBs is reached */
-    ogs_pool_init(&amf_gnb_pool, ogs_app()->max.gnb*2);
+    ogs_pool_init(&amf_gnb_pool, ogs_app()->max.peer*2);
     ogs_pool_init(&amf_ue_pool, ogs_app()->max.ue);
     ogs_pool_init(&ran_ue_pool, ogs_app()->max.ue);
     ogs_pool_init(&amf_sess_pool, ogs_app()->pool.sess);
@@ -114,8 +114,6 @@ amf_context_t *amf_self(void)
 
 static int amf_context_prepare(void)
 {
-    self.nf_type = OpenAPI_nf_type_AMF;
-
     self.relative_capacity = 0xff;
 
     self.ngap_port = OGS_NGAP_SCTP_PORT;
@@ -799,6 +797,7 @@ int amf_context_parse_config(void)
                             }
                             network_full_name->length = size*2+1;
                             network_full_name->coding_scheme = 1;
+                            network_full_name->ext = 1;
                         } else if (!strcmp(network_name_key, "short")) {
                             ogs_nas_network_name_t *network_short_name =
                                 &self.short_name;
@@ -815,11 +814,14 @@ int amf_context_parse_config(void)
                             }
                             network_short_name->length = size*2+1;
                             network_short_name->coding_scheme = 1;
+                            network_short_name->ext = 1;
                         }
                     }
                 } else if (!strcmp(amf_key, "amf_name")) {
                     self.amf_name = ogs_yaml_iter_value(&amf_iter);
                 } else if (!strcmp(amf_key, "sbi")) {
+                    /* handle config in sbi library */
+                } else if (!strcmp(amf_key, "service_name")) {
                     /* handle config in sbi library */
                 } else
                     ogs_warn("unknown key `%s`", amf_key);
@@ -868,8 +870,7 @@ amf_gnb_t *amf_gnb_add(ogs_sock_t *sock, ogs_sockaddr_t *addr)
 
     memset(&e, 0, sizeof(e));
     e.gnb = gnb;
-    ogs_fsm_create(&gnb->sm, ngap_state_initial, ngap_state_final);
-    ogs_fsm_init(&gnb->sm, &e);
+    ogs_fsm_init(&gnb->sm, ngap_state_initial, ngap_state_final, &e);
 
     ogs_list_add(&self.gnb_list, gnb);
     amf_metrics_inst_global_inc(AMF_METR_GLOB_GAUGE_GNB);
@@ -892,7 +893,6 @@ void amf_gnb_remove(amf_gnb_t *gnb)
     memset(&e, 0, sizeof(e));
     e.gnb = gnb;
     ogs_fsm_fini(&gnb->sm, &e);
-    ogs_fsm_delete(&gnb->sm);
 
     ogs_hash_set(self.gnb_addr_hash,
             gnb->sctp.addr, sizeof(ogs_sockaddr_t), NULL);
@@ -953,6 +953,11 @@ int amf_gnb_sock_type(ogs_sock_t *sock)
         if (snode->sock == sock) return SOCK_SEQPACKET;
 
     return SOCK_STREAM;
+}
+
+amf_gnb_t *amf_gnb_cycle(amf_gnb_t *gnb)
+{
+    return ogs_pool_cycle(&amf_gnb_pool, gnb);
 }
 
 /** ran_ue_context handling function */
@@ -1304,8 +1309,7 @@ void amf_ue_fsm_init(amf_ue_t *amf_ue)
 
     memset(&e, 0, sizeof(e));
     e.amf_ue = amf_ue;
-    ogs_fsm_create(&amf_ue->sm, gmm_state_initial, gmm_state_final);
-    ogs_fsm_init(&amf_ue->sm, &e);
+    ogs_fsm_init(&amf_ue->sm, gmm_state_initial, gmm_state_final, &e);
 }
 
 void amf_ue_fsm_fini(amf_ue_t *amf_ue)
@@ -1317,7 +1321,6 @@ void amf_ue_fsm_fini(amf_ue_t *amf_ue)
     memset(&e, 0, sizeof(e));
     e.amf_ue = amf_ue;
     ogs_fsm_fini(&amf_ue->sm, &e);
-    ogs_fsm_delete(&amf_ue->sm);
 }
 
 amf_ue_t *amf_ue_find_by_guti(ogs_nas_5gs_guti_t *guti)
@@ -1475,7 +1478,7 @@ amf_ue_t *amf_ue_find_by_message(ogs_nas_5gs_message_t *message)
                     mobile_identity_header->type);
         }
         break;
-    case OGS_NAS_5GS_DEREGISTRATION_REQUEST:
+    case OGS_NAS_5GS_DEREGISTRATION_REQUEST_FROM_UE:
         deregistration_request = &message->gmm.deregistration_request_from_ue;
         ogs_assert(deregistration_request);
         mobile_identity = &deregistration_request->mobile_identity;
@@ -1775,45 +1778,45 @@ amf_sess_t *amf_sess_cycle(amf_sess_t *sess)
     return ogs_pool_cycle(&amf_sess_pool, sess);
 }
 
-void amf_ue_select_nf(amf_ue_t *amf_ue, OpenAPI_nf_type_e nf_type)
-{
-    ogs_assert(amf_ue);
-    ogs_assert(nf_type);
-
-    if (nf_type == OpenAPI_nf_type_NRF)
-        ogs_sbi_select_nrf(&amf_ue->sbi, amf_nf_state_registered);
-    else
-        ogs_sbi_select_first_nf(&amf_ue->sbi, nf_type, amf_nf_state_registered);
-}
-
-void amf_sess_select_nf(amf_sess_t *sess, OpenAPI_nf_type_e nf_type)
-{
-    ogs_assert(sess);
-    ogs_assert(nf_type);
-
-    if (nf_type == OpenAPI_nf_type_NRF)
-        ogs_sbi_select_nrf(&sess->sbi, amf_nf_state_registered);
-    else if (nf_type == OpenAPI_nf_type_SMF)
-        amf_sess_select_smf(sess);
-    else
-        ogs_sbi_select_first_nf(&sess->sbi, nf_type, amf_nf_state_registered);
-}
-
 static bool check_smf_info(amf_sess_t *sess, ogs_list_t *nf_info_list);
 
-void amf_sess_select_smf(amf_sess_t *sess)
+void amf_sbi_select_nf(
+        ogs_sbi_object_t *sbi_object,
+        OpenAPI_nf_type_e target_nf_type,
+        ogs_sbi_discovery_option_t *discovery_option)
 {
     ogs_sbi_nf_instance_t *nf_instance = NULL;
+    amf_sess_t *sess = NULL;
 
-    ogs_assert(sess);
+    ogs_assert(sbi_object);
+    ogs_assert(target_nf_type);
 
-    ogs_list_for_each(&ogs_sbi_self()->nf_instance_list, nf_instance) {
-        if (OGS_FSM_CHECK(&nf_instance->sm, amf_nf_state_registered) &&
-            nf_instance->nf_type == OpenAPI_nf_type_SMF &&
-            check_smf_info(sess, &nf_instance->nf_info_list) == true) {
-            OGS_SBI_SETUP_NF(&sess->sbi, OpenAPI_nf_type_SMF, nf_instance);
+    switch(sbi_object->type) {
+    case OGS_SBI_OBJ_UE_TYPE:
+        ogs_sbi_select_nf(sbi_object, target_nf_type, discovery_option);
+        break;
+    case OGS_SBI_OBJ_SESS_TYPE:
+        sess = (amf_sess_t *)sbi_object;
+        ogs_assert(sess);
+
+        ogs_list_for_each(&ogs_sbi_self()->nf_instance_list, nf_instance) {
+            if (ogs_sbi_discovery_param_is_matched(
+                    nf_instance, target_nf_type, discovery_option) == false)
+                continue;
+
+            if (target_nf_type == OpenAPI_nf_type_SMF) {
+                if (check_smf_info(sess, &nf_instance->nf_info_list) == false)
+                    continue;
+            }
+
+            OGS_SBI_SETUP_NF(sbi_object, target_nf_type, nf_instance);
             break;
         }
+        break;
+    default:
+        ogs_fatal("(NF discover search result) Not implemented [%d]",
+                    sbi_object->type);
+        ogs_assert_if_reached();
     }
 }
 
@@ -2062,7 +2065,9 @@ void amf_clear_subscribed_info(amf_ue_t *amf_ue)
 
     ogs_assert(amf_ue);
 
+    ogs_assert(amf_ue->num_of_slice <= OGS_MAX_NUM_OF_SLICE);
     for (i = 0; i < amf_ue->num_of_slice; i++) {
+        ogs_assert(amf_ue->slice[i].num_of_session <= OGS_MAX_NUM_OF_SESS);
         for (j = 0; j < amf_ue->slice[i].num_of_session; j++) {
             ogs_assert(amf_ue->slice[i].session[j].name);
             ogs_free(amf_ue->slice[i].session[j].name);

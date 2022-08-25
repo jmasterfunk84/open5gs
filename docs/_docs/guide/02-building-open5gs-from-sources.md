@@ -107,7 +107,7 @@ $ diff -u /etc/open5gs/amf.yaml.old /etc/open5gs/amf.yaml
 +      - addr: 10.10.0.5
      guami:
        - plmn_id:
--          mcc: 901
+-          mcc: 999
 -          mnc: 70
 +          mcc: 001
 +          mnc: 01
@@ -116,7 +116,7 @@ $ diff -u /etc/open5gs/amf.yaml.old /etc/open5gs/amf.yaml
            set: 1
      tai:
        - plmn_id:
--          mcc: 901
+-          mcc: 999
 -          mnc: 70
 -        tac: 1
 +          mcc: 001
@@ -124,7 +124,7 @@ $ diff -u /etc/open5gs/amf.yaml.old /etc/open5gs/amf.yaml
 +        tac: 2
      plmn_support:
        - plmn_id:
--          mcc: 901
+-          mcc: 999
 -          mnc: 70
 +          mcc: 001
 +          mnc: 01
@@ -168,7 +168,7 @@ $ diff -u /etc/open5gs/mme.yaml.old /etc/open5gs/mme.yaml
        addr: 127.0.0.2
      gummei:
        plmn_id:
--        mcc: 901
+-        mcc: 999
 -        mnc: 70
 +        mcc: 001
 +        mnc: 01
@@ -176,7 +176,7 @@ $ diff -u /etc/open5gs/mme.yaml.old /etc/open5gs/mme.yaml
        mme_code: 1
      tai:
        plmn_id:
--        mcc: 901
+-        mcc: 999
 -        mnc: 70
 -      tac: 1
 +        mcc: 001
@@ -425,7 +425,7 @@ To add subscriber information, you can do WebUI operations in the following orde
   3. Fill the IMSI, security context(K, OPc, AMF), and APN of the subscriber.
   4. Click `SAVE` Button
 
-**Tip:** This addition immediately affects Open5GS without restarting any daemon.
+**Note:** Subscribers added with this tool immediately register in the Open5GS HSS/UDR without the need to restart any daemon. However, if you use the WebUI to change subscriber profile, you must restart the Open5GS AMF/MME daemon for the changes to take effect.
 {: .notice--warning}
 
 ### IP routing + NAT for UE internet connectivity

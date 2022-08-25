@@ -24,22 +24,22 @@
 extern "C" {
 #endif
 
-OpenAPI_nf_profile_t *ogs_nnrf_nfm_build_nf_profile(
-        ogs_sbi_nf_instance_t *nf_instance);
+OpenAPI_nf_profile_t *ogs_nnrf_nfm_build_nf_profile(void);
 void ogs_sbi_nnrf_free_nf_profile(OpenAPI_nf_profile_t *NFProfile);
 
-ogs_sbi_request_t *ogs_nnrf_nfm_build_update(
-        ogs_sbi_nf_instance_t *nf_instance);
-ogs_sbi_request_t *ogs_nnrf_nfm_build_de_register(
-        ogs_sbi_nf_instance_t *nf_instance);
+ogs_sbi_request_t *ogs_nnrf_nfm_build_register(void);
+ogs_sbi_request_t *ogs_nnrf_nfm_build_update(void);
+ogs_sbi_request_t *ogs_nnrf_nfm_build_de_register(void);
 
 ogs_sbi_request_t *ogs_nnrf_nfm_build_status_subscribe(
         ogs_sbi_subscription_t *subscription);
 ogs_sbi_request_t *ogs_nnrf_nfm_build_status_unsubscribe(
         ogs_sbi_subscription_t *subscription);
+ogs_sbi_request_t *ogs_nnrf_nfm_build_profile_retrieve(char *nf_instance_id);
 
 ogs_sbi_request_t *ogs_nnrf_disc_build_discover(
-        OpenAPI_nf_type_e target_nf_type, OpenAPI_nf_type_e requester_nf_type);
+        OpenAPI_nf_type_e target_nf_type, OpenAPI_nf_type_e requester_nf_type,
+        ogs_sbi_discovery_option_t *discovery_option);
 
 #ifdef __cplusplus
 }
