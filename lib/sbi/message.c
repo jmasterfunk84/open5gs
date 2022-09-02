@@ -18,7 +18,6 @@
  */
 
 #include "ogs-sbi.h"
-#include "ogs-crypt.h"
 #include "yuarel.h"
 
 #include "contrib/multipart_parser.h"
@@ -304,7 +303,8 @@ ogs_sbi_request_t *ogs_sbi_build_request(ogs_sbi_message_t *message)
                     OGS_SBI_PARAM_REQUESTER_NF_INSTANCE_ID,
                     discovery_option->requester_nf_instance_id);
         }
-        if (discovery_option->num_of_service_names) {
+        if (ogs_sbi_self()->discovery_config.no_service_names == false &&
+            discovery_option->num_of_service_names) {
             char *v = NULL;
             cJSON *item = NULL;
 
@@ -2338,7 +2338,7 @@ void ogs_sbi_discovery_option_add_service_names(
     ogs_assert(service_name);
 
     ogs_assert(discovery_option->num_of_service_names <
-                OGS_MAX_NUM_OF_NF_SERVICE);
+                OGS_SBI_MAX_NUM_OF_SERVICE_TYPE);
 
     discovery_option->service_names[discovery_option->num_of_service_names] =
         ogs_strdup(service_name);

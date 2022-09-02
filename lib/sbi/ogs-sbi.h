@@ -20,7 +20,8 @@
 #ifndef OGS_SBI_H
 #define OGS_SBI_H
 
-#include "ogs-proto.h"
+#include "crypt/ogs-crypt.h"
+#include "app/ogs-app.h"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -85,6 +86,7 @@
 
 #define OGS_SBI_INSIDE
 
+#include "sbi/types.h"
 #include "sbi/conv.h"
 #include "sbi/timer.h"
 #include "sbi/message.h"

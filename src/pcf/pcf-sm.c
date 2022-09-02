@@ -49,7 +49,7 @@ void pcf_state_operational(ogs_fsm_t *s, pcf_event_t *e)
     ogs_sbi_object_t *sbi_object = NULL;
     ogs_sbi_xact_t *sbi_xact = NULL;
 
-    OpenAPI_nf_type_e target_nf_type = OpenAPI_nf_type_NULL;
+    ogs_sbi_service_type_e service_type = OGS_SBI_SERVICE_TYPE_NULL;
 
     pcf_ue_t *pcf_ue = NULL;
     pcf_sess_t *sess = NULL;
@@ -179,17 +179,20 @@ void pcf_state_operational(ogs_fsm_t *s, pcf_event_t *e)
                         message.SmPolicyContextData->supi) {
                         pcf_ue = pcf_ue_find_by_supi(
                                     message.SmPolicyContextData->supi);
-                        if (pcf_ue) {
-                            if (message.SmPolicyContextData->pdu_session_id) {
-                                sess = pcf_sess_find_by_psi(pcf_ue, message.
-                                        SmPolicyContextData->pdu_session_id);
-                                if (!sess) {
-                                    sess = pcf_sess_add(pcf_ue, message.
-                                        SmPolicyContextData->pdu_session_id);
-                                    ogs_assert(sess);
-                                    ogs_debug("[%s:%d] PCF session added",
-                                                pcf_ue->supi, sess->psi);
-                                }
+                        if (!pcf_ue) {
+                            pcf_ue = pcf_ue_add(
+                                        message.SmPolicyContextData->supi);
+                            ogs_assert(pcf_ue);
+                        }
+                        if (message.SmPolicyContextData->pdu_session_id) {
+                            sess = pcf_sess_find_by_psi(pcf_ue, message.
+                                    SmPolicyContextData->pdu_session_id);
+                            if (!sess) {
+                                sess = pcf_sess_add(pcf_ue, message.
+                                    SmPolicyContextData->pdu_session_id);
+                                ogs_assert(sess);
+                                ogs_debug("[%s:%d] PCF session added",
+                                            pcf_ue->supi, sess->psi);
                             }
                         }
                     }
@@ -591,7 +594,7 @@ void pcf_state_operational(ogs_fsm_t *s, pcf_event_t *e)
             stream = sbi_xact->assoc_stream;
             ogs_assert(stream);
 
-            target_nf_type = sbi_xact->target_nf_type;
+            service_type = sbi_xact->service_type;
 
             ogs_sbi_xact_remove(sbi_xact);
 
@@ -623,7 +626,8 @@ void pcf_state_operational(ogs_fsm_t *s, pcf_event_t *e)
 
             default:
                 ogs_fatal("Not implemented [%s:%d]",
-                    OpenAPI_nf_type_ToString(target_nf_type), sbi_object->type);
+                    ogs_sbi_service_type_to_name(service_type),
+                    sbi_object->type);
                 ogs_assert_if_reached();
             }
 
