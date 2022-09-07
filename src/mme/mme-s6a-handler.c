@@ -196,7 +196,7 @@ void mme_s6a_handle_clr(
     }
 }
 
-/* 3GPP TS 29.272 Annex A; Table !.a:
+/* 3GPP TS 29.272 Annex A; Table A.1:
  * Mapping from S6a error codes to NAS Cause Codes */
 static uint8_t emm_cause_from_diameter(
                 const uint32_t *dia_err, const uint32_t *dia_exp_err)

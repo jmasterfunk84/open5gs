@@ -636,7 +636,7 @@ static void mme_s6a_ula_cb(void *data, struct msg **msg)
     mme_ue = sess_data->mme_ue;
     ogs_assert(mme_ue);
 
-    /* Set Authentication-Information Command */
+    /* Set Update-Location Command */
     s6a_message = ogs_calloc(1, sizeof(ogs_diam_s6a_message_t));
     ogs_assert(s6a_message);
     s6a_message->cmd_code = OGS_DIAM_S6A_CMD_CODE_UPDATE_LOCATION;
@@ -1610,6 +1610,30 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
         ogs_assert(ret == 0);
         if (hdr->avp_value->os.len) {
             ogs_debug("WIP: Process New Subscription Data");
+            struct avp *avpch1;
+
+            /* AVP: 'MSISDN'( 701 )
+            * The MSISDN AVP is of type OctetString. This AVP contains an MSISDN,
+            * in international number format as described in ITU-T Rec E.164 [8],
+            * encoded as a TBCD-string, i.e. digits from 0 through 9 are encoded
+            * 0000 to 1001; 1111 is used as a filler when there is an odd number
+            * of digits; bits 8 to 5 of octet n encode digit 2n; bits 4 to 1 of
+            * octet n encode digit 2(n-1)+1.
+            * Reference: 3GPP TS 29.329
+            */
+            ret = fd_avp_search_avp(avp, ogs_diam_s6a_msisdn, &avpch1);
+            ogs_assert(ret == 0);
+            if (avpch1) {
+                ret = fd_msg_avp_hdr(avpch1, &hdr);
+                ogs_assert(ret == 0);
+                if (hdr->avp_value->os.data && hdr->avp_value->os.len) {
+                    mme_ue->msisdn_len = hdr->avp_value->os.len;
+                    memcpy(mme_ue->msisdn, hdr->avp_value->os.data,
+                            ogs_min(mme_ue->msisdn_len, OGS_MAX_MSISDN_LEN));
+                    ogs_buffer_to_bcd(mme_ue->msisdn,
+                            mme_ue->msisdn_len, mme_ue->msisdn_bcd);
+                }
+            }
         } else {
             ogs_debug("No Sub Data, ok to check IDR Flags");
         }
