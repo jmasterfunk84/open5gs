@@ -28,6 +28,11 @@ static struct disp_hdl *hdl_s6a_idr = NULL;
 
 static struct session_handler *mme_s6a_reg = NULL;
 
+/* s6a process Subscription-Data from avp */
+static int mme_s6a_subscription_data_from_avp(struct avp *avp,
+    ogs_subscription_data_t *subscription_data,
+    mme_ue_t *mme_ue);
+
 struct sess_state {
     mme_ue_t *mme_ue;
     struct timespec ts; /* Time of sending the message */
@@ -39,6 +44,106 @@ static void mme_s6a_ula_cb(void *data, struct msg **msg);
 static void state_cleanup(struct sess_state *sess_data, os0_t sid, void *opaque)
 {
     ogs_free(sess_data);
+}
+
+/* s6a process Subscription-Data from avp */
+static int mme_s6a_subscription_data_from_avp(struct avp *avp,
+    ogs_subscription_data_t *subscription_data,
+    mme_ue_t *mme_ue)
+{
+    /* Let's use a bitmask again here to know who is updated */
+    int ret;
+    char buf[OGS_CHRGCHARS_LEN];
+    struct avp *avpch1;
+    struct avp_hdr *hdr;
+
+    /* AVP: 'MSISDN'( 701 )
+     * The MSISDN AVP is of type OctetString. This AVP contains an MSISDN,
+     * in international number format as described in ITU-T Rec E.164 [8],
+     * encoded as a TBCD-string, i.e. digits from 0 through 9 are encoded
+     * 0000 to 1001; 1111 is used as a filler when there is an odd number
+     * of digits; bits 8 to 5 of octet n encode digit 2n; bits 4 to 1 of
+     * octet n encode digit 2(n-1)+1.
+     * Reference: 3GPP TS 29.329
+     */
+    ret = fd_avp_search_avp(avp, ogs_diam_s6a_msisdn, &avpch1);
+    ogs_assert(ret == 0);
+    if (avpch1) {
+        ret = fd_msg_avp_hdr(avpch1, &hdr);
+        ogs_assert(ret == 0);
+        if (hdr->avp_value->os.data && hdr->avp_value->os.len) {
+            mme_ue->msisdn_len = hdr->avp_value->os.len;
+            memcpy(mme_ue->msisdn, hdr->avp_value->os.data,
+                    ogs_min(mme_ue->msisdn_len, OGS_MAX_MSISDN_LEN));
+            ogs_buffer_to_bcd(mme_ue->msisdn,
+                    mme_ue->msisdn_len, mme_ue->msisdn_bcd);
+        }
+    }
+
+    /* AVP: 'A-MSISDN'(1643)
+     * The A-MSISDN AVP contains an A-MSISDN, in international number
+     * format as described in ITU-T Rec E.164, encoded as a TBCD-string.
+     * This AVP shall not include leading indicators for the nature of
+     * address and the numbering plan; it shall contain only the
+     * TBCD-encoded digits of the address.
+     * Reference: 3GPP TS 29.272 7.3.157
+     */
+    ret = fd_avp_search_avp(avp, ogs_diam_s6a_a_msisdn, &avpch1);
+    ogs_assert(ret == 0);
+    if (avpch1) {
+        ret = fd_msg_avp_hdr(avpch1, &hdr);
+        ogs_assert(ret == 0);
+        if (hdr->avp_value->os.data && hdr->avp_value->os.len) {
+            mme_ue->a_msisdn_len = hdr->avp_value->os.len;
+            memcpy(mme_ue->a_msisdn, hdr->avp_value->os.data,
+                    ogs_min(mme_ue->a_msisdn_len, OGS_MAX_MSISDN_LEN));
+            ogs_buffer_to_bcd(mme_ue->a_msisdn,
+                    mme_ue->a_msisdn_len, mme_ue->a_msisdn_bcd);
+        }
+    }
+
+    /* AVP: 'Network-Access-Mode'(1417)
+        * The Network-Access-Mode AVP shall indicate one of three options
+        * through its value.
+        * (EPS-IMSI-COMBINED/RESERVED/EPS-ONLY)
+        * Reference: 3GPP TS 29.272 7.3.21
+        */
+    ret = fd_avp_search_avp(avp, ogs_diam_s6a_network_access_mode, &avpch1);
+    ogs_assert(ret == 0);
+    if (avpch1) {
+        ret = fd_msg_avp_hdr(avpch1, &hdr);
+        ogs_assert(ret == 0);
+        mme_ue->network_access_mode = hdr->avp_value->i32;
+    } else {
+        mme_ue->network_access_mode = 0;
+        ogs_warn("no subscribed Network-Access-Mode, defaulting to "
+            "PACKET_AND_CIRCUIT (0)");
+    }
+
+    /* AVP: '3GPP-Charging-Characteristics'(13)
+        * For GGSN, it contains the charging characteristics for 
+        * this PDP Context received in the Create PDP Context 
+        * Request Message (only available in R99 and later releases). 
+        * For PGW, it contains the charging characteristics for the 
+        * IP-CAN bearer.
+        * Reference: 3GPP TS 29.061 16.4.7.2 13
+        */
+    ret = fd_avp_search_avp(avp, ogs_diam_s6a_3gpp_charging_characteristics, 
+        &avpch1);
+    ogs_assert(ret == 0);
+    if (avpch1) {
+        ret = fd_msg_avp_hdr(avpch1, &hdr);
+        memcpy(mme_ue->charging_characteristics,
+            OGS_HEX(hdr->avp_value->os.data, (int)hdr->avp_value->os.len, buf), 
+                OGS_CHRGCHARS_LEN);
+        mme_ue->charging_characteristics_presence = true;
+    } else {
+        memcpy(mme_ue->charging_characteristics, (uint8_t *)"\x00\x00", 
+            OGS_CHRGCHARS_LEN);
+        mme_ue->charging_characteristics_presence = false;
+    }
+
+    return OGS_OK;
 }
 
 /* MME Sends Authentication Information Request to HSS */
@@ -741,87 +846,7 @@ static void mme_s6a_ula_cb(void *data, struct msg **msg)
     ogs_assert(ret == 0);
     if (avp) {
 
-        /* AVP: 'MSISDN'( 701 )
-         * The MSISDN AVP is of type OctetString. This AVP contains an MSISDN,
-         * in international number format as described in ITU-T Rec E.164 [8],
-         * encoded as a TBCD-string, i.e. digits from 0 through 9 are encoded
-         * 0000 to 1001; 1111 is used as a filler when there is an odd number
-         * of digits; bits 8 to 5 of octet n encode digit 2n; bits 4 to 1 of
-         * octet n encode digit 2(n-1)+1.
-         * Reference: 3GPP TS 29.329
-         */
-        ret = fd_avp_search_avp(avp, ogs_diam_s6a_msisdn, &avpch1);
-        ogs_assert(ret == 0);
-        if (avpch1) {
-            ret = fd_msg_avp_hdr(avpch1, &hdr);
-            ogs_assert(ret == 0);
-            if (hdr->avp_value->os.data && hdr->avp_value->os.len) {
-                mme_ue->msisdn_len = hdr->avp_value->os.len;
-                memcpy(mme_ue->msisdn, hdr->avp_value->os.data,
-                        ogs_min(mme_ue->msisdn_len, OGS_MAX_MSISDN_LEN));
-                ogs_buffer_to_bcd(mme_ue->msisdn,
-                        mme_ue->msisdn_len, mme_ue->msisdn_bcd);
-            }
-        }
-
-        /* AVP: 'A-MSISDN'(1643)
-         * The A-MSISDN AVP contains an A-MSISDN, in international number
-         * format as described in ITU-T Rec E.164, encoded as a TBCD-string.
-         * This AVP shall not include leading indicators for the nature of
-         * address and the numbering plan; it shall contain only the
-         * TBCD-encoded digits of the address.
-         * Reference: 3GPP TS 29.272 7.3.157
-         */
-        ret = fd_avp_search_avp(avp, ogs_diam_s6a_a_msisdn, &avpch1);
-        ogs_assert(ret == 0);
-        if (avpch1) {
-            ret = fd_msg_avp_hdr(avpch1, &hdr);
-            ogs_assert(ret == 0);
-            if (hdr->avp_value->os.data && hdr->avp_value->os.len) {
-                mme_ue->a_msisdn_len = hdr->avp_value->os.len;
-                memcpy(mme_ue->a_msisdn, hdr->avp_value->os.data,
-                        ogs_min(mme_ue->a_msisdn_len, OGS_MAX_MSISDN_LEN));
-                ogs_buffer_to_bcd(mme_ue->a_msisdn,
-                        mme_ue->a_msisdn_len, mme_ue->a_msisdn_bcd);
-            }
-        }
-
-        /* AVP: 'Network-Access-Mode'(1417)
-         * The Network-Access-Mode AVP shall indicate one of three options
-         * through its value.
-         * (EPS-IMSI-COMBINED/RESERVED/EPS-ONLY)
-         * Reference: 3GPP TS 29.272 7.3.21
-         */
-        ret = fd_avp_search_avp(avp, ogs_diam_s6a_network_access_mode, &avpch1);
-        ogs_assert(ret == 0);
-        if (avpch1) {
-            ret = fd_msg_avp_hdr(avpch1, &hdr);
-            ogs_assert(ret == 0);
-            mme_ue->network_access_mode = hdr->avp_value->i32;
-        } else {
-            mme_ue->network_access_mode = 0;
-            ogs_warn("no subscribed Network-Access-Mode, defaulting to PACKET_AND_CIRCUIT (0)");
-        }
-
-        /* AVP: '3GPP-Charging-Characteristics'(13)
-            * For GGSN, it contains the charging characteristics for 
-            * this PDP Context received in the Create PDP Context 
-            * Request Message (only available in R99 and later releases). 
-            * For PGW, it contains the charging characteristics for the 
-            * IP-CAN bearer.
-            * Reference: 3GPP TS 29.061 16.4.7.2 13
-            */
-        ret = fd_avp_search_avp(avp, ogs_diam_s6a_3gpp_charging_characteristics, &avpch1);
-        ogs_assert(ret == 0);
-        if (avpch1) {
-            ret = fd_msg_avp_hdr(avpch1, &hdr);
-            memcpy(mme_ue->charging_characteristics,
-                OGS_HEX(hdr->avp_value->os.data, (int)hdr->avp_value->os.len, buf), OGS_CHRGCHARS_LEN);
-            mme_ue->charging_characteristics_presence = true;
-        } else {
-            memcpy(mme_ue->charging_characteristics, (uint8_t *)"\x00\x00", OGS_CHRGCHARS_LEN);
-            mme_ue->charging_characteristics_presence = false;
-        }        
+        ret = mme_s6a_subscription_data_from_avp(avp, NULL, mme_ue);
 
         /* AVP: 'AMBR'(1435)
          * The Amber AVP contains the Max-Requested-Bandwidth-UL and
@@ -1564,6 +1589,8 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
 
     uint32_t result_code = 0;
 
+    bool has_subscriber_data;
+
     ogs_assert(msg);
 
     ogs_diam_s6a_message_t *s6a_message = NULL;
@@ -1598,44 +1625,25 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
         goto out;
     }
 
+
     /* AVP: 'Subscription-Data'(1400)
      * The Subscription-Data AVP contains the information related to the user
      * profile relevant for EPS and GERAN/UTRAN.
      * Reference: 3GPP TS 29.272-f70
      */
-    ret = fd_msg_search_avp(*msg, ogs_diam_s6a_subscription_data, &avp);
+    ret = fd_msg_search_avp(qry, ogs_diam_s6a_subscription_data, &avp);
     ogs_assert(ret == 0);
     if (avp) {
         ret = fd_msg_avp_hdr(avp, &hdr);
         ogs_assert(ret == 0);
-        if (hdr->avp_value->os.len) {
-            ogs_debug("WIP: Process New Subscription Data");
-            struct avp *avpch1;
-
-            /* AVP: 'MSISDN'( 701 )
-            * The MSISDN AVP is of type OctetString. This AVP contains an MSISDN,
-            * in international number format as described in ITU-T Rec E.164 [8],
-            * encoded as a TBCD-string, i.e. digits from 0 through 9 are encoded
-            * 0000 to 1001; 1111 is used as a filler when there is an odd number
-            * of digits; bits 8 to 5 of octet n encode digit 2n; bits 4 to 1 of
-            * octet n encode digit 2(n-1)+1.
-            * Reference: 3GPP TS 29.329
-            */
-            ret = fd_avp_search_avp(avp, ogs_diam_s6a_msisdn, &avpch1);
-            ogs_assert(ret == 0);
-            if (avpch1) {
-                ret = fd_msg_avp_hdr(avpch1, &hdr);
-                ogs_assert(ret == 0);
-                if (hdr->avp_value->os.data && hdr->avp_value->os.len) {
-                    mme_ue->msisdn_len = hdr->avp_value->os.len;
-                    memcpy(mme_ue->msisdn, hdr->avp_value->os.data,
-                            ogs_min(mme_ue->msisdn_len, OGS_MAX_MSISDN_LEN));
-                    ogs_buffer_to_bcd(mme_ue->msisdn,
-                            mme_ue->msisdn_len, mme_ue->msisdn_bcd);
-                }
-            }
+        ret = fd_msg_browse(avp, MSG_BRW_FIRST_CHILD, NULL, NULL);
+        if (ret) {
+            ogs_info("Subscription-Data is Empty.");
         } else {
-            ogs_debug("No Sub Data, ok to check IDR Flags");
+            has_subscriber_data = true;
+            ogs_debug("WIP: Process New Subscription Data");
+            ret = mme_s6a_subscription_data_from_avp(avp, NULL, mme_ue);
+            ogs_info("Subscription-Data Processed.");
         }
     }
 
@@ -1645,14 +1653,6 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
         ret = fd_msg_avp_hdr(avp, &hdr);
         ogs_assert(ret == 0);
         idr_message->idr_flags = hdr->avp_value->i32;
-    } else {
-        ogs_error("Insert Subscriber Data does not contain any IDR Flags "
-                "for IMSI[%s]", imsi_bcd);
-        /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
-        ret = fd_msg_rescode_set(ans,
-                (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
-        ogs_assert(ret == 0);
-        goto outnoexp;        
     }
 
     if (idr_message->idr_flags & OGS_DIAM_S6A_IDR_FLAGS_EPS_LOCATION_INFO) {
@@ -1735,13 +1735,16 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
         ret = fd_msg_avp_add(ans, MSG_BRW_LAST_CHILD, avp);
         ogs_assert(ret == 0);        
     } else {
-        ogs_error("Insert Subscriber Data "
-                "with unsupported IDR Flags for IMSI[%s]", imsi_bcd);
-        /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
-        ret = fd_msg_rescode_set(
-                ans, (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
-        ogs_assert(ret == 0);
-        goto outnoexp;        
+        if (!has_subscriber_data) {
+            ogs_error("Insert Subscriber Data "
+                    "with unsupported IDR Flags "
+                    "op no Subscriber-Data for IMSI[%s]", imsi_bcd);
+            /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
+            ret = fd_msg_rescode_set(
+                    ans, (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
+            ogs_assert(ret == 0);
+            goto outnoexp;
+        }
     }
 
     /* Set the Origin-Host, Origin-Realm, andResult-Code AVPs */
