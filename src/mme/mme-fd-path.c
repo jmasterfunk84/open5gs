@@ -53,8 +53,9 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
 {
     /* Let's use a bitmask again here to know who is updated */
     int ret;
+    int error = 0;
     char buf[OGS_CHRGCHARS_LEN];
-    struct avp *avpch1;
+    struct avp *avpch1, *avpch2;
     struct avp_hdr *hdr;
 
     /* AVP: 'MSISDN'( 701 )
@@ -103,11 +104,11 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
     }
 
     /* AVP: 'Network-Access-Mode'(1417)
-        * The Network-Access-Mode AVP shall indicate one of three options
-        * through its value.
-        * (EPS-IMSI-COMBINED/RESERVED/EPS-ONLY)
-        * Reference: 3GPP TS 29.272 7.3.21
-        */
+     * The Network-Access-Mode AVP shall indicate one of three options
+     * through its value.
+     * (EPS-IMSI-COMBINED/RESERVED/EPS-ONLY)
+     * Reference: 3GPP TS 29.272 7.3.21
+     */
     ret = fd_avp_search_avp(avp, ogs_diam_s6a_network_access_mode, &avpch1);
     ogs_assert(ret == 0);
     if (avpch1) {
@@ -121,13 +122,13 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
     }
 
     /* AVP: '3GPP-Charging-Characteristics'(13)
-        * For GGSN, it contains the charging characteristics for 
-        * this PDP Context received in the Create PDP Context 
-        * Request Message (only available in R99 and later releases). 
-        * For PGW, it contains the charging characteristics for the 
-        * IP-CAN bearer.
-        * Reference: 3GPP TS 29.061 16.4.7.2 13
-        */
+     * For GGSN, it contains the charging characteristics for 
+     * this PDP Context received in the Create PDP Context 
+     * Request Message (only available in R99 and later releases). 
+     * For PGW, it contains the charging characteristics for the 
+     * IP-CAN bearer.
+     * Reference: 3GPP TS 29.061 16.4.7.2 13
+     */
     ret = fd_avp_search_avp(avp, ogs_diam_s6a_3gpp_charging_characteristics, 
         &avpch1);
     ogs_assert(ret == 0);
@@ -143,7 +144,72 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
         mme_ue->charging_characteristics_presence = false;
     }
 
-    return OGS_OK;
+    /* AVP: 'AMBR'(1435)
+     * The Amber AVP contains the Max-Requested-Bandwidth-UL and
+     * Max-Requested-Bandwidth-DL AVPs.
+     * Reference: 3GPP TS 29.272 7.3.41
+     */
+    ret = fd_avp_search_avp(avp, ogs_diam_s6a_ambr, &avpch1);
+    ogs_assert(ret == 0);
+    if (avpch1) {
+
+        /* AVP: 'Max-Requested-Bandwidth-UL'(516)
+         * The Max -Bandwidth-UL AVP indicates the maximum requested
+         * bandwidth in bits per second for an uplink IP flow.
+         * Reference: 3GPP TS 29.212 7.3.41
+         */
+        ret = fd_avp_search_avp(avpch1,
+                ogs_diam_s6a_max_bandwidth_ul, &avpch2);
+        ogs_assert(ret == 0);
+        if (avpch2) {
+            ret = fd_msg_avp_hdr(avpch2, &hdr);
+            ogs_assert(ret == 0);
+            subscription_data->ambr.uplink = hdr->avp_value->u32;
+        } else {
+            ogs_error("no_Max-Bandwidth-UL");
+            error++;
+        }
+
+        /* AVP: 'Max-Requested-Bandwidth-DL'(515)
+         * The Max-Requested-Bandwidth-DL AVP indicates the maximum
+         * bandwidth in bits per second for a downlink IP flow.
+         * Reference: 3GPP TS 29.212 7.3.41
+         */
+        ret = fd_avp_search_avp(avpch1,
+                ogs_diam_s6a_max_bandwidth_dl, &avpch2);
+        ogs_assert(ret == 0);
+        if (avpch2) {
+            ret = fd_msg_avp_hdr(avpch2, &hdr);
+            ogs_assert(ret == 0);
+            subscription_data->ambr.downlink = hdr->avp_value->u32;
+        } else {
+            ogs_error("no_Max-Bandwidth-DL");
+            error++;
+        }
+
+    } else {
+        ogs_error("no_AMBR");
+        error++;
+    }
+
+    /* AVP: 'Subscribed-Periodic-RAU-TAU-Timer'(1619)
+     * The Subscribed-Periodic-TAU-RAU-Timer AVP contains the subscribed
+     * periodic TAU/RAU timer value in seconds.
+     * Reference: 3GPP TS 29.272 7.3.134
+     */
+    ret = fd_avp_search_avp(avp,
+            ogs_diam_s6a_subscribed_rau_tau_timer, &avpch1);
+    ogs_assert(ret == 0);
+    if (avpch1) {
+        ret = fd_msg_avp_hdr(avpch1, &hdr);
+        ogs_assert(ret == 0);
+        subscription_data->subscribed_rau_tau_timer = hdr->avp_value->i32;
+    } else {
+        subscription_data->subscribed_rau_tau_timer =
+            OGS_RAU_TAU_DEFAULT_TIME;
+    }
+
+    return error;
 }
 
 /* MME Sends Authentication Information Request to HSS */
@@ -846,72 +912,7 @@ static void mme_s6a_ula_cb(void *data, struct msg **msg)
     ogs_assert(ret == 0);
     if (avp) {
 
-        ret = mme_s6a_subscription_data_from_avp(avp, NULL, mme_ue);
-
-        /* AVP: 'AMBR'(1435)
-         * The Amber AVP contains the Max-Requested-Bandwidth-UL and
-         * Max-Requested-Bandwidth-DL AVPs.
-         * Reference: 3GPP TS 29.272 7.3.41
-         */
-        ret = fd_avp_search_avp(avp, ogs_diam_s6a_ambr, &avpch1);
-        ogs_assert(ret == 0);
-        if (avpch1) {
-
-            /* AVP: 'Max-Requested-Bandwidth-UL'(516)
-             * The Max -Bandwidth-UL AVP indicates the maximum requested
-             * bandwidth in bits per second for an uplink IP flow.
-             * Reference: 3GPP TS 29.212 7.3.41
-             */
-            ret = fd_avp_search_avp(avpch1,
-                    ogs_diam_s6a_max_bandwidth_ul, &avpch2);
-            ogs_assert(ret == 0);
-            if (avpch2) {
-                ret = fd_msg_avp_hdr(avpch2, &hdr);
-                ogs_assert(ret == 0);
-                subscription_data->ambr.uplink = hdr->avp_value->u32;
-            } else {
-                ogs_error("no_Max-Bandwidth-UL");
-                error++;
-            }
-
-            /* AVP: 'Max-Requested-Bandwidth-DL'(515)
-             * The Max-Requested-Bandwidth-DL AVP indicates the maximum
-             * bandwidth in bits per second for a downlink IP flow.
-             * Reference: 3GPP TS 29.212 7.3.41
-             */
-            ret = fd_avp_search_avp(avpch1,
-                    ogs_diam_s6a_max_bandwidth_dl, &avpch2);
-            ogs_assert(ret == 0);
-            if (avpch2) {
-                ret = fd_msg_avp_hdr(avpch2, &hdr);
-                ogs_assert(ret == 0);
-                subscription_data->ambr.downlink = hdr->avp_value->u32;
-            } else {
-                ogs_error("no_Max-Bandwidth-DL");
-                error++;
-            }
-
-        } else {
-            ogs_error("no_AMBR");
-            error++;
-        }
-
-        /* AVP: 'Subscribed-Periodic-RAU-TAU-Timer'(1619)
-         * The Subscribed-Periodic-TAU-RAU-Timer AVP contains the subscribed
-         * periodic TAU/RAU timer value in seconds.
-         * Reference: 3GPP TS 29.272 7.3.134
-         */
-        ret = fd_avp_search_avp(avp,
-                ogs_diam_s6a_subscribed_rau_tau_timer, &avpch1);
-        ogs_assert(ret == 0);
-        if (avpch1) {
-            ret = fd_msg_avp_hdr(avpch1, &hdr);
-            ogs_assert(ret == 0);
-            subscription_data->subscribed_rau_tau_timer = hdr->avp_value->i32;
-        } else {
-            subscription_data->subscribed_rau_tau_timer =
-                OGS_RAU_TAU_DEFAULT_TIME;
-        }
+        ret = mme_s6a_subscription_data_from_avp(avp, subscription_data, mme_ue);
 
         /* AVP: 'APN-Configuration-Profile'(1429)
          * The APN-Configuration-Profile AVP shall contain the information
@@ -1624,7 +1625,6 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
         result_code = OGS_DIAM_S6A_ERROR_USER_UNKNOWN;
         goto out;
     }
-
 
     /* AVP: 'Subscription-Data'(1400)
      * The Subscription-Data AVP contains the information related to the user
