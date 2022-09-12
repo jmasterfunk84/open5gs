@@ -44,6 +44,8 @@ typedef struct pcf_context_s {
 
     ogs_hash_t      *ipv4addr_hash;
     ogs_hash_t      *ipv6prefix_hash;
+
+    ogs_thread_mutex_t  db_lock;
 } pcf_context_t;
 
 struct pcf_ue_s {
@@ -172,6 +174,9 @@ int pcf_app_remove(pcf_app_t *app);
 void pcf_app_remove_all(pcf_sess_t *sess);
 pcf_app_t *pcf_app_find(uint32_t index);
 pcf_app_t *pcf_app_find_by_app_session_id(char *app_session_id);
+
+int pcf_db_subscription_data(
+    char *supi, ogs_subscription_data_t *subscription_data);
 
 #ifdef __cplusplus
 }

@@ -38,6 +38,7 @@ extern int __udr_log_domain;
 #define OGS_LOG_DOMAIN __udr_log_domain
 
 typedef struct udr_context_s {
+    ogs_thread_mutex_t  db_lock;
 } udr_context_t;
 
 void udr_context_init(void);
@@ -45,6 +46,9 @@ void udr_context_final(void);
 udr_context_t *udr_self(void);
 
 int udr_context_parse_config(void);
+
+int udr_db_subscription_data(
+    char *supi, ogs_subscription_data_t *subscription_data);
 
 #ifdef __cplusplus
 }

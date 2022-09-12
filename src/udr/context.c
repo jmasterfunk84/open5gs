@@ -35,12 +35,16 @@ void udr_context_init(void)
     ogs_log_install_domain(&__ogs_dbi_domain, "dbi", ogs_core()->log.level);
     ogs_log_install_domain(&__udr_log_domain, "udr", ogs_core()->log.level);
 
+    ogs_thread_mutex_init(&self.db_lock);
+
     context_initialized = 1;
 }
 
 void udr_context_final(void)
 {
     ogs_assert(context_initialized == 1);
+
+    ogs_thread_mutex_destroy(&self.db_lock); 
 
     context_initialized = 0;
 }
@@ -98,4 +102,21 @@ int udr_context_parse_config(void)
     if (rv != OGS_OK) return rv;
 
     return OGS_OK;
+}
+
+int udr_db_subscription_data(
+    char *supi, ogs_subscription_data_t *subscription_data)
+{
+    int rv;
+
+    ogs_assert(subscription_data);
+    ogs_assert(supi);
+
+    ogs_thread_mutex_lock(&self.db_lock);
+
+    rv = ogs_dbi_subscription_data(supi, subscription_data);
+
+    ogs_thread_mutex_unlock(&self.db_lock);
+
+    return rv;
 }

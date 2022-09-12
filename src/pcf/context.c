@@ -55,6 +55,8 @@ void pcf_context_init(void)
     self.ipv6prefix_hash = ogs_hash_make();
     ogs_assert(self.ipv6prefix_hash);
 
+    ogs_thread_mutex_init(&self.db_lock);
+
     context_initialized = 1;
 }
 
@@ -74,6 +76,8 @@ void pcf_context_final(void)
     ogs_pool_final(&pcf_app_pool);
     ogs_pool_final(&pcf_sess_pool);
     ogs_pool_final(&pcf_ue_pool);
+
+    ogs_thread_mutex_destroy(&self.db_lock);
 
     context_initialized = 0;
 }
@@ -564,4 +568,21 @@ pcf_app_t *pcf_app_find_by_app_session_id(char *app_session_id)
 {
     ogs_assert(app_session_id);
     return pcf_app_find(atoll(app_session_id));
+}
+
+int pcf_db_subscription_data(
+    char *supi, ogs_subscription_data_t *subscription_data)
+{
+    int rv;
+
+    ogs_assert(subscription_data);
+    ogs_assert(supi);
+
+    ogs_thread_mutex_lock(&self.db_lock);
+
+    rv = ogs_dbi_subscription_data(supi, subscription_data);
+
+    ogs_thread_mutex_unlock(&self.db_lock);
+
+    return rv;
 }

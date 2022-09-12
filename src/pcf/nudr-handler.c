@@ -62,7 +62,7 @@ bool pcf_nudr_dr_handle_query_am_data(
             goto cleanup;
         }
 
-        rv = ogs_dbi_subscription_data(pcf_ue->supi, &subscription_data);
+        rv = pcf_db_subscription_data(pcf_ue->supi, &subscription_data);
         if (rv != OGS_OK) {
             strerror = ogs_msprintf("[%s] Cannot find SUPI in DB",
                     pcf_ue->supi);
