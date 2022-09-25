@@ -39,4 +39,3 @@ void hss_swx_final(void);
 #endif
 
 #endif /* HSS_FD_PATH_H */
-

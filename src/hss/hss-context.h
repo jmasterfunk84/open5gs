@@ -63,6 +63,8 @@ int hss_db_auth_info(char *imsi_bcd, ogs_dbi_auth_info_t *auth_info);
 int hss_db_update_sqn(char *imsi_bcd, uint8_t *rand, uint64_t sqn);
 int hss_db_increment_sqn(char *imsi_bcd);
 int hss_db_update_imeisv(char *imsi_bcd, char *imeisv);
+int hss_db_update_mme(char *imsi_bcd, char *mme_host, char *mme_realm,
+    bool purge_flag);
 
 int hss_db_subscription_data(
     char *imsi_bcd, ogs_subscription_data_t *subscription_data);
@@ -89,6 +91,9 @@ void hss_cx_set_server_name(
 char *hss_cx_download_user_data(
         char *user_name, char *visited_network_identifier,
         ogs_ims_data_t *ims_data);
+
+int hss_db_poll_change_stream(void);
+int hss_handle_change_event(const bson_t *document);
 
 
 #ifdef __cplusplus

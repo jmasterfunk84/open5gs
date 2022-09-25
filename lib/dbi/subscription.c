@@ -189,6 +189,51 @@ int ogs_dbi_update_imeisv(char *supi, char *imeisv)
     return rv;
 }
 
+int ogs_dbi_update_mme(char *supi, char *mme_host, char *mme_realm, 
+    bool purge_flag)
+{
+    int rv = OGS_OK;
+    bson_t *query = NULL;
+    bson_t *update = NULL;
+    bson_error_t error;
+
+    char *supi_type = NULL;
+    char *supi_id = NULL;
+
+    ogs_assert(supi);
+
+    supi_type = ogs_id_get_type(supi);
+    ogs_assert(supi_type);
+    supi_id = ogs_id_get_value(supi);
+    ogs_assert(supi_id);
+
+    ogs_debug("SUPI type: %s, SUPI id: %s, mme_host: %s, mme_realm: %s",
+            supi_type, supi_id, mme_host, mme_realm);
+
+    query = BCON_NEW(supi_type, BCON_UTF8(supi_id));
+    update = BCON_NEW("$set",
+            "{",
+                "mme_host", BCON_UTF8(mme_host),
+                "mme_realm", BCON_UTF8(mme_realm),
+                "mme_timestamp", BCON_INT64(ogs_time_now()),
+                "purge_flag", BCON_BOOL(purge_flag),
+            "}");
+    if (!mongoc_collection_update(ogs_mongoc()->collection.subscriber,
+            MONGOC_UPDATE_UPSERT, query, update, NULL, &error)) {
+        ogs_error("mongoc_collection_update() failure: %s", error.message);
+
+        rv = OGS_ERROR;
+    }
+
+    if (query) bson_destroy(query);
+    if (update) bson_destroy(update);
+
+    ogs_free(supi_type);
+    ogs_free(supi_id);
+
+    return rv;
+}
+
 int ogs_dbi_increment_sqn(char *supi)
 {
     int rv = OGS_OK;
@@ -329,6 +374,12 @@ int ogs_dbi_subscription_data(char *supi,
             }
             subscription_data->num_of_msisdn = msisdn_index;
 
+        } else if (!strcmp(key, "imsi") &&
+            BSON_ITER_HOLDS_UTF8(&iter)) {
+            utf8 = bson_iter_utf8(&iter, &length);
+            subscription_data->imsi =
+                ogs_strndup(utf8, ogs_min(length, OGS_MAX_IMSI_BCD_LEN) + 1);
+            ogs_assert(subscription_data->imsi);
         } else if (!strcmp(key, "access_restriction_data") &&
             BSON_ITER_HOLDS_INT32(&iter)) {
             subscription_data->access_restriction_data =
@@ -649,6 +700,21 @@ int ogs_dbi_subscription_data(char *supi,
                 }
                 subscription_data->num_of_slice++;
             }
+        } else if (!strcmp(key, "mme_host") &&
+            BSON_ITER_HOLDS_UTF8(&iter)) {
+            utf8 = bson_iter_utf8(&iter, &length);
+            subscription_data->mme_host =
+                ogs_strndup(utf8, ogs_min(length, OGS_MAX_FQDN_LEN) + 1);
+            ogs_assert(subscription_data->mme_host);
+        } else if (!strcmp(key, "mme_realm") &&
+            BSON_ITER_HOLDS_UTF8(&iter)) {
+            utf8 = bson_iter_utf8(&iter, &length);
+            subscription_data->mme_realm =
+                ogs_strndup(utf8, ogs_min(length, OGS_MAX_FQDN_LEN) + 1);
+            ogs_assert(subscription_data->mme_realm);
+        } else if (!strcmp(key, "purge_flag") &&
+            BSON_ITER_HOLDS_BOOL(&iter)) {
+            subscription_data->purge_flag = bson_iter_bool(&iter);
         }
     }
 
