@@ -54,8 +54,9 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
     int ret;
     int error = 0;
     char buf[OGS_CHRGCHARS_LEN];
-    struct avp *avpch1, *avpch2;
+    struct avp *avpch1, *avpch2, *avpch3, *avpch4, *avpch5;
     struct avp_hdr *hdr;
+    ogs_sockaddr_t addr;
 
     ogs_assert(avp);
     ogs_assert(subscription_data);
@@ -152,7 +153,6 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
     ret = fd_avp_search_avp(avp, ogs_diam_s6a_ambr, &avpch1);
     ogs_assert(ret == 0);
     if (avpch1) {
-
         /* AVP: 'Max-Requested-Bandwidth-UL'(516)
          * The Max -Bandwidth-UL AVP indicates the maximum requested
          * bandwidth in bits per second for an uplink IP flow.
@@ -202,6 +202,457 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
         ogs_assert(ret == 0);
         subscription_data->subscribed_rau_tau_timer = hdr->avp_value->i32;
         *subdatamask = (*subdatamask | OGS_DIAM_S6A_SUBDATA_RAU_TAU_TIMER);
+    }
+
+    /* AVP: 'APN-Configuration-Profile'(1429)
+     * The APN-Configuration-Profile AVP shall contain the information
+     * related to the user's subscribed APN configurations for EPS. The
+     * Context-Identifier AVP within it shall identify the per subscriber's
+     * default APN configuration. The Subscription-Data AVP associated
+     * with an IMSI contains one APN-Configuration-Profile AVP. Each
+     * APN-Configuration-Profile AVP contains one or more APN-Configuration
+     * AVPs. Each APN-Configuration AVP describes the configuration for a
+     * single APN. Therefore, the cardinality of the relationship between
+     * IMSI and APN is one-to-many.
+     * Reference: 3GPP TS 29.272 7.3.34
+     */
+    ret = fd_avp_search_avp(avp,
+            ogs_diam_s6a_apn_configuration_profile, &avpch1);
+    ogs_assert(ret == 0);
+    if (avpch1) {
+        ogs_slice_data_t *slice_data = NULL;
+
+        ret = fd_msg_browse(avpch1, MSG_BRW_FIRST_CHILD, &avpch2, NULL);
+        ogs_assert(ret == 0);
+
+        ogs_assert(subscription_data->num_of_slice == 0);
+        slice_data = &subscription_data->slice[0];
+        while (avpch2) {
+            ret = fd_msg_avp_hdr(avpch2, &hdr);
+            ogs_assert(ret == 0);
+            switch(hdr->avp_code) {
+
+            /* AVP: 'Context-Identifier'(1423)
+             * The Context-Identifier in the APN-Configuration AVP shall
+             * identify that APN configuration, and it shall not have a
+             * value of zero. Furthermore, the Context-Identifier in the
+             * APN-Configuration AVP shall uniquely identify the EPS APN
+             * configuration per subscription.
+             * Reference: 3GPP TS 29.272 7.3.35
+             */
+            case OGS_DIAM_S6A_AVP_CODE_CONTEXT_IDENTIFIER:
+                slice_data->context_identifier = hdr->avp_value->i32;
+                break;
+
+            /* AVP: 'All-APN-Configurations-Included-Indicator'(1428)
+             * Reference: 3GPP TS 29.272 7.3.33
+             */
+            case OGS_DIAM_S6A_AVP_CODE_ALL_APN_CONFIG_INC_IND:
+                break;
+
+            /* AVP: 'APN-Configuration'(1430)
+             * The APN-Configuration AVP contains the information
+             * related to the user's subscribed APN configurations.
+             * Reference: 3GPP TS 29.272 7.3.35
+             */
+            case OGS_DIAM_S6A_AVP_CODE_APN_CONFIGURATION:
+            {
+                ogs_session_t *session = NULL;
+
+                if (slice_data->num_of_session >= OGS_MAX_NUM_OF_SESS) {
+                    ogs_warn("Ignore max session count overflow [%d>=%d]",
+                        slice_data->num_of_session, OGS_MAX_NUM_OF_SESS);
+                    break;
+                }
+                session = &slice_data->session[slice_data->num_of_session];
+                ogs_assert(session);
+
+                /* AVP: 'Service-Selection'(493)
+                 * The Service-Selection AVP is of type of UTF8String. This
+                 * AVP shall contain either the APN Network Identifier
+                 * (i.e. an APN without the Operator Identifier) per 3GPP
+                 * TS 23.003 [3], clauses 9.1 & 9.1.1, or this AVP shall
+                 * contain the wild card value per 3GPP TS 23.003 [3],
+                 * clause 9.2.1, and 3GPP TS 23.008 [30], clause 2.13.6).
+                 * ((DNN/APN))
+                 * Reference: 3GPP TS 29.272 7.3.36
+                 */
+                ret = fd_avp_search_avp(
+                    avpch2, ogs_diam_service_selection, &avpch3);
+                ogs_assert(ret == 0);
+                if (avpch3) {
+                    ret = fd_msg_avp_hdr(avpch3, &hdr);
+                    session->name = ogs_strndup(
+                                    (char*)hdr->avp_value->os.data,
+                                    hdr->avp_value->os.len);
+                    ogs_assert(session->name);
+                } else {
+                    ogs_error("no_Service-Selection");
+                    error++;
+                }
+
+                /* AVP: 'Context-Identifier'(1423)
+                 * The Context-Identifier in the APN-Configuration AVP shall
+                 * identify that APN configuration, and it shall not have a
+                 * value of zero. Furthermore, the Context-Identifier in the
+                 * APN-Configuration AVP shall uniquely identify the EPS APN
+                 * configuration per subscription.
+                 * Reference: 3GPP TS 29.272 7.3.27
+                 */
+                ret = fd_avp_search_avp(avpch2,
+                    ogs_diam_s6a_context_identifier, &avpch3);
+                ogs_assert(ret == 0);
+                if (avpch3) {
+                    ret = fd_msg_avp_hdr(avpch3, &hdr);
+                    session->context_identifier = hdr->avp_value->i32;
+                } else {
+                    ogs_error("no_Context-Identifier");
+                    error++;
+                }
+
+                /* AVP: 'PDN-Type'(1456)
+                 * The PDN-Type AVP indicates the address type of PDN.
+                 * ((IPv4/IPv6/IPv4v6))
+                 * Reference: 3GPP TS 29.272 7.3.62
+                 */
+                ret = fd_avp_search_avp(avpch2, ogs_diam_s6a_pdn_type,
+                        &avpch3);
+                ogs_assert(ret == 0);
+                if (avpch3) {
+                    ret = fd_msg_avp_hdr(avpch3, &hdr);
+                    session->session_type =
+                        OGS_PDU_SESSION_TYPE_FROM_DIAMETER(
+                                hdr->avp_value->i32);
+                } else {
+                    ogs_error("no_PDN-Type");
+                    error++;
+                }
+
+                /* AVP: '3GPP-Charging-Characteristics'(13)
+                 * For GGSN, it contains the charging characteristics for 
+                 * this PDP Context received in the Create PDP Context 
+                 * Request Message (only available in R99 and later releases). 
+                 * For PGW, it contains the charging characteristics for the 
+                 * IP-CAN bearer.
+                 * Reference: 3GPP TS 29.061 16.4.7.2 13
+                 */
+                ret = fd_avp_search_avp(avpch2, ogs_diam_s6a_3gpp_charging_characteristics,
+                        &avpch3);
+                ogs_assert(ret == 0);
+                if (avpch3) {
+                    ret = fd_msg_avp_hdr(avpch3, &hdr);
+                    memcpy(session->charging_characteristics,
+                        OGS_HEX(hdr->avp_value->os.data, (int)hdr->avp_value->os.len, buf), OGS_CHRGCHARS_LEN);
+                    session->charging_characteristics_presence = true;
+                } else {
+                    memcpy(session->charging_characteristics, (uint8_t *)"\x00\x00", OGS_CHRGCHARS_LEN);
+                    session->charging_characteristics_presence = false;
+                }
+
+                /* AVP: 'Served-Party-IP-Address'(848)
+                 * The Served-Party-IP-Address AVP holds the IP address of
+                 * either the calling or called party, depending on whether
+                 * the P-CSCF is in touch with the calling or the called
+                 * party.
+                 * ((UE IP STATIC ADDRESS))
+                 * Reference: 32-299-f10
+                 */
+                ret = fd_msg_browse(avpch2, MSG_BRW_FIRST_CHILD,
+                        &avpch3, NULL);
+                ogs_assert(ret == 0);
+                while (avpch3) {
+                    ret = fd_msg_avp_hdr(avpch3, &hdr);
+                    ogs_assert(ret == 0);
+                    switch(hdr->avp_code) {
+                    case OGS_DIAM_S6A_AVP_CODE_SERVED_PARTY_IP_ADDRESS:
+                        ret = fd_msg_avp_value_interpret(avpch3, &addr.sa);
+                        ogs_assert(ret == 0);
+
+                        if (addr.ogs_sa_family == AF_INET) {
+                            if (session->session_type ==
+                                    OGS_PDU_SESSION_TYPE_IPV4) {
+                                session->paa.addr =
+                                    addr.sin.sin_addr.s_addr;
+                            } else if (session->session_type ==
+                                    OGS_PDU_SESSION_TYPE_IPV4V6) {
+                                session->paa.both.addr =
+                                    addr.sin.sin_addr.s_addr;
+                            } else {
+                                ogs_error("Warning: Received a static IPv4 "
+                                    "address but PDN-Type does not include "
+                                    "IPv4. Ignoring...");
+                            }
+                        } else if (addr.ogs_sa_family == AF_INET6) {
+                            if (session->session_type ==
+                                    OGS_PDU_SESSION_TYPE_IPV6) {
+                                memcpy(session->paa.addr6,
+                                    addr.sin6.sin6_addr.s6_addr,
+                                    OGS_IPV6_LEN);
+                            } else if (session->session_type ==
+                                    OGS_PDU_SESSION_TYPE_IPV4V6) {
+                                memcpy(session->paa.both.addr6,
+                                    addr.sin6.sin6_addr.s6_addr,
+                                    OGS_IPV6_LEN);
+                            } else {
+                                ogs_error("Warning: Received a static IPv6 "
+                                    "address but PDN-Type does not include "
+                                    "IPv6. Ignoring...");
+                            }
+                        } else {
+                            ogs_error("Invalid family[%d]",
+                                    addr.ogs_sa_family);
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                    fd_msg_browse(avpch3, MSG_BRW_NEXT, &avpch3, NULL);
+                }
+
+                /* AVP: 'EPS-Subscribed-QoS-Profile'(1431)
+                 * The EPS-Subscribed-QoS-Profile AVP shall contain the
+                 * bearer-level QoS parameters (QoS Class Identifier and
+                 * Allocation Retention Priority) associated to the
+                 * default bearer for an APN.
+                 * Reference: 3GPP TS 29.272 7.3.37
+                 */
+                ret = fd_avp_search_avp(avpch2,
+                    ogs_diam_s6a_eps_subscribed_qos_profile, &avpch3);
+                ogs_assert(ret == 0);
+                if (avpch3) {
+
+                    /* AVP: 'QoS-Class-Identifier'(1028)
+                     * The QoS-Class-Identifier AVP identifies a set of
+                     * IP-CAN specific QoS parameters that define the
+                     * authorized QoS, excluding the applicable bitrates
+                     * and ARP for the IP-CAN bearer or service flow.
+                     * Reference: 3GPP TS 29.212 7.3.37
+                     */
+                    ret = fd_avp_search_avp(avpch3,
+                        ogs_diam_s6a_qos_class_identifier, &avpch4);
+                    ogs_assert(ret == 0);
+                    if (avpch4) {
+                        ret = fd_msg_avp_hdr(avpch4, &hdr);
+                        ogs_assert(ret == 0);
+                        session->qos.index = hdr->avp_value->i32;
+                    } else {
+                        ogs_error("no_QoS-Class-Identifier");
+                        error++;
+                    }
+
+                    /* AVP: 'Allocation-Retention-Priority'(1034)
+                     * The Allocation-Retention-Priority AVP is used to
+                     * indicate the priority of allocation and retention,
+                     * the pre-emption capability and pre-emption
+                     * vulnerability for the SDF if provided within the
+                     * QoS-Information-AVP or for the EPS default bearer if
+                     * provided within the Default-EPS-Bearer-QoS AVP.
+                     * Reference: 3GPP TS 29.212 7.3.40
+                     */
+                    ret = fd_avp_search_avp(avpch3,
+                        ogs_diam_s6a_allocation_retention_priority,
+                        &avpch4);
+                    ogs_assert(ret == 0);
+                    if (avpch4) {
+
+                        /* AVP: 'Priority-Level'(1046)
+                         * The Priority-Level AVP is used for deciding
+                         * whether a bearer establishment or modification
+                         * request can be accepted or needs to be rejected
+                         * in case of resource limitations.
+                         * Reference: 3GPP TS 29.212 7.3.40
+                         */
+                        ret = fd_avp_search_avp(avpch4,
+                            ogs_diam_s6a_priority_level, &avpch5);
+                        ogs_assert(ret == 0);
+                        if (avpch5) {
+                            ret = fd_msg_avp_hdr(avpch5, &hdr);
+                            ogs_assert(ret == 0);
+                            session->qos.arp.priority_level =
+                                hdr->avp_value->i32;
+                        } else {
+                            ogs_error("no_ARP");
+                            error++;
+                        }
+
+                        /* AVP: 'Pre-emption-Capability'(1047)
+                         * The Pre-emption-Capability AVP defines whether a
+                         * service data flow can get resources that were
+                         * already assigned to another service data flow
+                         * with a lower priority level.
+                         * Reference: 3GPP TS 29.212 7.3.40
+                         */
+                        ret = fd_avp_search_avp(avpch4,
+                            ogs_diam_s6a_pre_emption_capability, &avpch5);
+                        ogs_assert(ret == 0);
+                        if (avpch5) {
+                            ret = fd_msg_avp_hdr(avpch5, &hdr);
+                            ogs_assert(ret == 0);
+                            session->qos.arp.pre_emption_capability =
+                                hdr->avp_value->i32;
+                        } else {
+                            session->qos.arp.pre_emption_capability =
+                                OGS_EPC_PRE_EMPTION_DISABLED;
+                        }
+
+                        /* AVP: 'Pre-emption-Vulnerability'(1048)
+                         * The Pre-emption-Vulnerability AVP defines whether
+                         * a service data flow can lose the resources
+                         * assigned to it in order to admit a service data
+                         * flow with higher priority level.
+                         * Reference: 3GPP TS 29.212 7.3.40
+                         */
+                        ret = fd_avp_search_avp(avpch4,
+                            ogs_diam_s6a_pre_emption_vulnerability,
+                            &avpch5);
+                        ogs_assert(ret == 0);
+                        if (avpch5) {
+                            ret = fd_msg_avp_hdr(avpch5, &hdr);
+                            ogs_assert(ret == 0);
+                            session->qos.arp.pre_emption_vulnerability =
+                                hdr->avp_value->i32;
+                        } else {
+                            session->qos.arp.pre_emption_vulnerability =
+                                OGS_EPC_PRE_EMPTION_ENABLED;
+                        }
+
+                    } else {
+                        ogs_error("no_QCI");
+                        error++;
+                    }
+                } else {
+                    ogs_error("no_EPS-Subscribed-QoS-Profile");
+                    error++;
+                }
+
+                /* AVP: 'MIP6-Agent-Info'(486)
+                 * The MIP6-Agent-Info AVP contains necessary information
+                 * to assign an HA to the MN. When the MIP6-Agent-Info AVP
+                 * is present in a message, it MUST contain either the
+                 * MIP-Home-Agent-Address AVP, the MIP-Home-Agent-Host AVP,
+                 * or both AVPs.
+                 * Reference: 3GPP TS 29.212 7.3.45
+                 */
+                ret = fd_avp_search_avp(avpch2,
+                        ogs_diam_mip6_agent_info, &avpch3);
+                ogs_assert(ret == 0);
+                if (avpch3) {
+
+                    /* AVP: 'MIP-Home-Agent-Address'(334)
+                     * The MIP-Home-Agent-Host AVP contains the identity of
+                     * the assigned MIPv6 HA. Both the Destination-Realm and
+                     * the Destination-Host AVPs of the HA are included in
+                     * the grouped AVP. The usage of the MIP-Home-Agent-Host
+                     * AVP is equivalent to the MIP-Home-Agent-Address AVP
+                     * but offers an additional level of indirection by
+                     * using the DNS infrastructure. The Destination-Host
+                     * AVP is used to identify an HA, and the Destination-
+                      * Realm AVP is used to identify the realm where the HA
+                     * is located.
+                     * ((SMF IP STATIC ADDRESS))
+                     * Reference: 3GPP TS 29.212 7.3.42
+                     */
+                    ret = fd_msg_browse(avpch3,
+                        MSG_BRW_FIRST_CHILD, &avpch4, NULL);
+                    ogs_assert(ret == 0);
+                    while (avpch4) {
+                        ret = fd_msg_avp_hdr(avpch4, &hdr);
+                        switch(hdr->avp_code) {
+                        case OGS_DIAM_S6A_AVP_CODE_MIP_HOME_AGENT_ADDRESS:
+                            ret = fd_msg_avp_value_interpret(avpch4,
+                                    &addr.sa);
+                            ogs_assert(ret == 0);
+                            if (addr.ogs_sa_family == AF_INET)
+                            {
+                                session->smf_ip.ipv4 = 1;
+                                session->smf_ip.addr =
+                                    addr.sin.sin_addr.s_addr;
+                            }
+                            else if (addr.ogs_sa_family == AF_INET6)
+                            {
+                                session->smf_ip.ipv6 = 1;
+                                memcpy(session->smf_ip.addr6,
+                                    addr.sin6.sin6_addr.s6_addr,
+                                    OGS_IPV6_LEN);
+                            }
+                            else
+                            {
+                                ogs_error("Invald family:%d",
+                                        addr.ogs_sa_family);
+                                error++;
+                            }
+                            break;
+                        default:
+                            ogs_error("Unknown AVP-Code:%d",
+                                    hdr->avp_code);
+                            error++;
+                            break; 
+                        }
+                        fd_msg_browse(avpch4, MSG_BRW_NEXT,
+                                &avpch4, NULL);
+                    }
+                }
+
+                /* AVP: 'AMBR'(1435)
+                 * The Amber AVP contains the Max-Requested-Bandwidth-UL
+                 * and Max-Requested-Bandwidth-DL AVPs.
+                 * Reference: 3GPP TS 29.272 7.3.41
+                 */
+                ret = fd_avp_search_avp(avpch2, ogs_diam_s6a_ambr, &avpch3);
+                ogs_assert(ret == 0);
+                if (avpch3) {
+
+                /* AVP: 'Max-Requested-Bandwidth-UL'(516)
+                 * The Max -Bandwidth-UL AVP indicates the maximum
+                 * requested bandwidth in bits per second for an uplink
+                 * IP flow.
+                 * Reference: 3GPP TS 29.214 7.3.41
+                 */
+                    ret = fd_avp_search_avp(avpch3,
+                        ogs_diam_s6a_max_bandwidth_ul, &avpch4);
+                    ogs_assert(ret == 0);
+                    if (avpch4) {
+                        ret = fd_msg_avp_hdr(avpch4, &hdr);
+                        ogs_assert(ret == 0);
+                        session->ambr.uplink = hdr->avp_value->u32;
+                    } else {
+                        ogs_error("no_Max-Bandwidth-UL");
+                        error++;
+                    }
+
+                    /* AVP: 'Max-Requested-Bandwidth-DL'(515)
+                     * The Max-Requested-Bandwidth-DL AVP indicates the
+                     * maximum bandwidth in bits per second for a downlink
+                     * IP flow.
+                     * Reference: 3GPP TS 29.214 7.3.41
+                     */
+                    ret = fd_avp_search_avp(avpch3,
+                        ogs_diam_s6a_max_bandwidth_dl, &avpch4);
+                    ogs_assert(ret == 0);
+                    if (avpch4) {
+                        ret = fd_msg_avp_hdr(avpch4, &hdr);
+                        ogs_assert(ret == 0);
+                        session->ambr.downlink = hdr->avp_value->u32;
+                    } else {
+                        ogs_error("no_Max-Bandwidth-DL");
+                        error++;
+                    }
+                }
+
+                slice_data->num_of_session++;
+                break;
+            }
+            default:
+                ogs_warn("Unknown AVP-code:%d", hdr->avp_code);
+                break;
+            }
+
+            fd_msg_browse(avpch2, MSG_BRW_NEXT, &avpch2, NULL);
+        }
+
+        if (slice_data->num_of_session)
+            subscription_data->num_of_slice = 1;
+        *subdatamask = (*subdatamask | OGS_DIAM_S6A_SUBDATA_APN_CONFIG);
     }
 
     return error;
@@ -765,18 +1216,14 @@ static void mme_s6a_ula_cb(void *data, struct msg **msg)
 {
     int ret;
 
-    char buf[OGS_CHRGCHARS_LEN];
-
     struct sess_state *sess_data = NULL;
     struct timespec ts;
     struct session *session;
     struct avp *avp, *avpch;
-    struct avp *avpch1, *avpch2, *avpch3, *avpch4, *avpch5;
     struct avp_hdr *hdr;
     unsigned long dur;
     int error = 0;
     int new;
-    ogs_sockaddr_t addr;
 
     mme_event_t *e = NULL;
     mme_ue_t *mme_ue = NULL;
@@ -906,8 +1353,6 @@ static void mme_s6a_ula_cb(void *data, struct msg **msg)
     ret = fd_msg_search_avp(*msg, ogs_diam_s6a_subscription_data, &avp);
     ogs_assert(ret == 0);
     if (avp) {
-
-
         uint32_t subdatamask = 0;
         ret = mme_s6a_subscription_data_from_avp(avp, subscription_data, mme_ue,
             &subdatamask);
@@ -930,456 +1375,7 @@ static void mme_s6a_ula_cb(void *data, struct msg **msg)
             subscription_data->subscribed_rau_tau_timer =
                 OGS_RAU_TAU_DEFAULT_TIME;
         }
-
-        /* AVP: 'APN-Configuration-Profile'(1429)
-         * The APN-Configuration-Profile AVP shall contain the information
-         * related to the user's subscribed APN configurations for EPS. The
-         * Context-Identifier AVP within it shall identify the per subscriber's
-         * default APN configuration. The Subscription-Data AVP associated
-         * with an IMSI contains one APN-Configuration-Profile AVP. Each
-         * APN-Configuration-Profile AVP contains one or more APN-Configuration
-         * AVPs. Each APN-Configuration AVP describes the configuration for a
-         * single APN. Therefore, the cardinality of the relationship between
-         * IMSI and APN is one-to-many.
-         * Reference: 3GPP TS 29.272 7.3.34
-         */
-        ret = fd_avp_search_avp(avp,
-                ogs_diam_s6a_apn_configuration_profile, &avpch1);
-        ogs_assert(ret == 0);
-        if (avpch1) {
-            ogs_slice_data_t *slice_data = NULL;
-
-            ret = fd_msg_browse(avpch1, MSG_BRW_FIRST_CHILD, &avpch2, NULL);
-            ogs_assert(ret == 0);
-
-            ogs_assert(subscription_data->num_of_slice == 0);
-            slice_data = &subscription_data->slice[0];
-            while (avpch2) {
-                ret = fd_msg_avp_hdr(avpch2, &hdr);
-                ogs_assert(ret == 0);
-                switch(hdr->avp_code) {
-
-                /* AVP: 'Context-Identifier'(1423)
-                 * The Context-Identifier in the APN-Configuration AVP shall
-                 * identify that APN configuration, and it shall not have a
-                 * value of zero. Furthermore, the Context-Identifier in the
-                 * APN-Configuration AVP shall uniquely identify the EPS APN
-                 * configuration per subscription.
-                 * Reference: 3GPP TS 29.272 7.3.35
-                 */
-                case OGS_DIAM_S6A_AVP_CODE_CONTEXT_IDENTIFIER:
-                    slice_data->context_identifier = hdr->avp_value->i32;
-                    break;
-
-                /* AVP: 'All-APN-Configurations-Included-Indicator'(1428)
-                 * Reference: 3GPP TS 29.272 7.3.33
-                 */
-                case OGS_DIAM_S6A_AVP_CODE_ALL_APN_CONFIG_INC_IND:
-                    break;
-
-                /* AVP: 'APN-Configuration'(1430)
-                 * The APN-Configuration AVP contains the information
-                 * related to the user's subscribed APN configurations.
-                 * Reference: 3GPP TS 29.272 7.3.35
-                 */
-                case OGS_DIAM_S6A_AVP_CODE_APN_CONFIGURATION:
-                {
-                    ogs_session_t *session = NULL;
-
-                    if (slice_data->num_of_session >= OGS_MAX_NUM_OF_SESS) {
-                        ogs_warn("Ignore max session count overflow [%d>=%d]",
-                            slice_data->num_of_session, OGS_MAX_NUM_OF_SESS);
-                        break;
-                    }
-                    session = &slice_data->session[slice_data->num_of_session];
-                    ogs_assert(session);
-
-                    /* AVP: 'Service-Selection'(493)
-                     * The Service-Selection AVP is of type of UTF8String. This
-                     * AVP shall contain either the APN Network Identifier
-                     * (i.e. an APN without the Operator Identifier) per 3GPP
-                     * TS 23.003 [3], clauses 9.1 & 9.1.1, or this AVP shall
-                     * contain the wild card value per 3GPP TS 23.003 [3],
-                     * clause 9.2.1, and 3GPP TS 23.008 [30], clause 2.13.6).
-                     * ((DNN/APN))
-                     * Reference: 3GPP TS 29.272 7.3.36
-                     */
-                    ret = fd_avp_search_avp(
-                        avpch2, ogs_diam_service_selection, &avpch3);
-                    ogs_assert(ret == 0);
-                    if (avpch3) {
-                        ret = fd_msg_avp_hdr(avpch3, &hdr);
-                        session->name = ogs_strndup(
-                                        (char*)hdr->avp_value->os.data,
-                                        hdr->avp_value->os.len);
-                        ogs_assert(session->name);
-                    } else {
-                        ogs_error("no_Service-Selection");
-                        error++;
-                    }
-
-                    /* AVP: 'Context-Identifier'(1423)
-                     * The Context-Identifier in the APN-Configuration AVP shall
-                     * identify that APN configuration, and it shall not have a
-                     * value of zero. Furthermore, the Context-Identifier in the
-                     * APN-Configuration AVP shall uniquely identify the EPS APN
-                     * configuration per subscription.
-                     * Reference: 3GPP TS 29.272 7.3.27
-                     */
-                    ret = fd_avp_search_avp(avpch2,
-                        ogs_diam_s6a_context_identifier, &avpch3);
-                    ogs_assert(ret == 0);
-                    if (avpch3) {
-                        ret = fd_msg_avp_hdr(avpch3, &hdr);
-                        session->context_identifier = hdr->avp_value->i32;
-                    } else {
-                        ogs_error("no_Context-Identifier");
-                        error++;
-                    }
-
-                    /* AVP: 'PDN-Type'(1456)
-                     * The PDN-Type AVP indicates the address type of PDN.
-                     * ((IPv4/IPv6/IPv4v6))
-                     * Reference: 3GPP TS 29.272 7.3.62
-                     */
-                    ret = fd_avp_search_avp(avpch2, ogs_diam_s6a_pdn_type,
-                            &avpch3);
-                    ogs_assert(ret == 0);
-                    if (avpch3) {
-                        ret = fd_msg_avp_hdr(avpch3, &hdr);
-                        session->session_type =
-                            OGS_PDU_SESSION_TYPE_FROM_DIAMETER(
-                                    hdr->avp_value->i32);
-                    } else {
-                        ogs_error("no_PDN-Type");
-                        error++;
-                    }
-
-                    /* AVP: '3GPP-Charging-Characteristics'(13)
-                     * For GGSN, it contains the charging characteristics for 
-                     * this PDP Context received in the Create PDP Context 
-                     * Request Message (only available in R99 and later releases). 
-                     * For PGW, it contains the charging characteristics for the 
-                     * IP-CAN bearer.
-                     * Reference: 3GPP TS 29.061 16.4.7.2 13
-                     */
-                    ret = fd_avp_search_avp(avpch2, ogs_diam_s6a_3gpp_charging_characteristics,
-                            &avpch3);
-                    ogs_assert(ret == 0);
-                    if (avpch3) {
-                        ret = fd_msg_avp_hdr(avpch3, &hdr);
-                        memcpy(session->charging_characteristics,
-                            OGS_HEX(hdr->avp_value->os.data, (int)hdr->avp_value->os.len, buf), OGS_CHRGCHARS_LEN);
-                        session->charging_characteristics_presence = true;
-                    } else {
-                        memcpy(session->charging_characteristics, (uint8_t *)"\x00\x00", OGS_CHRGCHARS_LEN);
-                        session->charging_characteristics_presence = false;
-                    }
-
-                    /* AVP: 'Served-Party-IP-Address'(848)
-                     * The Served-Party-IP-Address AVP holds the IP address of
-                     * either the calling or called party, depending on whether
-                     * the P-CSCF is in touch with the calling or the called
-                     * party.
-                     * ((UE IP STATIC ADDRESS))
-                     * Reference: 32-299-f10
-                     */
-                    ret = fd_msg_browse(avpch2, MSG_BRW_FIRST_CHILD,
-                            &avpch3, NULL);
-                    ogs_assert(ret == 0);
-                    while (avpch3) {
-                        ret = fd_msg_avp_hdr(avpch3, &hdr);
-                        ogs_assert(ret == 0);
-                        switch(hdr->avp_code) {
-                        case OGS_DIAM_S6A_AVP_CODE_SERVED_PARTY_IP_ADDRESS:
-                            ret = fd_msg_avp_value_interpret(avpch3, &addr.sa);
-                            ogs_assert(ret == 0);
-
-                            if (addr.ogs_sa_family == AF_INET) {
-                                if (session->session_type ==
-                                        OGS_PDU_SESSION_TYPE_IPV4) {
-                                    session->paa.addr =
-                                        addr.sin.sin_addr.s_addr;
-                                } else if (session->session_type ==
-                                        OGS_PDU_SESSION_TYPE_IPV4V6) {
-                                    session->paa.both.addr =
-                                        addr.sin.sin_addr.s_addr;
-                                } else {
-                                    ogs_error("Warning: Received a static IPv4 "
-                                        "address but PDN-Type does not include "
-                                        "IPv4. Ignoring...");
-                                }
-                            } else if (addr.ogs_sa_family == AF_INET6) {
-                                if (session->session_type ==
-                                        OGS_PDU_SESSION_TYPE_IPV6) {
-                                    memcpy(session->paa.addr6,
-                                        addr.sin6.sin6_addr.s6_addr,
-                                        OGS_IPV6_LEN);
-                                } else if (session->session_type ==
-                                        OGS_PDU_SESSION_TYPE_IPV4V6) {
-                                    memcpy(session->paa.both.addr6,
-                                        addr.sin6.sin6_addr.s6_addr,
-                                        OGS_IPV6_LEN);
-                                } else {
-                                    ogs_error("Warning: Received a static IPv6 "
-                                        "address but PDN-Type does not include "
-                                        "IPv6. Ignoring...");
-                                }
-                            } else {
-                                ogs_error("Invalid family[%d]",
-                                        addr.ogs_sa_family);
-                            }
-                            break;
-                        default:
-                            break;
-                        }
-                        fd_msg_browse(avpch3, MSG_BRW_NEXT, &avpch3, NULL);
-                    }
-
-                    /* AVP: 'EPS-Subscribed-QoS-Profile'(1431)
-                     * The EPS-Subscribed-QoS-Profile AVP shall contain the
-                     * bearer-level QoS parameters (QoS Class Identifier and
-                     * Allocation Retention Priority) associated to the
-                     * default bearer for an APN.
-                     * Reference: 3GPP TS 29.272 7.3.37
-                     */
-                    ret = fd_avp_search_avp(avpch2,
-                        ogs_diam_s6a_eps_subscribed_qos_profile, &avpch3);
-                    ogs_assert(ret == 0);
-                    if (avpch3) {
-
-                        /* AVP: 'QoS-Class-Identifier'(1028)
-                         * The QoS-Class-Identifier AVP identifies a set of
-                         * IP-CAN specific QoS parameters that define the
-                         * authorized QoS, excluding the applicable bitrates
-                         * and ARP for the IP-CAN bearer or service flow.
-                         * Reference: 3GPP TS 29.212 7.3.37
-                         */
-                        ret = fd_avp_search_avp(avpch3,
-                            ogs_diam_s6a_qos_class_identifier, &avpch4);
-                        ogs_assert(ret == 0);
-                        if (avpch4) {
-                            ret = fd_msg_avp_hdr(avpch4, &hdr);
-                            ogs_assert(ret == 0);
-                            session->qos.index = hdr->avp_value->i32;
-                        } else {
-                            ogs_error("no_QoS-Class-Identifier");
-                            error++;
-                        }
-
-                        /* AVP: 'Allocation-Retention-Priority'(1034)
-                         * The Allocation-Retention-Priority AVP is used to
-                         * indicate the priority of allocation and retention,
-                         * the pre-emption capability and pre-emption
-                         * vulnerability for the SDF if provided within the
-                         * QoS-Information-AVP or for the EPS default bearer if
-                         * provided within the Default-EPS-Bearer-QoS AVP.
-                         * Reference: 3GPP TS 29.212 7.3.40
-                         */
-                        ret = fd_avp_search_avp(avpch3,
-                            ogs_diam_s6a_allocation_retention_priority,
-                            &avpch4);
-                        ogs_assert(ret == 0);
-                        if (avpch4) {
-
-                            /* AVP: 'Priority-Level'(1046)
-                             * The Priority-Level AVP is used for deciding
-                             * whether a bearer establishment or modification
-                             * request can be accepted or needs to be rejected
-                             * in case of resource limitations.
-                             * Reference: 3GPP TS 29.212 7.3.40
-                             */
-                            ret = fd_avp_search_avp(avpch4,
-                                ogs_diam_s6a_priority_level, &avpch5);
-                            ogs_assert(ret == 0);
-                            if (avpch5) {
-                                ret = fd_msg_avp_hdr(avpch5, &hdr);
-                                ogs_assert(ret == 0);
-                                session->qos.arp.priority_level =
-                                    hdr->avp_value->i32;
-                            } else {
-                                ogs_error("no_ARP");
-                                error++;
-                            }
-
-                            /* AVP: 'Pre-emption-Capability'(1047)
-                             * The Pre-emption-Capability AVP defines whether a
-                             * service data flow can get resources that were
-                             * already assigned to another service data flow
-                             * with a lower priority level.
-                             * Reference: 3GPP TS 29.212 7.3.40
-                             */
-                            ret = fd_avp_search_avp(avpch4,
-                                ogs_diam_s6a_pre_emption_capability, &avpch5);
-                            ogs_assert(ret == 0);
-                            if (avpch5) {
-                                ret = fd_msg_avp_hdr(avpch5, &hdr);
-                                ogs_assert(ret == 0);
-                                session->qos.arp.pre_emption_capability =
-                                    hdr->avp_value->i32;
-                            } else {
-                                session->qos.arp.pre_emption_capability =
-                                    OGS_EPC_PRE_EMPTION_DISABLED;
-                            }
-
-                            /* AVP: 'Pre-emption-Vulnerability'(1048)
-                             * The Pre-emption-Vulnerability AVP defines whether
-                             * a service data flow can lose the resources
-                             * assigned to it in order to admit a service data
-                             * flow with higher priority level.
-                             * Reference: 3GPP TS 29.212 7.3.40
-                             */
-                            ret = fd_avp_search_avp(avpch4,
-                                ogs_diam_s6a_pre_emption_vulnerability,
-                                &avpch5);
-                            ogs_assert(ret == 0);
-                            if (avpch5) {
-                                ret = fd_msg_avp_hdr(avpch5, &hdr);
-                                ogs_assert(ret == 0);
-                                session->qos.arp.pre_emption_vulnerability =
-                                    hdr->avp_value->i32;
-                            } else {
-                                session->qos.arp.pre_emption_vulnerability =
-                                    OGS_EPC_PRE_EMPTION_ENABLED;
-                            }
-
-                        } else {
-                            ogs_error("no_QCI");
-                            error++;
-                        }
-                    } else {
-                        ogs_error("no_EPS-Subscribed-QoS-Profile");
-                        error++;
-                    }
-
-                    /* AVP: 'MIP6-Agent-Info'(486)
-                     * The MIP6-Agent-Info AVP contains necessary information
-                     * to assign an HA to the MN. When the MIP6-Agent-Info AVP
-                     * is present in a message, it MUST contain either the
-                     * MIP-Home-Agent-Address AVP, the MIP-Home-Agent-Host AVP,
-                     * or both AVPs.
-                     * Reference: 3GPP TS 29.212 7.3.45
-                     */
-                    ret = fd_avp_search_avp(avpch2,
-                            ogs_diam_mip6_agent_info, &avpch3);
-                    ogs_assert(ret == 0);
-                    if (avpch3) {
-
-                        /* AVP: 'MIP-Home-Agent-Address'(334)
-                         * The MIP-Home-Agent-Host AVP contains the identity of
-                         * the assigned MIPv6 HA. Both the Destination-Realm and
-                         * the Destination-Host AVPs of the HA are included in
-                         * the grouped AVP. The usage of the MIP-Home-Agent-Host
-                         * AVP is equivalent to the MIP-Home-Agent-Address AVP
-                         * but offers an additional level of indirection by
-                         * using the DNS infrastructure. The Destination-Host
-                         * AVP is used to identify an HA, and the Destination-
-                         * Realm AVP is used to identify the realm where the HA
-                         * is located.
-                         * ((SMF IP STATIC ADDRESS))
-                         * Reference: 3GPP TS 29.212 7.3.42
-                         */
-                        ret = fd_msg_browse(avpch3,
-                            MSG_BRW_FIRST_CHILD, &avpch4, NULL);
-                        ogs_assert(ret == 0);
-                        while (avpch4) {
-                            ret = fd_msg_avp_hdr(avpch4, &hdr);
-                            switch(hdr->avp_code) {
-                            case OGS_DIAM_S6A_AVP_CODE_MIP_HOME_AGENT_ADDRESS:
-                                ret = fd_msg_avp_value_interpret(avpch4,
-                                        &addr.sa);
-                                ogs_assert(ret == 0);
-                                if (addr.ogs_sa_family == AF_INET)
-                                {
-                                    session->smf_ip.ipv4 = 1;
-                                    session->smf_ip.addr =
-                                        addr.sin.sin_addr.s_addr;
-                                }
-                                else if (addr.ogs_sa_family == AF_INET6)
-                                {
-                                    session->smf_ip.ipv6 = 1;
-                                    memcpy(session->smf_ip.addr6,
-                                        addr.sin6.sin6_addr.s6_addr,
-                                        OGS_IPV6_LEN);
-                                }
-                                else
-                                {
-                                    ogs_error("Invald family:%d",
-                                            addr.ogs_sa_family);
-                                    error++;
-                                }
-                                break;
-                            default:
-                                ogs_error("Unknown AVP-Code:%d",
-                                        hdr->avp_code);
-                                error++;
-                                break; 
-                            }
-                            fd_msg_browse(avpch4, MSG_BRW_NEXT,
-                                    &avpch4, NULL);
-                        }
-                    }
-
-                    /* AVP: 'AMBR'(1435)
-                     * The Amber AVP contains the Max-Requested-Bandwidth-UL
-                     * and Max-Requested-Bandwidth-DL AVPs.
-                     * Reference: 3GPP TS 29.272 7.3.41
-                     */
-                    ret = fd_avp_search_avp(avpch2, ogs_diam_s6a_ambr, &avpch3);
-                    ogs_assert(ret == 0);
-                    if (avpch3) {
-
-                        /* AVP: 'Max-Requested-Bandwidth-UL'(516)
-                        * The Max -Bandwidth-UL AVP indicates the maximum
-                        * requested bandwidth in bits per second for an uplink
-                        * IP flow.
-                        * Reference: 3GPP TS 29.214 7.3.41
-                        */
-                        ret = fd_avp_search_avp(avpch3,
-                            ogs_diam_s6a_max_bandwidth_ul, &avpch4);
-                        ogs_assert(ret == 0);
-                        if (avpch4) {
-                            ret = fd_msg_avp_hdr(avpch4, &hdr);
-                            ogs_assert(ret == 0);
-                            session->ambr.uplink = hdr->avp_value->u32;
-                        } else {
-                            ogs_error("no_Max-Bandwidth-UL");
-                            error++;
-                        }
-
-                        /* AVP: 'Max-Requested-Bandwidth-DL'(515)
-                        * The Max-Requested-Bandwidth-DL AVP indicates the
-                        * maximum bandwidth in bits per second for a downlink
-                        * IP flow.
-                        * Reference: 3GPP TS 29.214 7.3.41
-                        */
-                        ret = fd_avp_search_avp(avpch3,
-                            ogs_diam_s6a_max_bandwidth_dl, &avpch4);
-                        ogs_assert(ret == 0);
-                        if (avpch4) {
-                            ret = fd_msg_avp_hdr(avpch4, &hdr);
-                            ogs_assert(ret == 0);
-                            session->ambr.downlink = hdr->avp_value->u32;
-                        } else {
-                            ogs_error("no_Max-Bandwidth-DL");
-                            error++;
-                        }
-                    }
-
-                    slice_data->num_of_session++;
-                    break;
-                }
-                default:
-                    ogs_warn("Unknown AVP-code:%d", hdr->avp_code);
-                    break;
-                }
-
-                fd_msg_browse(avpch2, MSG_BRW_NEXT, &avpch2, NULL);
-            }
-
-            if (slice_data->num_of_session)
-                subscription_data->num_of_slice = 1;
-        } else {
+        if (!(subdatamask & OGS_DIAM_S6A_SUBDATA_APN_CONFIG)) {
             ogs_error("no_APN-Configuration-Profile");
             error++;
         }
@@ -1602,8 +1598,8 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
 
     mme_ue_t *mme_ue = NULL;
     ogs_diam_s6a_message_t *s6a_message = NULL;
-    ogs_diam_s6a_idr_message_t *idr_message = NULL;    
-    ogs_subscription_data_t *subscription_data = NULL
+    ogs_diam_s6a_idr_message_t *idr_message = NULL;
+    ogs_subscription_data_t *subscription_data = NULL;
 
     struct avp_hdr *hdr;
     union avp_value val;

@@ -1283,7 +1283,7 @@ int hss_handle_change_event(const bson_t *document)
                     } else if (!strncmp(child2_key, "slice", strlen("slice"))) {
                         send_idr_flag = true;
                         subdatamask = (subdatamask | 
-                            OGS_DIAM_S6A_SUBDATA_SLICE);
+                            OGS_DIAM_S6A_SUBDATA_APN_CONFIG);
                     }
                 }
             }

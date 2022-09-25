@@ -86,7 +86,7 @@ extern "C" {
 #define OGS_DIAM_S6A_SUBDATA_ARD                        (1 << 5)
 #define OGS_DIAM_S6A_SUBDATA_CC                         (1 << 6)
 #define OGS_DIAM_S6A_SUBDATA_UEAMBR                     (1 << 7)
-#define OGS_DIAM_S6A_SUBDATA_SLICE                      (1 << 8)
+#define OGS_DIAM_S6A_SUBDATA_APN_CONFIG                 (1 << 8)
 #define OGS_DIAM_S6A_SUBDATA_RAU_TAU_TIMER              (1 << 9)
 #define OGS_DIAM_S6A_SUBDATA_ALL                        0xFFFFFFFF
 

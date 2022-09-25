@@ -425,7 +425,7 @@ static int hss_s6a_avp_add_subscription_data(
         ogs_assert(ret == 0);
     }
 
-    if (subdatamask & OGS_DIAM_S6A_SUBDATA_SLICE) {
+    if (subdatamask & OGS_DIAM_S6A_SUBDATA_APN_CONFIG) {
         /* For EPC, we'll use first Slice in Subscription */
         if (subscription_data->num_of_slice)
             slice_data = &subscription_data->slice[0];
