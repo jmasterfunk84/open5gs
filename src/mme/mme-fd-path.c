@@ -57,6 +57,11 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
     struct avp *avpch1, *avpch2;
     struct avp_hdr *hdr;
 
+    ogs_assert(avp);
+    ogs_assert(subscription_data);
+    ogs_assert(mme_ue);
+    ogs_assert(subdatamask);
+
     /* AVP: 'MSISDN'( 701 )
      * The MSISDN AVP is of type OctetString. This AVP contains an MSISDN,
      * in international number format as described in ITU-T Rec E.164 [8],
@@ -1589,24 +1594,21 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
         struct session *session, void *opaque, enum disp_action *act)
 {
     int ret;
+    char imsi_bcd[OGS_MAX_IMSI_BCD_LEN+1];
+    uint32_t result_code = 0;
+    bool has_subscriber_data;
     
-    mme_ue_t *mme_ue = NULL;
-
     struct msg *ans, *qry;
+
+    mme_ue_t *mme_ue = NULL;
+    ogs_diam_s6a_message_t *s6a_message = NULL;
     ogs_diam_s6a_idr_message_t *idr_message = NULL;    
+    ogs_subscription_data_t *subscription_data = NULL
 
     struct avp_hdr *hdr;
     union avp_value val;
 
-    char imsi_bcd[OGS_MAX_IMSI_BCD_LEN+1];
-
-    uint32_t result_code = 0;
-
-    bool has_subscriber_data;
-
     ogs_assert(msg);
-
-    ogs_diam_s6a_message_t *s6a_message = NULL;
 
     ogs_debug("Insert-Subscriber-Data-Request");
 
@@ -1615,6 +1617,8 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
     s6a_message->cmd_code = OGS_DIAM_S6A_CMD_CODE_INSERT_SUBSCRIBER_DATA;
     idr_message = &s6a_message->idr_message;
     ogs_assert(idr_message);
+    subscription_data = &idr_message->subscription_data;
+    ogs_assert(subscription_data);
 
     /* Create answer header */
     qry = *msg;
@@ -1653,10 +1657,9 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
             ogs_info("Subscription-Data is Empty.");
         } else {
             has_subscriber_data = true;
-            ogs_debug("WIP: Process New Subscription Data");
             uint32_t subdatamask = 0;
-            ret = mme_s6a_subscription_data_from_avp(avp, NULL, mme_ue, 
-                &subdatamask);
+            ret = mme_s6a_subscription_data_from_avp(avp, subscription_data, 
+                mme_ue, &subdatamask);
             ogs_info("Subscription-Data Processed.");
         }
     }
@@ -1752,7 +1755,7 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
         if (!has_subscriber_data) {
             ogs_error("Insert Subscriber Data "
                     "with unsupported IDR Flags "
-                    "op no Subscriber-Data for IMSI[%s]", imsi_bcd);
+                    "or no Subscriber-Data for IMSI[%s]", imsi_bcd);
             /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
             ret = fd_msg_rescode_set(
                     ans, (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
