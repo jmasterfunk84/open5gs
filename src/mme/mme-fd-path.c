@@ -31,7 +31,7 @@ static struct session_handler *mme_s6a_reg = NULL;
 /* s6a process Subscription-Data from avp */
 static int mme_s6a_subscription_data_from_avp(struct avp *avp,
     ogs_subscription_data_t *subscription_data,
-    mme_ue_t *mme_ue);
+    mme_ue_t *mme_ue, uint32_t *subdatamask);
 
 struct sess_state {
     mme_ue_t *mme_ue;
@@ -49,9 +49,8 @@ static void state_cleanup(struct sess_state *sess_data, os0_t sid, void *opaque)
 /* s6a process Subscription-Data from avp */
 static int mme_s6a_subscription_data_from_avp(struct avp *avp,
     ogs_subscription_data_t *subscription_data,
-    mme_ue_t *mme_ue)
+    mme_ue_t *mme_ue, uint32_t *subdatamask)
 {
-    /* Let's use a bitmask again here to know who is updated */
     int ret;
     int error = 0;
     char buf[OGS_CHRGCHARS_LEN];
@@ -78,6 +77,7 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
                     ogs_min(mme_ue->msisdn_len, OGS_MAX_MSISDN_LEN));
             ogs_buffer_to_bcd(mme_ue->msisdn,
                     mme_ue->msisdn_len, mme_ue->msisdn_bcd);
+            subdatamask = (subdatamask | OGS_DIAM_S6A_SUBDATA_MSISDN);
         }
     }
 
@@ -100,6 +100,7 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
                     ogs_min(mme_ue->a_msisdn_len, OGS_MAX_MSISDN_LEN));
             ogs_buffer_to_bcd(mme_ue->a_msisdn,
                     mme_ue->a_msisdn_len, mme_ue->a_msisdn_bcd);
+            subdatamask = (subdatamask | OGS_DIAM_S6A_SUBDATA_A_MSISDN);
         }
     }
 
@@ -115,10 +116,7 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
         ret = fd_msg_avp_hdr(avpch1, &hdr);
         ogs_assert(ret == 0);
         mme_ue->network_access_mode = hdr->avp_value->i32;
-    } else {
-        mme_ue->network_access_mode = 0;
-        ogs_warn("no subscribed Network-Access-Mode, defaulting to "
-            "PACKET_AND_CIRCUIT (0)");
+        subdatamask = (subdatamask | OGS_DIAM_S6A_SUBDATA_NAM);
     }
 
     /* AVP: '3GPP-Charging-Characteristics'(13)
@@ -138,10 +136,7 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
             OGS_HEX(hdr->avp_value->os.data, (int)hdr->avp_value->os.len, buf), 
                 OGS_CHRGCHARS_LEN);
         mme_ue->charging_characteristics_presence = true;
-    } else {
-        memcpy(mme_ue->charging_characteristics, (uint8_t *)"\x00\x00", 
-            OGS_CHRGCHARS_LEN);
-        mme_ue->charging_characteristics_presence = false;
+        subdatamask = (subdatamask | OGS_DIAM_S6A_SUBDATA_CC);
     }
 
     /* AVP: 'AMBR'(1435)
@@ -186,10 +181,7 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
             ogs_error("no_Max-Bandwidth-DL");
             error++;
         }
-
-    } else {
-        ogs_error("no_AMBR");
-        error++;
+        subdatamask = (subdatamask | OGS_DIAM_S6A_SUBDATA_UEAMBR);
     }
 
     /* AVP: 'Subscribed-Periodic-RAU-TAU-Timer'(1619)
@@ -204,9 +196,7 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
         ret = fd_msg_avp_hdr(avpch1, &hdr);
         ogs_assert(ret == 0);
         subscription_data->subscribed_rau_tau_timer = hdr->avp_value->i32;
-    } else {
-        subscription_data->subscribed_rau_tau_timer =
-            OGS_RAU_TAU_DEFAULT_TIME;
+        subdatamask = (subdatamask | OGS_DIAM_S6A_SUBDATA_RAU_TAU_TIMER);
     }
 
     return error;
@@ -912,7 +902,29 @@ static void mme_s6a_ula_cb(void *data, struct msg **msg)
     ogs_assert(ret == 0);
     if (avp) {
 
-        ret = mme_s6a_subscription_data_from_avp(avp, subscription_data, mme_ue);
+
+        uint32_t subdatamask = 0;
+        ret = mme_s6a_subscription_data_from_avp(avp, subscription_data, mme_ue,
+            subdatamask);
+
+        if (!(subdatamask & OGS_DIAM_S6A_SUBDATA_NAM)) {
+            mme_ue->network_access_mode = 0;
+            ogs_warn("no subscribed Network-Access-Mode, defaulting to "
+                "PACKET_AND_CIRCUIT (0)");
+        }
+        if (!(subdatamask & OGS_DIAM_S6A_SUBDATA)) {
+            memcpy(mme_ue->charging_characteristics, (uint8_t *)"\x00\x00", 
+                OGS_CHRGCHARS_LEN);
+            mme_ue->charging_characteristics_presence = false;
+        }
+        if (!(subdatamask & OGS_HSS_AMBR)) {
+            ogs_error("no_AMBR");
+            error++;
+        }
+        if (!(subdatamask & OGS_DIAM_S6A_SUBDATA_RAU_TAU_TIMER)) {
+            subscription_data->subscribed_rau_tau_timer =
+                OGS_RAU_TAU_DEFAULT_TIME;
+        }
 
         /* AVP: 'APN-Configuration-Profile'(1429)
          * The APN-Configuration-Profile AVP shall contain the information
@@ -1642,7 +1654,9 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
         } else {
             has_subscriber_data = true;
             ogs_debug("WIP: Process New Subscription Data");
-            ret = mme_s6a_subscription_data_from_avp(avp, NULL, mme_ue);
+            uint32_t subdatamask = 0;
+            ret = mme_s6a_subscription_data_from_avp(avp, NULL, mme_ue, 
+                &subdatamask);
             ogs_info("Subscription-Data Processed.");
         }
     }

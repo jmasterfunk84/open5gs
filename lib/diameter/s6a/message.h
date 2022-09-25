@@ -77,6 +77,19 @@ extern "C" {
 #define OGS_DIAM_S6A_CT_UPDATE_PROCEDURE_IWF            (3)
 #define OGS_DIAM_S6A_CT_INITIAL_ATTACH_PROCEDURE        (4)
 
+#define OGS_DIAM_S6A_SUBDATA_NO_UPDATE                  (0)
+#define OGS_DIAM_S6A_SUBDATA_SUB_STATUS                 (1)
+#define OGS_DIAM_S6A_SUBDATA_MSISDN                     (1 << 1)
+#define OGS_DIAM_S6A_SUBDATA_A_MSISDN                   (1 << 2)
+#define OGS_DIAM_S6A_SUBDATA_NAM                        (1 << 3)
+#define OGS_DIAM_S6A_SUBDATA_ODB                        (1 << 4)
+#define OGS_DIAM_S6A_SUBDATA_ARD                        (1 << 5)
+#define OGS_DIAM_S6A_SUBDATA_CC                         (1 << 6)
+#define OGS_DIAM_S6A_SUBDATA_UEAMBR                     (1 << 7)
+#define OGS_DIAM_S6A_SUBDATA_SLICE                      (1 << 8)
+#define OGS_DIAM_S6A_SUBDATA_RAU_TAU_TIMER              (1 << 9)
+#define OGS_DIAM_S6A_SUBDATA_ALL                        0xFFFFFFFF
+
 extern struct dict_object *ogs_diam_s6a_application;
 
 extern struct dict_object *ogs_diam_s6a_cmd_air;
