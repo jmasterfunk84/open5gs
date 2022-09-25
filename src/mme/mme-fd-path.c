@@ -336,16 +336,19 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
                  * IP-CAN bearer.
                  * Reference: 3GPP TS 29.061 16.4.7.2 13
                  */
-                ret = fd_avp_search_avp(avpch2, ogs_diam_s6a_3gpp_charging_characteristics,
-                        &avpch3);
+                ret = fd_avp_search_avp(avpch2, 
+                        ogs_diam_s6a_3gpp_charging_characteristics, &avpch3);
                 ogs_assert(ret == 0);
                 if (avpch3) {
                     ret = fd_msg_avp_hdr(avpch3, &hdr);
                     memcpy(session->charging_characteristics,
-                        OGS_HEX(hdr->avp_value->os.data, (int)hdr->avp_value->os.len, buf), OGS_CHRGCHARS_LEN);
+                        OGS_HEX(hdr->avp_value->os.data,
+                            (int)hdr->avp_value->os.len, buf),
+                            OGS_CHRGCHARS_LEN);
                     session->charging_characteristics_presence = true;
                 } else {
-                    memcpy(session->charging_characteristics, (uint8_t *)"\x00\x00", OGS_CHRGCHARS_LEN);
+                    memcpy(session->charging_characteristics, 
+                        (uint8_t *)"\x00\x00", OGS_CHRGCHARS_LEN);
                     session->charging_characteristics_presence = false;
                 }
 
