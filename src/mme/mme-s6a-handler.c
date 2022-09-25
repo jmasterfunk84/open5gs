@@ -168,6 +168,99 @@ uint8_t mme_s6a_handle_ula(
     return OGS_NAS_EMM_CAUSE_REQUEST_ACCEPTED;
 }
 
+uint8_t mme_s6a_handle_idr(
+        mme_ue_t *mme_ue, ogs_diam_s6a_message_t *s6a_message)
+{
+    ogs_diam_s6a_idr_message_t *idr_message = NULL;
+    ogs_subscription_data_t *subscription_data = NULL;
+    ogs_slice_data_t *slice_data = NULL;
+    int i;
+
+    ogs_assert(mme_ue);
+    ogs_assert(s6a_message);
+    idr_message = &s6a_message->idr_message;
+    ogs_assert(idr_message);
+    subscription_data = &idr_message->subscription_data;
+    ogs_assert(subscription_data);
+
+    ogs_assert(subscription_data->num_of_slice == 1);
+    slice_data = &subscription_data->slice[0];
+
+    memcpy(&mme_ue->ambr, &subscription_data->ambr, sizeof(ogs_bitrate_t));
+    for (i = 0; i < mme_ue->num_of_session; i++) {
+        ogs_info("Current %d, %s", i, mme_ue->session[i].name);
+    }
+    for (i = 0; i < slice_data->num_of_session; i++) {
+        ogs_info("New %d, %s", i, slice_data->session[i].name);
+    }
+
+/* loop all incoming. insert over all? */
+// Are we going to use the app apn indicator?  must store from fd-path.
+// loop over each existing, if we see a change in existing, then change it
+// if no change in existing leave it
+// if existing wasn't found, then delete it.
+// loop new.. if ther'es a new one, add it if we have room.
+// OR DO WE JUST WIPE THAT SHIT.  still need to deal with active sessions.
+
+    mme_session_remove_all(mme_ue);
+
+    for (i = 0; i < slice_data->num_of_session; i++) {
+        if (i >= OGS_MAX_NUM_OF_SESS) {
+            ogs_warn("Ignore max session count overflow [%d>=%d]",
+                    slice_data->num_of_session, OGS_MAX_NUM_OF_SESS);
+            break;
+        }
+
+        if (slice_data->session[i].name) {
+            mme_ue->session[i].name = ogs_strdup(slice_data->session[i].name);
+            ogs_assert(mme_ue->session[i].name);
+        }
+
+        mme_ue->session[i].context_identifier =
+            slice_data->session[i].context_identifier;
+
+        if (slice_data->session[i].session_type == OGS_PDU_SESSION_TYPE_IPV4 ||
+            slice_data->session[i].session_type == OGS_PDU_SESSION_TYPE_IPV6 ||
+            slice_data->session[i].session_type ==
+                OGS_PDU_SESSION_TYPE_IPV4V6) {
+            mme_ue->session[i].session_type =
+                slice_data->session[i].session_type;
+        } else {
+            ogs_error("Invalid PDN_TYPE[%d]",
+                slice_data->session[i].session_type);
+            if (mme_ue->session[i].name)
+                ogs_free(mme_ue->session[i].name);
+            break;
+        }
+        memcpy(&mme_ue->session[i].paa, &slice_data->session[i].paa,
+                sizeof(mme_ue->session[i].paa));
+
+        memcpy(&mme_ue->session[i].qos, &slice_data->session[i].qos,
+                sizeof(mme_ue->session[i].qos));
+        memcpy(&mme_ue->session[i].ambr, &slice_data->session[i].ambr,
+                sizeof(mme_ue->session[i].ambr));
+
+        memcpy(&mme_ue->session[i].smf_ip, &slice_data->session[i].smf_ip,
+                sizeof(mme_ue->session[i].smf_ip));
+
+        memcpy(&mme_ue->session[i].charging_characteristics,
+                &slice_data->session[i].charging_characteristics,
+                sizeof(mme_ue->session[i].charging_characteristics));
+        mme_ue->session[i].charging_characteristics_presence =
+            slice_data->session[i].charging_characteristics_presence;
+    }
+
+    if (i == 0) {
+        ogs_error("No Session");
+        return OGS_NAS_EMM_CAUSE_SEVERE_NETWORK_FAILURE;
+    }
+
+    mme_ue->num_of_session = i;
+    mme_ue->context_identifier = slice_data->context_identifier;
+
+    return OGS_OK;
+}
+
 void mme_s6a_handle_clr(
         mme_ue_t *mme_ue, ogs_diam_s6a_clr_message_t *clr_message)
 {

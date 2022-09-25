@@ -1599,6 +1599,7 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
     
     struct msg *ans, *qry;
 
+    mme_event_t *e = NULL;
     mme_ue_t *mme_ue = NULL;
     ogs_diam_s6a_message_t *s6a_message = NULL;
     ogs_diam_s6a_idr_message_t *idr_message = NULL;
@@ -1659,6 +1660,7 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
             uint32_t subdatamask = 0;
             ret = mme_s6a_subscription_data_from_avp(avp, subscription_data, 
                 mme_ue, &subdatamask);
+            idr_message->subdatamask = subdatamask;
             ogs_info("Subscription-Data Processed.");
         }
     }
@@ -1791,6 +1793,21 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
     ogs_assert( pthread_mutex_lock(&ogs_diam_logger_self()->stats_lock) == 0);
     ogs_diam_logger_self()->stats.nb_echoed++;
     ogs_assert( pthread_mutex_unlock(&ogs_diam_logger_self()->stats_lock) == 0);
+
+    int rv;
+    e = mme_event_new(MME_EVENT_S6A_MESSAGE);
+    ogs_assert(e);
+    e->mme_ue = mme_ue;
+    e->s6a_message = s6a_message;
+    rv = ogs_queue_push(ogs_app()->queue, e);
+    if (rv != OGS_OK) {
+        ogs_error("ogs_queue_push() failed:%d", (int)rv);
+        ogs_subscription_data_free(subscription_data);
+        ogs_free(s6a_message);
+        mme_event_free(e);
+    } else {
+        ogs_pollset_notify(ogs_app()->pollset);
+    }
 
     return 0;
 
