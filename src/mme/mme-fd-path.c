@@ -248,6 +248,7 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
              * Reference: 3GPP TS 29.272 7.3.33
              */
             case OGS_DIAM_S6A_AVP_CODE_ALL_APN_CONFIG_INC_IND:
+                slice_data->all_apn_config_inc = hdr->avp_value->i32;
                 break;
 
             /* AVP: 'APN-Configuration'(1430)

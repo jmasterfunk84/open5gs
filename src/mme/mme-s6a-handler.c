@@ -142,11 +142,11 @@ uint8_t mme_s6a_handle_idr(
     subscription_data = &idr_message->subscription_data;
     ogs_assert(subscription_data);
 
-    if (idr_message.subdatamask & OGS_DIAM_S6A_SUBDATA_UEAMBR) {
+    if (idr_message->subdatamask & OGS_DIAM_S6A_SUBDATA_UEAMBR) {
         memcpy(&mme_ue->ambr, &subscription_data->ambr, sizeof(ogs_bitrate_t));
     }
 
-    if (idr_message.subdatamask & OGS_DIAM_S6A_SUBDATA_APN_CONFIG) {
+    if (idr_message->subdatamask & OGS_DIAM_S6A_SUBDATA_APN_CONFIG) {
         ogs_assert(subscription_data->num_of_slice == 1);
         slice_data = &subscription_data->slice[0];
 
@@ -164,22 +164,24 @@ uint8_t mme_s6a_handle_idr(
             }
             if (!sessionexists) {
                 ogs_info("APN name no longer exists or context ID changed.");
-                if (mme_sess_find_by_apn(mme_ue, slice_data->session[i].name)) {
-                        ogs_info("APN To be deleted has active session.  "
-                            "Must Delete");
+                if (mme_sess_find_by_apn(mme_ue, mme_ue->session[i].name)) {
+                    ogs_info("APN To be deleted has active session.  "
+                        "Must Delete");
                 }
             }
         }
 
-        // need to check that we're getting all apn indicator here.  else this is bad.  must get from fd-path
-        mme_session_remove_all(mme_ue);
-    
-        rv = mme_ue_session_from_slice_data(mme_ue, slice_data);
-        if (rv == 0) {
-            ogs_error("No Session");
-            return OGS_ERROR;
+        if (!slice_data->all_apn_config_inc) {
+            mme_session_remove_all(mme_ue);
+            rv = mme_ue_session_from_slice_data(mme_ue, slice_data);
+            if (rv == 0) {
+                ogs_error("No Session");
+                return OGS_ERROR;
+            }
+            mme_ue->num_of_session = rv;
+        } else {
+            ogs_error ("Partial APN-Configuration Not Supported.")
         }
-        mme_ue->num_of_session = rv;
 
         mme_ue->context_identifier = slice_data->context_identifier;
     }
@@ -283,6 +285,8 @@ static uint8_t mme_ue_session_from_slice_data(mme_ue_t *mme_ue,
         mme_ue->session[i].charging_characteristics_presence =
             slice_data->session[i].charging_characteristics_presence;
     }
+
+    return i;
 }
 
 /* 3GPP TS 29.272 Annex A; Table A.1:
