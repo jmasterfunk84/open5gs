@@ -150,27 +150,6 @@ uint8_t mme_s6a_handle_idr(
         ogs_assert(subscription_data->num_of_slice == 1);
         slice_data = &subscription_data->slice[0];
 
-        memcpy(&mme_ue->ambr, &subscription_data->ambr, sizeof(ogs_bitrate_t));
-        for (i = 0; i < mme_ue->num_of_session; i++) {
-            int sessionexists = 0;
-            for (g = 0; g < slice_data->num_of_session; g++) {
-                if (!strcasecmp(mme_ue->session[i].name, 
-                        slice_data->session[g].name)) {
-                    if(mme_ue->session[i].context_identifier == 
-                            slice_data->session[g].context_identifier) {
-                        sessionexists = 1;
-                    }
-                }
-            }
-            if (!sessionexists) {
-                ogs_info("APN name no longer exists or context ID changed.");
-                if (mme_sess_find_by_apn(mme_ue, mme_ue->session[i].name)) {
-                    ogs_info("APN To be deleted has active session.  "
-                        "Must Delete");
-                }
-            }
-        }
-
         if (!slice_data->all_apn_config_inc) {
             mme_session_remove_all(mme_ue);
             rv = mme_ue_session_from_slice_data(mme_ue, slice_data);
@@ -180,7 +159,8 @@ uint8_t mme_s6a_handle_idr(
             }
             mme_ue->num_of_session = rv;
         } else {
-            ogs_error ("Partial APN-Configuration Not Supported.")
+            ogs_error ("Partial APN-Configuration Not Supported in IDR.");
+            return OGS_ERROR;
         }
 
         mme_ue->context_identifier = slice_data->context_identifier;

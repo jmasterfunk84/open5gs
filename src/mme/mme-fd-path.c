@@ -1655,14 +1655,14 @@ static int mme_ogs_diam_s6a_idr_cb( struct msg **msg, struct avp *avp,
         ogs_assert(ret == 0);
         ret = fd_msg_browse(avp, MSG_BRW_FIRST_CHILD, NULL, NULL);
         if (ret) {
-            ogs_info("Subscription-Data is Empty.");
+            ogs_info("[%s] Subscription-Data is Empty.", imsi_bcd);
         } else {
             has_subscriber_data = true;
             uint32_t subdatamask = 0;
             ret = mme_s6a_subscription_data_from_avp(avp, subscription_data, 
                 mme_ue, &subdatamask);
             idr_message->subdatamask = subdatamask;
-            ogs_info("Subscription-Data Processed.");
+            ogs_info("[%s] Subscription-Data Processed.", imsi_bcd);
         }
     }
 
