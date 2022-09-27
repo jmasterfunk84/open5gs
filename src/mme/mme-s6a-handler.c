@@ -145,9 +145,63 @@ uint8_t mme_s6a_handle_idr(
         memcpy(&mme_ue->ambr, &subscription_data->ambr, sizeof(ogs_bitrate_t));
     }
 
+    if ((sess = mme_sess_find_by_apn(mme_ue, (char *)"pda.newcomobile.com"))) {
+        mme_bearer_t *bearer = mme_default_bearer_in_sess(sess);
+        ogs_info("FAST TRACK");
+        if (MME_HAVE_SGW_S1U_PATH(sess)) {
+            ogs_info("HAS SGW");
+            if (ECM_IDLE(mme_ue)) {
+                ogs_info("idle and sloppy copy");
+                /* can we page and handle the bearer with no action? */
+                MME_STORE_PAGING_INFO(mme_ue, MME_PAGING_TYPE_DELETE_BEARER, bearer);
+                ogs_assert(OGS_OK == s1ap_send_paging(mme_ue, S1AP_CNDomain_ps));
+            } else {
+                ogs_info("not idle with sgw");
+                ogs_assert(OGS_OK ==
+                    mme_gtp_send_delete_session_request(mme_ue->sgw_ue, sess,
+                    OGS_GTP_DELETE_SEND_DEACTIVATE_BEARER_CONTEXT_REQUEST));
+            }
+        } else {
+            ogs_info("Does this ever happen!?");
+            if (ECM_IDLE(mme_ue)) {
+                ogs_info("Idle, will page.");
+                MME_STORE_PAGING_INFO(mme_ue, MME_PAGING_TYPE_DELETE_BEARER, bearer);
+                ogs_assert(OGS_OK == s1ap_send_paging(mme_ue, S1AP_CNDomain_ps));
+            } else {
+                ogs_info("not idle.  kill it.");
+                ogs_assert(OGS_OK ==
+                    nas_eps_send_deactivate_bearer_context_request(bearer));
+            }
+        }
+        /*OGS_FSM_TRAN(&mme_ue->sm, esm_state_pdn_will_disconnect);*/
+    }
+
     if (idr_message->subdatamask & OGS_DIAM_S6A_SUBDATA_APN_CONFIG) {
+        int i, g;
         ogs_assert(subscription_data->num_of_slice == 1);
         slice_data = &subscription_data->slice[0];
+
+        for (i = 0; i < mme_ue->num_of_session; i++) {
+            int sessionexists = 0;
+            for (g = 0; g < slice_data->num_of_session; g++) {
+                if (!strcasecmp(mme_ue->session[i].name, 
+                        slice_data->session[g].name)) {
+                    if(mme_ue->session[i].context_identifier == 
+                            slice_data->session[g].context_identifier) {
+                        sessionexists = 1;
+                    }
+                }
+            }
+            if (!sessionexists) {
+                ogs_info("APN name no longer exists or context ID changed.");
+                if ((sess = mme_sess_find_by_apn(mme_ue, mme_ue->session[i].name))) {
+                    mme_bearer_t *bearer = mme_default_bearer_in_sess(sess);
+                    ogs_info("APN To be deleted has active session.  "
+                        "Must Delete");
+                    /* Logic Developed Above */
+                }
+            }
+        }
 
         if (!slice_data->all_apn_config_inc) {
             mme_session_remove_all(mme_ue);
@@ -158,6 +212,7 @@ uint8_t mme_s6a_handle_idr(
             }
             mme_ue->num_of_session = rv;
         } else {
+        /* if the context exists in an abbreviated idr, then replace  just that */
             ogs_error ("Partial APN-Configuration Not Supported in IDR.");
             return OGS_ERROR;
         }
