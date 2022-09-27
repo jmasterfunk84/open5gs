@@ -89,12 +89,15 @@ extern struct dict_object *ogs_diam_s6a_cmd_clr;
 extern struct dict_object *ogs_diam_s6a_cmd_cla;
 extern struct dict_object *ogs_diam_s6a_cmd_idr;
 extern struct dict_object *ogs_diam_s6a_cmd_ida;
+extern struct dict_object *ogs_diam_s6a_cmd_dsr;
+extern struct dict_object *ogs_diam_s6a_cmd_dsa;
 
 extern struct dict_object *ogs_diam_s6a_ulr_flags;
 extern struct dict_object *ogs_diam_s6a_ula_flags;
 extern struct dict_object *ogs_diam_s6a_pua_flags;
 extern struct dict_object *ogs_diam_s6a_clr_flags;
 extern struct dict_object *ogs_diam_s6a_idr_flags;
+extern struct dict_object *ogs_diam_s6a_dsr_flags;
 extern struct dict_object *ogs_diam_s6a_cancellation_type;
 extern struct dict_object *ogs_diam_s6a_subscription_data;
 extern struct dict_object *ogs_diam_s6a_req_eutran_auth_info;
@@ -177,16 +180,53 @@ typedef struct ogs_diam_s6a_idr_message_s {
 #define OGS_DIAM_S6A_IDR_FLAGS_LOCAL_TZ                    (1 << 5)
 #define OGS_DIAM_S6A_IDR_FLAGS_REMOVE_SMS_REG              (1 << 6)
 #define OGS_DIAM_S6A_IDR_FLAGS_RAT_TYPE                    (1 << 7)
-#define OGS_DIAM_S6A_IDR_FLAGS_PCSCF_Restoration           (1 << 8)
+#define OGS_DIAM_S6A_IDR_FLAGS_PCSCF_RESTORATION           (1 << 8)
     uint32_t idr_flags;
     ogs_subscription_data_t subscription_data;
 } ogs_diam_s6a_idr_message_t;
+
+typedef struct ogs_diam_s6a_dsr_message_s {
+#define OGS_DIAM_S6A_DSR_FLAGS_REGIONAL_SUBSCRIPTION                   (1)
+#define OGS_DIAM_S6A_DSR_FLAGS_COMPLETE_APN_CONFIGURATION_PROFILE      (1 << 1)
+#define OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_CHARGING_CHARACTERISTICS     (1 << 2)
+#define OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION                        (1 << 3)
+#define OGS_DIAM_S6A_DSR_FLAGS_STN_SR                                  (1 << 4)
+#define OGS_DIAM_S6A_DSR_FLAGS_COMPLETE_PDP_CONTEXT_LIST               (1 << 5)
+#define OGS_DIAM_S6A_DSR_FLAGS_PDP_CONTEXTS                            (1 << 6)
+#define OGS_DIAM_S6A_DSR_FLAGS_RR_DUE_TO_UNSUPPORTED_FEATURE           (1 << 7)
+#define OGS_DIAM_S6A_DSR_FLAGS_TRACE_DATA                              (1 << 8)
+#define OGS_DIAM_S6A_DSR_FLAGS_CSG_DELETED                             (1 << 9)
+#define OGS_DIAM_S6A_DSR_FLAGS_APN_OI_REPLACEMENT                      (1 << 10)
+#define OGS_DIAM_S6A_DSR_FLAGS_GMLC_LIST                               (1 << 11)
+#define OGS_DIAM_S6A_DSR_FLAGS_LCS                                     (1 << 12)
+#define OGS_DIAM_S6A_DSR_FLAGS_SMS                                     (1 << 13)
+#define OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_PERIODIC_RAU_TAU_TIMER       (1 << 14)
+#define OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_VSRVCC                       (1 << 15)
+#define OGS_DIAM_S6A_DSR_FLAGS_A_MSISDN                                (1 << 16)
+#define OGS_DIAM_S6A_DSR_FLAGS_PROSE                                   (1 << 17)
+#define OGS_DIAM_S6A_DSR_FLAGS_RESET_IDS                               (1 << 18)
+#define OGS_DIAM_S6A_DSR_FLAGS_DL_BUFFERING_SUGGESTED_PACKET_COUNT     (1 << 19)
+#define OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_IMSI_GROUP                   (1 << 20)
+#define OGS_DIAM_S6A_DSR_FLAGS_DELETE_MONITORING_EVENTS                (1 << 21)
+#define OGS_DIAM_S6A_DSR_FLAGS_USERPLANE_INTEGRITY_PROTECTION          (1 << 22)
+#define OGS_DIAM_S6A_DSR_FLAGS_MSISDN                                  (1 << 23)
+#define OGS_DIAM_S6A_DSR_FLAGS_UE_USAGE_TYPE                           (1 << 24)
+#define OGS_DIAM_S6A_DSR_FLAGS_V2X                                     (1 << 25)
+#define OGS_DIAM_S6A_DSR_FLAGS_EXTERNAL_IDENTIFIER                     (1 << 26)
+#define OGS_DIAM_S6A_DSR_FLAGS_AERIAL_UE_SUBSCRIPTION                  (1 << 27)
+#define OGS_DIAM_S6A_DSR_FLAGS_PAGING_TIME_WINDOW_SUBSCRIPTION         (1 << 28)
+#define OGS_DIAM_S6A_DSR_FLAGS_ACTIVE_TIME                             (1 << 29)
+#define OGS_DIAM_S6A_DSR_FLAGS_EDRX_CYCLE_LENGTH                       (1 << 30)
+#define OGS_DIAM_S6A_DSR_FLAGS_SERVICE_GAP_TIME                        (1 << 31)
+    uint32_t dsr_flags;
+} ogs_diam_s6a_dsr_message_t;
 
 typedef struct ogs_diam_s6a_message_s {
 #define OGS_DIAM_S6A_CMD_CODE_UPDATE_LOCATION               316
 #define OGS_DIAM_S6A_CMD_CODE_CANCEL_LOCATION               317
 #define OGS_DIAM_S6A_CMD_CODE_AUTHENTICATION_INFORMATION    318
 #define OGS_DIAM_S6A_CMD_CODE_INSERT_SUBSCRIBER_DATA        319
+#define OGS_DIAM_S6A_CMD_CODE_DELETE_SUBSCRIBER_DATA        320
 #define OGS_DIAM_S6A_CMD_CODE_PURGE_UE                      321
     uint16_t                        cmd_code;
 
@@ -203,6 +243,7 @@ typedef struct ogs_diam_s6a_message_s {
     uint32_t                        *exp_err;
 
     ogs_diam_s6a_idr_message_t      idr_message;
+    ogs_diam_s6a_dsr_message_t      idr_message;
     ogs_diam_s6a_clr_message_t      clr_message;
     ogs_diam_s6a_aia_message_t      aia_message;
     ogs_diam_s6a_ula_message_t      ula_message;
