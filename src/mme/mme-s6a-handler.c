@@ -132,7 +132,6 @@ uint8_t mme_s6a_handle_idr(
     ogs_diam_s6a_idr_message_t *idr_message = NULL;
     ogs_subscription_data_t *subscription_data = NULL;
     ogs_slice_data_t *slice_data = NULL;
-    int i, g;
     int rv;
 
     ogs_assert(mme_ue);
