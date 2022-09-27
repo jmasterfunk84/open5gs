@@ -81,6 +81,7 @@ extern "C" {
 #define OGS_MAX_PCO_LEN                 251
 #define OGS_MAX_FQDN_LEN                256
 
+#define OGS_MAX_NUM_OF_SERVED_GUAMI     8
 #define OGS_MAX_NUM_OF_SERVED_TAI       16
 #define OGS_MAX_NUM_OF_ALGORITHM        8
 
@@ -650,6 +651,7 @@ typedef struct ogs_slice_data_s {
     bool default_indicator;
 
     uint32_t context_identifier; /* EPC for checking default APN */
+    uint32_t all_apn_config_inc;
 
     int num_of_session;
     ogs_session_t session[OGS_MAX_NUM_OF_SESS];
@@ -684,6 +686,8 @@ typedef struct ogs_subscription_data_s {
     int num_of_slice;
     ogs_slice_data_t slice[OGS_MAX_NUM_OF_SLICE];
 
+    char *imsi;
+
 #define OGS_MAX_NUM_OF_MSISDN                                   2
     int num_of_msisdn;
     struct {
@@ -691,6 +695,10 @@ typedef struct ogs_subscription_data_s {
         int len;
         char bcd[OGS_MAX_MSISDN_BCD_LEN+1];
     } msisdn[OGS_MAX_NUM_OF_MSISDN];
+
+    char *mme_host;
+    char *mme_realm;
+    bool purge_flag;
 } ogs_subscription_data_t;
 
 void ogs_subscription_data_free(ogs_subscription_data_t *subscription_data);

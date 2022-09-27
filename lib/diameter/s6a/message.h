@@ -59,6 +59,9 @@ extern "C" {
 #define OGS_DIAM_S6A_ULR_INITIAL_ATTACH_IND             (1 << 5)
 #define OGS_DIAM_S6A_ULR_PS_LCS_SUPPORTED_BY_UE         (1 << 6)
 
+#define OGS_DIAM_S6A_PUA_FLAGS_FREEZE_MTMSI             (1)
+#define OGS_DIAM_S6A_PUA_FLAGS_FREEZE_PTMSI             (1 << 1)
+
 #define OGS_DIAM_S6A_UE_SRVCC_NOT_SUPPORTED             (0)
 #define OGS_DIAM_S6A_UE_SRVCC_SUPPORTED                 (1)
 
@@ -67,6 +70,25 @@ extern "C" {
 
 #define OGS_DIAM_S6A_VPLMN_DYNAMIC_ADDRESS_NOTALLOWED   (0)
 #define OGS_DIAM_S6A_VPLMN_DYNAMIC_ADDRESS_ALLOWED      (1)
+
+#define OGS_DIAM_S6A_CT_MME_UPDATE_PROCEDURE            (0)
+#define OGS_DIAM_S6A_CT_SGSN_UPDATE_PROCEDURE           (1)
+#define OGS_DIAM_S6A_CT_SUBSCRIPTION_WITHDRAWL          (2)
+#define OGS_DIAM_S6A_CT_UPDATE_PROCEDURE_IWF            (3)
+#define OGS_DIAM_S6A_CT_INITIAL_ATTACH_PROCEDURE        (4)
+
+#define OGS_DIAM_S6A_SUBDATA_NO_UPDATE                  (0)
+#define OGS_DIAM_S6A_SUBDATA_SUB_STATUS                 (1)
+#define OGS_DIAM_S6A_SUBDATA_MSISDN                     (1 << 1)
+#define OGS_DIAM_S6A_SUBDATA_A_MSISDN                   (1 << 2)
+#define OGS_DIAM_S6A_SUBDATA_NAM                        (1 << 3)
+#define OGS_DIAM_S6A_SUBDATA_ODB                        (1 << 4)
+#define OGS_DIAM_S6A_SUBDATA_ARD                        (1 << 5)
+#define OGS_DIAM_S6A_SUBDATA_CC                         (1 << 6)
+#define OGS_DIAM_S6A_SUBDATA_UEAMBR                     (1 << 7)
+#define OGS_DIAM_S6A_SUBDATA_APN_CONFIG                 (1 << 8)
+#define OGS_DIAM_S6A_SUBDATA_RAU_TAU_TIMER              (1 << 9)
+#define OGS_DIAM_S6A_SUBDATA_ALL                        0xFFFFFFFF
 
 extern struct dict_object *ogs_diam_s6a_application;
 
@@ -83,6 +105,7 @@ extern struct dict_object *ogs_diam_s6a_cmd_ida;
 
 extern struct dict_object *ogs_diam_s6a_ulr_flags;
 extern struct dict_object *ogs_diam_s6a_ula_flags;
+extern struct dict_object *ogs_diam_s6a_pua_flags;
 extern struct dict_object *ogs_diam_s6a_clr_flags;
 extern struct dict_object *ogs_diam_s6a_idr_flags;
 extern struct dict_object *ogs_diam_s6a_cancellation_type;
@@ -169,6 +192,7 @@ typedef struct ogs_diam_s6a_idr_message_s {
 #define OGS_DIAM_S6A_IDR_FLAGS_RAT_TYPE                    (1 << 7)
 #define OGS_DIAM_S6A_IDR_FLAGS_PCSCF_Restoration           (1 << 8)
     uint32_t idr_flags;
+    uint32_t subdatamask;
     ogs_subscription_data_t subscription_data;
 } ogs_diam_s6a_idr_message_t;
 
