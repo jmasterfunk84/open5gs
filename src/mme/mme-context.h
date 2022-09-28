@@ -880,6 +880,8 @@ void mme_sess_remove_all(mme_ue_t *mme_ue);
 mme_sess_t *mme_sess_find_by_pti(mme_ue_t *mme_ue, uint8_t pti);
 mme_sess_t *mme_sess_find_by_ebi(mme_ue_t *mme_ue, uint8_t ebi);
 mme_sess_t *mme_sess_find_by_apn(mme_ue_t *mme_ue, char *apn);
+mme_sess_t *mme_sess_find_by_context_identifier(mme_ue_t *mme_ue, 
+    uint32_t context_identifier);
 
 mme_sess_t *mme_sess_first(mme_ue_t *mme_ue);
 mme_sess_t *mme_sess_next(mme_sess_t *sess);
@@ -899,7 +901,11 @@ mme_bearer_t *mme_bearer_next(mme_bearer_t *bearer);
 mme_bearer_t *mme_bearer_cycle(mme_bearer_t *bearer);
 
 void mme_session_remove_all(mme_ue_t *mme_ue);
+void mme_session_remove_by_context_identifier(mme_ue_t *mme_ue, 
+    uint32_t context_identifier);
 ogs_session_t *mme_session_find_by_apn(mme_ue_t *mme_ue, char *apn);
+ogs_session_t *mme_session_find_by_context_identifier(mme_ue_t *mme_ue, 
+    uint32_t context_identifier);
 ogs_session_t *mme_default_session(mme_ue_t *mme_ue);
 
 int mme_find_served_tai(ogs_eps_tai_t *tai);

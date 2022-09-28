@@ -26,6 +26,9 @@ static struct disp_hdl *hdl_s6a_clr = NULL;
 /* handler for Insert-Subscriber-Data-Request cb */
 static struct disp_hdl *hdl_s6a_idr = NULL;
 
+/* handler for Delete-Subscriber-Data-Request cb */
+static struct disp_hdl *hdl_s6a_dsr = NULL;
+
 static struct session_handler *mme_s6a_reg = NULL;
 
 struct sess_state {
@@ -1776,6 +1779,215 @@ outnoexp:
     return 0;
 }
 
+/* Callback for incoming Delete-Subscriber-Data-Request messages
+ * 29.272 5.2.2.2.2 */
+static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
+        struct session *session, void *opaque, enum disp_action *act)
+{
+    int ret;
+    char imsi_bcd[OGS_MAX_IMSI_BCD_LEN+1];
+    uint32_t result_code = 0;
+    uint32_t context_identifier = 0;
+
+    struct msg *ans, *qry;
+
+    mme_ue_t *mme_ue = NULL;
+    ogs_diam_s6a_message_t *s6a_message = NULL;
+    ogs_diam_s6a_dsr_message_t *dsr_message = NULL;
+
+    struct avp_hdr *hdr;
+    union avp_value val;
+
+    ogs_assert(msg);
+
+    ogs_debug("Delete-Subscriber-Data-Request");
+
+    s6a_message = ogs_calloc(1, sizeof(ogs_diam_s6a_message_t));
+    ogs_assert(s6a_message);
+    s6a_message->cmd_code = OGS_DIAM_S6A_CMD_CODE_DELETE_SUBSCRIBER_DATA;
+    dsr_message = &s6a_message->dsr_message;
+    ogs_assert(dsr_message);
+
+    /* Create answer header */
+    qry = *msg;
+    ret = fd_msg_new_answer_from_req(fd_g_config->cnf_dict, msg, 0);
+    ogs_assert(ret == 0);
+    ans = *msg;
+
+    ret = fd_msg_search_avp(qry, ogs_diam_user_name, &avp);
+    ogs_assert(ret == 0);
+    ret = fd_msg_avp_hdr(avp, &hdr);
+    ogs_assert(ret == 0);
+
+    ogs_cpystrn(imsi_bcd, (char*)hdr->avp_value->os.data,
+        ogs_min(hdr->avp_value->os.len, OGS_MAX_IMSI_BCD_LEN)+1);
+
+    mme_ue = mme_ue_find_by_imsi_bcd(imsi_bcd);
+
+    if (!mme_ue) {
+        ogs_error("[%s] Delete Subscriber Data for Unknown IMSI", imsi_bcd);
+        result_code = OGS_DIAM_S6A_ERROR_USER_UNKNOWN;
+        goto out;
+    }
+
+    ret = fd_msg_search_avp(qry, ogs_diam_s6a_dsr_flags, &avp);
+    ogs_assert(ret == 0);
+    if (avp) {
+        ret = fd_msg_avp_hdr(avp, &hdr);
+        ogs_assert(ret == 0);
+        dsr_message->dsr_flags = hdr->avp_value->i32;
+    } else {
+        ogs_error("[%s] Delete Subscriber Data does not contain any DSR Flags",
+            imsi_bcd);
+        /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
+        ret = fd_msg_rescode_set(ans,
+            (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
+        ogs_assert(ret == 0);
+        goto outnoexp;
+    }
+
+    if (dsr_message->dsr_flags & (OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION & 
+            OGS_DIAM_S6A_DSR_FLAGS_PDP_CONTEXTS )) {
+        ogs_error("[%s] PDN Subscription contexts Withdrawl and PDP contexts "
+            "Withdrawl may not both be set", imsi_bcd);
+        /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
+        ret = fd_msg_rescode_set(ans,
+            (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
+        ogs_assert(ret == 0);
+        goto outnoexp;
+    }
+
+    if (dsr_message->dsr_flags & 
+            OGS_DIAM_S6A_DSR_FLAGS_COMPLETE_APN_CONFIGURATION_PROFILE) {
+        ogs_error("[%s] Complete APN Configuration Profile Withdrawal "
+            "not allowed at MME", imsi_bcd);
+        /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
+        ret = fd_msg_rescode_set(ans,
+            (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
+        ogs_assert(ret == 0);
+        goto outnoexp;
+    }
+
+    ret = fd_msg_search_avp(qry, ogs_diam_s6a_context_identifier, &avp);
+    ogs_assert(ret == 0);
+    if (avp) {
+        ret = fd_msg_avp_hdr(avp, &hdr);
+        ogs_assert(ret == 0);
+        context_identifier = hdr->avp_value->i32;
+    }
+
+    if (dsr_message->dsr_flags & 
+            OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_CHARGING_CHARACTERISTICS) {
+        memcpy(mme_ue->charging_characteristics, (uint8_t *)"\x00\x00", 
+            OGS_CHRGCHARS_LEN);
+        mme_ue->charging_characteristics_presence = false;
+    }
+
+    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION) {
+        if (context_identifier == mme_ue->context_identifier) {
+            ogs_error("[%s] PDN Subscription Deletion of Default APN not "
+                "allowed", imsi_bcd);
+            /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
+            ret = fd_msg_rescode_set(ans,
+                (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
+            ogs_assert(ret == 0);
+            goto outnoexp;
+        }
+        if (!mme_session_find_by_context_identifier(mme_ue, 
+                context_identifier)) {
+            ogs_error("[%s] Unknown Context-Identifier", imsi_bcd);
+            /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
+            ret = fd_msg_rescode_set(ans,
+                (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
+            ogs_assert(ret == 0);
+            goto outnoexp;
+        }
+        mme_session_remove_by_context_identifier(mme_ue, context_identifier);
+    }
+
+    if (dsr_message->dsr_flags & 
+            OGS_DIAM_S6A_DSR_FLAGS_COMPLETE_PDP_CONTEXT_LIST) {
+        mme_session_remove_all(mme_ue);
+    }
+
+    if (dsr_message->dsr_flags & 
+            OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_PERIODIC_RAU_TAU_TIMER) {
+        ogs_error("[%s] RAU TAU Timer not Implemented", imsi_bcd);
+        /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
+        ret = fd_msg_rescode_set(ans,
+            (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
+        ogs_assert(ret == 0);
+        goto outnoexp;
+    }
+
+    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_A_MSISDN) {
+        memset(mme_ue->a_msisdn, 0, sizeof(mme_ue->a_msisdn));
+    }
+    
+    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_MSISDN) {
+        memset(mme_ue->msisdn, 0, sizeof(mme_ue->msisdn));
+    }
+
+    /* Set the Origin-Host, Origin-Realm, andResult-Code AVPs */
+    ret = fd_msg_rescode_set(ans, (char*)"DIAMETER_SUCCESS", NULL, NULL, 1);
+    ogs_assert(ret == 0);
+
+    /* Set the Auth-Session-State AVP */
+    ret = fd_msg_avp_new(ogs_diam_auth_session_state, 0, &avp);
+    ogs_assert(ret == 0);
+    val.i32 = OGS_DIAM_AUTH_SESSION_NO_STATE_MAINTAINED;
+    ret = fd_msg_avp_setvalue(avp, &val);
+    ogs_assert(ret == 0);
+    ret = fd_msg_avp_add(ans, MSG_BRW_LAST_CHILD, avp);
+    ogs_assert(ret == 0);
+
+    /* Set Vendor-Specific-Application-Id AVP */
+    ret = ogs_diam_message_vendor_specific_appid_set(
+            ans, OGS_DIAM_S6A_APPLICATION_ID);
+    ogs_assert(ret == 0);
+
+    /* Send the answer */
+    ret = fd_msg_send(msg, NULL, NULL);
+    ogs_assert(ret == 0);
+
+    ogs_debug("Delete-Subscriber-Data-Answer");
+
+    /* Add this value to the stats */
+    ogs_assert( pthread_mutex_lock(&ogs_diam_logger_self()->stats_lock) == 0);
+    ogs_diam_logger_self()->stats.nb_echoed++;
+    ogs_assert( pthread_mutex_unlock(&ogs_diam_logger_self()->stats_lock) == 0);
+
+    ogs_free(s6a_message);
+
+    return 0;
+
+out:
+    ret = ogs_diam_message_experimental_rescode_set(ans, result_code);
+    ogs_assert(ret == 0);
+outnoexp:
+    /* Set the Auth-Session-State AVP */
+    ret = fd_msg_avp_new(ogs_diam_auth_session_state, 0, &avp);
+    ogs_assert(ret == 0);
+    val.i32 = OGS_DIAM_AUTH_SESSION_NO_STATE_MAINTAINED;
+    ret = fd_msg_avp_setvalue(avp, &val);
+    ogs_assert(ret == 0);
+    ret = fd_msg_avp_add(ans, MSG_BRW_LAST_CHILD, avp);
+    ogs_assert(ret == 0);
+    
+    /* Set Vendor-Specific-Application-Id AVP */
+    ret = ogs_diam_message_vendor_specific_appid_set(
+            ans, OGS_DIAM_S6A_APPLICATION_ID);
+    ogs_assert(ret == 0);
+
+    /* Send the answer */
+    ret = fd_msg_send(msg, NULL, NULL);
+    ogs_assert(ret == 0);
+
+    ogs_free(s6a_message);
+
+    return 0;
+}
+
 int mme_fd_init(void)
 {
     int ret;
@@ -1803,7 +2015,13 @@ int mme_fd_init(void)
     data.command = ogs_diam_s6a_cmd_idr;
     ret = fd_disp_register(mme_ogs_diam_s6a_idr_cb, DISP_HOW_CC, &data, NULL,
                 &hdl_s6a_idr);
-    ogs_assert(ret == 0);    
+    ogs_assert(ret == 0);
+
+    /* Specific handler for Delete-Subscriber-Data-Request */
+    data.command = ogs_diam_s6a_cmd_dsr;
+    ret = fd_disp_register(mme_ogs_diam_s6a_dsr_cb, DISP_HOW_CC, &data, NULL,
+                &hdl_s6a_dsr);
+    ogs_assert(ret == 0);
 
     /* Advertise the support for the application in the peer */
     ret = fd_disp_app_support(ogs_diam_s6a_application, ogs_diam_vendor, 1, 0);
@@ -1827,6 +2045,9 @@ void mme_fd_final(void)
 
     if (hdl_s6a_idr)
         (void) fd_disp_unregister(&hdl_s6a_idr, NULL);
+
+    if (hdl_s6a_dsr)
+        (void) fd_disp_unregister(&hdl_s6a_dsr, NULL);
 
     ogs_diam_final();
 }

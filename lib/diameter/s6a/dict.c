@@ -485,6 +485,7 @@ int ogs_dict_s6a_entry(char *conffile)
                 {  {                      .avp_name = "User-Name" }, RULE_REQUIRED, -1, 1 },
                 {  { .avp_vendor = 10415, .avp_name = "Supported-Features" }, RULE_OPTIONAL, -1, -1 },
                 {  { .avp_vendor = 10415, .avp_name = "DSR-Flags" }, RULE_REQUIRED, -1, 1 },
+                {  { .avp_vendor = 10415, .avp_name = "Context-Identifier" }, RULE_OPTIONAL, -1, 1 },
                 {  {                      .avp_name = "Proxy-Info" }, RULE_OPTIONAL, -1, -1 },
                 {  {                      .avp_name = "Route-Record" }, RULE_OPTIONAL, -1, -1 },
             };

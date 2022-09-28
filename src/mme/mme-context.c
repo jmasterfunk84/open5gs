@@ -2987,6 +2987,24 @@ mme_sess_t *mme_sess_find_by_apn(mme_ue_t *mme_ue, char *apn)
     return NULL;
 }
 
+mme_sess_t *mme_sess_find_by_context_identifier(mme_ue_t *mme_ue, 
+    uint32_t context_identifier)
+{
+    mme_sess_t *sess = NULL;
+
+    sess = mme_sess_first(mme_ue);
+    while (sess) {
+        ogs_assert(sess->session->name);
+        if (sess->session && 
+                (sess->session->context_identifier == context_identifier))
+            return sess;
+
+        sess = mme_sess_next(sess);
+    }
+
+    return NULL;
+}
+
 mme_sess_t *mme_sess_first(mme_ue_t *mme_ue)
 {
     return ogs_list_first(&mme_ue->sess_list);
@@ -3331,6 +3349,22 @@ void mme_session_remove_all(mme_ue_t *mme_ue)
     mme_ue->num_of_session = 0;
 }
 
+void mme_session_remove_by_context_identifier(mme_ue_t *mme_ue, 
+    uint32_t context_identifier)
+{
+    int i;
+
+    ogs_assert(mme_ue);
+
+    ogs_assert(mme_ue->num_of_session <= OGS_MAX_NUM_OF_SESS);
+    for (i = 0; i < mme_ue->num_of_session; i++) {
+        if (mme_ue->session[i].context_identifier == context_identifier)
+            ogs_free(mme_ue->session[i].name);
+    }
+
+    mme_ue->num_of_session = 0;
+}
+
 ogs_session_t *mme_session_find_by_apn(mme_ue_t *mme_ue, char *apn)
 {
     ogs_session_t *session = NULL;
@@ -3344,6 +3378,24 @@ ogs_session_t *mme_session_find_by_apn(mme_ue_t *mme_ue, char *apn)
         session = &mme_ue->session[i];
         ogs_assert(session->name);
         if (ogs_strcasecmp(session->name, apn) == 0)
+            return session;
+    }
+
+    return NULL;
+}
+
+ogs_session_t *mme_session_find_by_context_identifier(mme_ue_t *mme_ue, 
+    uint32_t context_identifier)
+{
+    ogs_session_t *session = NULL;
+    int i = 0;
+
+    ogs_assert(mme_ue);
+
+    ogs_assert(mme_ue->num_of_session <= OGS_MAX_NUM_OF_SESS);
+    for (i = 0; i < mme_ue->num_of_session; i++) {
+        session = &mme_ue->session[i];
+        if (mme_ue->session[i].context_identifier == context_identifier)
             return session;
     }
 

@@ -243,7 +243,7 @@ typedef struct ogs_diam_s6a_message_s {
     uint32_t                        *exp_err;
 
     ogs_diam_s6a_idr_message_t      idr_message;
-    ogs_diam_s6a_dsr_message_t      idr_message;
+    ogs_diam_s6a_dsr_message_t      dsr_message;
     ogs_diam_s6a_clr_message_t      clr_message;
     ogs_diam_s6a_aia_message_t      aia_message;
     ogs_diam_s6a_ula_message_t      ula_message;
