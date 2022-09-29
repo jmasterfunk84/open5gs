@@ -215,6 +215,61 @@ void mme_s6a_handle_clr(
     }
 }
 
+void mme_s6a_handle_dsr(
+        mme_ue_t *mme_ue, ogs_diam_s6a_message_t *s6a_message)
+{
+    ogs_assert(mme_ue);
+    ogs_assert(clr_message);
+
+    mme_sess_t *sess = NULL;
+
+    if (dsr_message->dsr_flags &
+            OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_CHARGING_CHARACTERISTICS) {
+        memcpy(mme_ue->charging_characteristics, (uint8_t *)"\x00\x00",
+            OGS_CHRGCHARS_LEN);
+        mme_ue->charging_characteristics_presence = false;
+    }
+
+    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION) {
+        sess->session = mme_session_find_by_context_identifier(mme_ue,
+            dsr_message->context_identifier);
+        mme_send_delete_session_by_sess_or_deactivate_bearer_context(mme_ue,
+            sess);
+        mme_session_remove_by_context_identifier(mme_ue,
+            dsr_message->context_identifier);
+    }
+
+    if (dsr_message->dsr_flags &
+            OGS_DIAM_S6A_DSR_FLAGS_COMPLETE_PDP_CONTEXT_LIST) {
+        mme_session_remove_all(mme_ue);
+    }
+
+    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDP_CONTEXTS) {
+        sess->session = mme_session_find_by_context_identifier(mme_ue,
+            dsr_message->context_identifier);
+        mme_send_delete_session_by_sess_or_deactivate_bearer_context(mme_ue,
+            sess);
+    }
+
+    if (dsr_message->dsr_flags &
+            OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_PERIODIC_RAU_TAU_TIMER) {
+        ogs_error("[%s] RAU TAU Timer not Implemented", imsi_bcd);
+        /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
+        ret = fd_msg_rescode_set(ans,
+            (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
+        ogs_assert(ret == 0);
+        goto outnoexp;
+    }
+
+    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_A_MSISDN) {
+        memset(mme_ue->a_msisdn, 0, sizeof(mme_ue->a_msisdn));
+    }
+    
+    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_MSISDN) {
+        memset(mme_ue->msisdn, 0, sizeof(mme_ue->msisdn));
+    }
+}
+
 /* 3GPP TS 29.272 Annex A; Table !.a:
  * Mapping from S6a error codes to NAS Cause Codes */
 static uint8_t emm_cause_from_diameter(
