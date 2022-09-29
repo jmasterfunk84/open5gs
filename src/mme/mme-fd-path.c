@@ -1889,7 +1889,8 @@ static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
 
     if (!mme_session_find_by_context_identifier(mme_ue,
             dsr_message->context_identifier)) {
-        ogs_error("[%s] Unknown Context-Identifier", imsi_bcd);
+        ogs_error("[%s] Unknown Context-Identifier [%d]", imsi_bcd,
+            dsr_message->context_identifier);
         /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
         ret = fd_msg_rescode_set(ans,
             (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);

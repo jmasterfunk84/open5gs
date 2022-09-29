@@ -3358,11 +3358,14 @@ void mme_session_remove_by_context_identifier(mme_ue_t *mme_ue,
 
     ogs_assert(mme_ue->num_of_session <= OGS_MAX_NUM_OF_SESS);
     for (i = 0; i < mme_ue->num_of_session; i++) {
-        if (mme_ue->session[i].context_identifier == context_identifier)
+        if (mme_ue->session[i].context_identifier == context_identifier) {
             ogs_free(mme_ue->session[i].name);
+            memmove(&mme_ue->session[i], &mme_ue->session[i+1],
+                sizeof(ogs_session_t) * (mme_ue->num_of_session - i - 1));
+            mme_ue->num_of_session = mme_ue->num_of_session - 1;
+        }
     }
-
-    mme_ue->num_of_session = 0;
+    ogs_assert(mme_ue->num_of_session <= OGS_MAX_NUM_OF_SESS);
 }
 
 ogs_session_t *mme_session_find_by_apn(mme_ue_t *mme_ue, char *apn)
@@ -3395,7 +3398,8 @@ ogs_session_t *mme_session_find_by_context_identifier(mme_ue_t *mme_ue,
     ogs_assert(mme_ue->num_of_session <= OGS_MAX_NUM_OF_SESS);
     for (i = 0; i < mme_ue->num_of_session; i++) {
         session = &mme_ue->session[i];
-        if (mme_ue->session[i].context_identifier == context_identifier)
+        ogs_assert(session->name);
+        if (session->context_identifier == context_identifier)
             return session;
     }
 

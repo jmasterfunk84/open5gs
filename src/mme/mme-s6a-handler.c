@@ -234,10 +234,12 @@ void mme_s6a_handle_dsr(
     }
 
     if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION) {
-        sess->session = mme_session_find_by_context_identifier(mme_ue,
+        sess = mme_sess_find_by_context_identifier(mme_ue,
             dsr_message->context_identifier);
-        mme_send_delete_session_by_sess_or_deactivate_bearer_context(mme_ue,
-            sess);
+        if (sess) {
+            mme_send_delete_session_by_sess_or_deactivate_bearer_context(mme_ue,
+                sess);
+        }
         mme_session_remove_by_context_identifier(mme_ue,
             dsr_message->context_identifier);
     }
@@ -248,10 +250,12 @@ void mme_s6a_handle_dsr(
     }
 
     if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDP_CONTEXTS) {
-        sess->session = mme_session_find_by_context_identifier(mme_ue,
+        sess = mme_sess_find_by_context_identifier(mme_ue,
             dsr_message->context_identifier);
-        mme_send_delete_session_by_sess_or_deactivate_bearer_context(mme_ue,
-            sess);
+        if (sess) {
+            mme_send_delete_session_by_sess_or_deactivate_bearer_context(mme_ue,
+                sess);
+        }
     }
 
     if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_A_MSISDN) {
