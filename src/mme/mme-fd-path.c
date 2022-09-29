@@ -1788,7 +1788,6 @@ static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
     int ret;
     char imsi_bcd[OGS_MAX_IMSI_BCD_LEN+1];
     uint32_t result_code = 0;
-    uint32_t context_identifier = 0;
 
     struct msg *ans, *qry;
 
@@ -1927,6 +1926,7 @@ static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
     ogs_diam_logger_self()->stats.nb_echoed++;
     ogs_assert( pthread_mutex_unlock(&ogs_diam_logger_self()->stats_lock) == 0);
 
+    int rv;
     e = mme_event_new(MME_EVENT_S6A_MESSAGE);
     ogs_assert(e);
     e->mme_ue = mme_ue;

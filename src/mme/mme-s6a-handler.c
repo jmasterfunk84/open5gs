@@ -172,7 +172,7 @@ void mme_s6a_handle_clr(
         mme_ue_t *mme_ue, ogs_diam_s6a_clr_message_t *clr_message)
 {
     ogs_assert(mme_ue);
-    ogs_assert(clr_message);    
+    ogs_assert(clr_message);
 
     /* Set EPS Detach */
     memset(&mme_ue->nas_eps.detach, 0, sizeof(ogs_nas_detach_type_t));
@@ -218,10 +218,13 @@ void mme_s6a_handle_clr(
 void mme_s6a_handle_dsr(
         mme_ue_t *mme_ue, ogs_diam_s6a_message_t *s6a_message)
 {
-    ogs_assert(mme_ue);
-    ogs_assert(clr_message);
-
     mme_sess_t *sess = NULL;
+    ogs_diam_s6a_dsr_message_t *dsr_message = NULL;
+
+    ogs_assert(mme_ue);
+    ogs_assert(s6a_message);
+    dsr_message = &s6a_message->dsr_message;
+    ogs_assert(dsr_message);
 
     if (dsr_message->dsr_flags &
             OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_CHARGING_CHARACTERISTICS) {
@@ -249,16 +252,6 @@ void mme_s6a_handle_dsr(
             dsr_message->context_identifier);
         mme_send_delete_session_by_sess_or_deactivate_bearer_context(mme_ue,
             sess);
-    }
-
-    if (dsr_message->dsr_flags &
-            OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_PERIODIC_RAU_TAU_TIMER) {
-        ogs_error("[%s] RAU TAU Timer not Implemented", imsi_bcd);
-        /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
-        ret = fd_msg_rescode_set(ans,
-            (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
-        ogs_assert(ret == 0);
-        goto outnoexp;
     }
 
     if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_A_MSISDN) {
