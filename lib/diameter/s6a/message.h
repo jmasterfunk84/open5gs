@@ -219,6 +219,7 @@ typedef struct ogs_diam_s6a_dsr_message_s {
 #define OGS_DIAM_S6A_DSR_FLAGS_EDRX_CYCLE_LENGTH                       (1 << 30)
 #define OGS_DIAM_S6A_DSR_FLAGS_SERVICE_GAP_TIME                        (1 << 31)
     uint32_t dsr_flags;
+    uint32_t context_identifier;
 } ogs_diam_s6a_dsr_message_t;
 
 typedef struct ogs_diam_s6a_message_s {

@@ -19,6 +19,7 @@
 
 #include "mme-event.h"
 #include "mme-fd-path.h"
+#include "mme-path.h"
 
 /* handler for Cancel-Location-Request cb */
 static struct disp_hdl *hdl_s6a_clr = NULL;
@@ -1791,6 +1792,7 @@ static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
 
     struct msg *ans, *qry;
 
+    mme_event_t *e = NULL;
     mme_ue_t *mme_ue = NULL;
     ogs_diam_s6a_message_t *s6a_message = NULL;
     ogs_diam_s6a_dsr_message_t *dsr_message = NULL;
@@ -1873,46 +1875,12 @@ static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
     if (avp) {
         ret = fd_msg_avp_hdr(avp, &hdr);
         ogs_assert(ret == 0);
-        context_identifier = hdr->avp_value->i32;
+        dsr_message->context_identifier = hdr->avp_value->i32;
     }
 
-    if (dsr_message->dsr_flags & 
-            OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_CHARGING_CHARACTERISTICS) {
-        memcpy(mme_ue->charging_characteristics, (uint8_t *)"\x00\x00", 
-            OGS_CHRGCHARS_LEN);
-        mme_ue->charging_characteristics_presence = false;
-    }
-
-    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION) {
-        if (context_identifier == mme_ue->context_identifier) {
-            ogs_error("[%s] PDN Subscription Deletion of Default APN not "
-                "allowed", imsi_bcd);
-            /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
-            ret = fd_msg_rescode_set(ans,
-                (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
-            ogs_assert(ret == 0);
-            goto outnoexp;
-        }
-        if (!mme_session_find_by_context_identifier(mme_ue, 
-                context_identifier)) {
-            ogs_error("[%s] Unknown Context-Identifier", imsi_bcd);
-            /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
-            ret = fd_msg_rescode_set(ans,
-                (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
-            ogs_assert(ret == 0);
-            goto outnoexp;
-        }
-        mme_session_remove_by_context_identifier(mme_ue, context_identifier);
-    }
-
-    if (dsr_message->dsr_flags & 
-            OGS_DIAM_S6A_DSR_FLAGS_COMPLETE_PDP_CONTEXT_LIST) {
-        mme_session_remove_all(mme_ue);
-    }
-
-    if (dsr_message->dsr_flags & 
-            OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_PERIODIC_RAU_TAU_TIMER) {
-        ogs_error("[%s] RAU TAU Timer not Implemented", imsi_bcd);
+    if (dsr_message->context_identifier == mme_ue->context_identifier) {
+        ogs_error("[%s] PDN Subscription Deletion of Default APN not "
+            "allowed", imsi_bcd);
         /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
         ret = fd_msg_rescode_set(ans,
             (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
@@ -1920,12 +1888,14 @@ static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
         goto outnoexp;
     }
 
-    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_A_MSISDN) {
-        memset(mme_ue->a_msisdn, 0, sizeof(mme_ue->a_msisdn));
-    }
-    
-    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_MSISDN) {
-        memset(mme_ue->msisdn, 0, sizeof(mme_ue->msisdn));
+    if (!mme_session_find_by_context_identifier(mme_ue,
+            dsr_message->context_identifier)) {
+        ogs_error("[%s] Unknown Context-Identifier", imsi_bcd);
+        /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
+        ret = fd_msg_rescode_set(ans,
+            (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
+        ogs_assert(ret == 0);
+        goto outnoexp;
     }
 
     /* Set the Origin-Host, Origin-Realm, andResult-Code AVPs */
@@ -1957,7 +1927,18 @@ static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
     ogs_diam_logger_self()->stats.nb_echoed++;
     ogs_assert( pthread_mutex_unlock(&ogs_diam_logger_self()->stats_lock) == 0);
 
-    ogs_free(s6a_message);
+    e = mme_event_new(MME_EVENT_S6A_MESSAGE);
+    ogs_assert(e);
+    e->mme_ue = mme_ue;
+    e->s6a_message = s6a_message;
+    rv = ogs_queue_push(ogs_app()->queue, e);
+    if (rv != OGS_OK) {
+        ogs_error("ogs_queue_push() failed:%d", (int)rv);
+        ogs_free(s6a_message);
+        mme_event_free(e);
+    } else {
+        ogs_pollset_notify(ogs_app()->pollset);
+    }
 
     return 0;
 

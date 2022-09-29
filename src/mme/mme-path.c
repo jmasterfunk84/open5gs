@@ -68,6 +68,24 @@ void mme_send_delete_session_or_mme_ue_context_release(mme_ue_t *mme_ue)
     }
 }
 
+void mme_send_delete_session_by_sess_or_deactivate_bearer_context(
+    mme_ue_t *mme_ue, mme_sess_t *sess)
+{
+    ogs_assert(mme_ue);
+    ogs_assert(sess);
+
+    if (MME_HAVE_SGW_S1U_PATH(sess)) {
+        ogs_assert(OGS_OK ==
+            mme_gtp_send_delete_session_request(mme_ue->sgw_ue, sess,
+            OGS_GTP_DELETE_SEND_DEACTIVATE_BEARER_CONTEXT_REQUEST));
+    } else {
+        mme_bearer_t *bearer = mme_default_bearer_in_sess(sess);
+        ogs_assert(bearer);
+        ogs_assert(OGS_OK ==
+            nas_eps_send_deactivate_bearer_context_request(bearer));
+    }
+}
+
 void mme_send_release_access_bearer_or_ue_context_release(enb_ue_t *enb_ue)
 {
     mme_ue_t *mme_ue = NULL;
