@@ -1194,10 +1194,13 @@ int hss_handle_change_event(const bson_t *document)
 
     char *utf8 = NULL;
     uint32_t length = 0;
+    int rv;
 
     bool send_clr_flag = false;
     bool send_idr_flag = false;
+    bool send_idr_flag = false;
     uint32_t subdatamask = 0;
+    uint32_t dsr_flags = 0;
 
     char *imsi_bcd;
 
@@ -1238,6 +1241,40 @@ int hss_handle_change_event(const bson_t *document)
                             "request_cancel_location") && 
                             BSON_ITER_HOLDS_BOOL(&child2_iter)) {
                         send_clr_flag = (char *)bson_iter_bool(&child2_iter);
+                    } else if (!strncmp(child2_key, "msisdn",
+                            strlen("msisdn"))) {
+                        int msisdn_count = 0;
+                        bson_iter_recurse(&child2_iter, &child3_iter);
+                        while (bson_iter_next(&child3_iter)) {
+                            if (BSON_ITER_HOLDS_UTF8(&child3_iter)) {
+                                msisdn_count++;
+                            }
+                        }
+                        /* With change streams we do not know the previous
+                         * state, and must make some assumptions here */
+                        if (msisdn_count > 1) {
+                            /* MSISDN and/or A-MSISDN may have been updated or
+                             * MSISDN and/or A-MSISDN could have been added */
+                            send_idr_flag = true;
+                            subdatamask = (subdatamask |
+                                OGS_DIAM_S6A_SUBDATA_MSISDN);
+                            subdatamask = (subdatamask |
+                                OGS_DIAM_S6A_SUBDATA_A_MSISDN);
+                        if (msisdn_count == 1) {
+                            /* MSISDN Added/Updated or A-MSISDN Removed */
+                            send_idr_flag = true;
+                            subdatamask = (subdatamask |
+                                OGS_DIAM_S6A_SUBDATA_MSISDN);
+                            send_dsr_flag = true;
+                            dsr_flags = (dsr_flags |
+                                OGS_DIAM_S6A_DSR_FLAGS_A_MSISDN);
+                        } else {
+                            /* MSISDN and/or A-MSISDN removed */
+                            send_dsr_flag = true;
+                            dsr_flags = (dsr_flags |
+                                OGS_DIAM_S6A_DSR_FLAGS_MSISDN |
+                                OGS_DIAM_S6A_DSR_FLAGS_A_MSISDN);
+                        }
                     } else if (!strncmp(child2_key, 
                             "access_restriction_data",
                             strlen("access_restriction_data"))) {
@@ -1280,14 +1317,27 @@ int hss_handle_change_event(const bson_t *document)
 
     if (send_clr_flag) {
         ogs_info("[%s] Cancel Location Requested", imsi_bcd);
-        hss_s6a_send_clr(imsi_bcd, NULL, NULL,
+        rv = hss_s6a_send_clr(imsi_bcd, NULL, NULL,
             OGS_DIAM_S6A_CT_SUBSCRIPTION_WITHDRAWL);
-    } else if (send_idr_flag) {
+        if (rv != OGS_OK) goto out;
+    }
+
+    if (send_idr_flag) {
         ogs_info("[%s] Subscription-Data Changed", imsi_bcd);
-        hss_s6a_send_idr(imsi_bcd, 0, subdatamask);
+        rv = hss_s6a_send_idr(imsi_bcd, 0, subdatamask);
+        if (rv != OGS_OK) goto out;
+    }
+    if (send_dsr_flag) {
+        ogs_info("[%s] Subscription-Data Removed", imsi_bcd);
+        rv = hss_s6a_send_dsr(imsi_bcd, dsr_flags, 0);
+        if (rv != OGS_OK) goto out;
     }
 
     ogs_free(imsi_bcd);
 
     return OGS_OK;
+
+out:
+    ogs_free(imsi_bcd);
+    return rv;
 }

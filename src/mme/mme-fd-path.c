@@ -1910,7 +1910,8 @@ static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
         goto outnoexp;
     }
 
-    if (dsr_message->dsr_flags & (OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION & 
+    if (dsr_message->dsr_flags & (
+            OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION_CONTEXT &
             OGS_DIAM_S6A_DSR_FLAGS_PDP_CONTEXTS )) {
         ogs_error("[%s] PDN Subscription contexts Withdrawl and PDP contexts "
             "Withdrawl may not both be set", imsi_bcd);

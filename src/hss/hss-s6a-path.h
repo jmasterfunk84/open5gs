@@ -33,6 +33,10 @@ void hss_s6a_send_clr(char *imsi_bcd, char *mme_host, char *mme_realm,
 /* HSS Sends Insert Subscriber Data Request to MME */
 int hss_s6a_send_idr(char *imsi_bcd, uint32_t idr_flags, uint32_t subdata_mask);
 
+/* HSS Sends Delete Subscriber Data Request to MME */
+int hss_s6a_send_dsr(char *imsi_bcd, uint32_t dsr_flags,
+    uint32_t context_identifer);
+
 #ifdef __cplusplus
 }
 #endif

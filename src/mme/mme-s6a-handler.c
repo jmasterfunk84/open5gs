@@ -235,7 +235,8 @@ void mme_s6a_handle_dsr(
         mme_ue->charging_characteristics_presence = false;
     }
 
-    if (dsr_message->dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION) {
+    if (dsr_message->dsr_flags & 
+            OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION_CONTEXT) {
         sess = mme_sess_find_by_context_identifier(mme_ue,
             dsr_message->context_identifier);
         if (sess) {

@@ -35,6 +35,8 @@ static struct disp_hdl *hdl_s6a_pur = NULL;
 static void hss_s6a_cla_cb(void *data, struct msg **msg);
 /* handler for Insert-Subscriber-Data-Answer cb */
 static void hss_s6a_ida_cb(void *data, struct msg **msg);
+/* handler for Delete-Subscriber-Data-Answer cb */
+static void hss_s6a_dsa_cb(void *data, struct msg **msg);
 /* handler for Sessions */
 static struct session_handler *hss_s6a_reg = NULL;
 
@@ -1460,6 +1462,203 @@ static void hss_s6a_ida_cb(void *data, struct msg **msg)
     int new;
 
     ogs_debug("[HSS] Insert-Subscriber-Data-Answer");
+
+    /* Search the session, retrieve its data */
+    ret = fd_msg_sess_get(fd_g_config->cnf_dict, *msg, &session, &new);
+    ogs_expect_or_return(ret == 0);
+    ogs_expect_or_return(new == 0);
+
+    ret = fd_sess_state_retrieve(hss_s6a_reg, session, &sess_data);
+    ogs_expect_or_return(ret == 0);
+    ogs_expect_or_return(sess_data);
+    ogs_expect_or_return((void *)sess_data == data);
+
+    ret = fd_msg_free(*msg);
+    ogs_assert(ret == 0);
+    *msg = NULL;
+
+    state_cleanup(sess_data, NULL, NULL);
+    return;
+}
+
+/* HSS Sends Delete Subscriber Data Request to MME */
+int hss_s6a_send_dsr(char *imsi_bcd, uint32_t dsr_flags,
+    uint32_t context_identifier)
+{
+    int ret;
+
+    struct msg *req = NULL;
+    struct avp *avp;
+    union avp_value val;
+    struct sess_state *sess_data = NULL, *svg;
+    struct session *session = NULL;
+
+    ogs_subscription_data_t subscription_data;
+
+    ogs_debug("[HSS] Delete-Subscriber-Data-Request");
+
+    memset(&subscription_data, 0, sizeof(ogs_subscription_data_t));
+
+    ret = hss_db_subscription_data(imsi_bcd, &subscription_data);
+    if (ret != OGS_OK) {
+        ogs_error("Cannot get Subscription-Data for IMSI:'%s'", imsi_bcd);
+        return OGS_ERROR;
+    }
+
+    if (subscription_data.purge_flag) {
+        ogs_error("    [%s] UE Purged at MME.  Cannot send DSR.", imsi_bcd);
+        return OGS_ERROR;
+    }
+
+    /* Create the random value to store with the session */
+    sess_data = ogs_calloc(1, sizeof(*sess_data));
+    ogs_assert(sess_data);
+
+    /* Create the request */
+    ret = fd_msg_new(ogs_diam_s6a_cmd_idr, MSGFL_ALLOC_ETEID, &req);
+    ogs_assert(ret == 0);
+
+    /* Create a new session */
+    #define OGS_DIAM_S6A_APP_SID_OPT  "app_s6a"
+    ret = fd_msg_new_session(req, (os0_t)OGS_DIAM_S6A_APP_SID_OPT, 
+            CONSTSTRLEN(OGS_DIAM_S6A_APP_SID_OPT));
+    ogs_assert(ret == 0);
+    ret = fd_msg_sess_get(fd_g_config->cnf_dict, req, &session, NULL);
+    ogs_assert(ret == 0);
+
+    /* Set the Auth-Session-State AVP */
+    ret = fd_msg_avp_new(ogs_diam_auth_session_state, 0, &avp);
+    ogs_assert(ret == 0);
+    val.i32 = OGS_DIAM_AUTH_SESSION_NO_STATE_MAINTAINED;
+    ret = fd_msg_avp_setvalue(avp, &val);
+    ogs_assert(ret == 0);
+    ret = fd_msg_avp_add(req, MSG_BRW_LAST_CHILD, avp);
+    ogs_assert(ret == 0);
+
+    /* Set Origin-Host & Origin-Realm */
+    ret = fd_msg_add_origin(req, 0);
+    ogs_assert(ret == 0);
+
+    /* Set the Destination-Host AVP */
+    if (subscription_data.mme_host != NULL) {
+        ret = fd_msg_avp_new(ogs_diam_destination_host, 0, &avp);
+        ogs_assert(ret == 0);
+        val.os.data = (uint8_t *)subscription_data.mme_host;
+        val.os.len  = strlen(subscription_data.mme_host);
+        ret = fd_msg_avp_setvalue(avp, &val);
+        ogs_assert(ret == 0);
+        ret = fd_msg_avp_add(req, MSG_BRW_LAST_CHILD, avp);
+        ogs_assert(ret == 0);
+    }
+
+    /* Set the Destination-Realm AVP */
+    ret = fd_msg_avp_new(ogs_diam_destination_realm, 0, &avp);
+    ogs_assert(ret == 0);
+    if (subscription_data.mme_realm == NULL) {
+        val.os.data = (unsigned char *)(fd_g_config->cnf_diamrlm);
+        val.os.len  = strlen(fd_g_config->cnf_diamrlm);
+    } else {
+        val.os.data = (unsigned char *)subscription_data.mme_realm;
+        val.os.len  = strlen(subscription_data.mme_realm);
+    }
+    ret = fd_msg_avp_setvalue(avp, &val);
+    ogs_assert(ret == 0);
+    ret = fd_msg_avp_add(req, MSG_BRW_LAST_CHILD, avp);
+    ogs_assert(ret == 0);
+
+    /* Set the User-Name AVP */
+    ret = fd_msg_avp_new(ogs_diam_user_name, 0, &avp);
+    ogs_assert(ret == 0);
+    val.os.data = (uint8_t *)imsi_bcd;
+    val.os.len  = strlen(imsi_bcd);
+    ret = fd_msg_avp_setvalue(avp, &val);
+    ogs_assert(ret == 0);
+    ret = fd_msg_avp_add(req, MSG_BRW_LAST_CHILD, avp);
+    ogs_assert(ret == 0);
+
+    if (dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_COMPLETE_APN_CONFIGURATION_PROFILE) {
+        ogs_error("[%s] Complete APN Configuration Profile Withdrawal "
+            "not allowed to be sent to MME", imsi_bcd);
+        goto out;
+    }
+
+    /* Set the Context-Identifier for session or context deletion */
+    if (context_identifier) {
+        if (context_identifier == subscription_data.context_identifier) {
+            ogs_error("[%s] Unable to withdrawal default APN configuration", 
+                imsi_bcd);
+            goto out;
+        } else if (
+                (dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION_CONTEXT) || 
+                (dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDP_CONTEXTS)) {
+            ret = fd_msg_avp_new(ogs_diam_s6a_context_identifier, 0, &avp);
+            ogs_assert(ret == 0);
+            val.u32 = context_identifier;
+            ret = fd_msg_avp_setvalue(avp, &val);
+            ogs_assert(ret == 0);
+            ret = fd_msg_avp_add(req, MSG_BRW_LAST_CHILD, avp);
+            ogs_assert(ret == 0);
+        } else {
+            ogs_error("[%s] Context-Identifier specified without appropriate"
+                "DSR-Flags set", imsi_bcd);
+            goto out;
+        }
+    }
+
+    /* Set the DSR-Flags */
+    if (dsr_flags) {
+        ret = fd_msg_avp_new(ogs_diam_s6a_dsr_flags, 0, &avp);
+        ogs_assert(ret == 0);
+        val.u32 = dsr_flags;
+        ret = fd_msg_avp_setvalue(avp, &val);
+        ogs_assert(ret == 0);
+        ret = fd_msg_avp_add(req, MSG_BRW_LAST_CHILD, avp);
+        ogs_assert(ret == 0);
+    }
+
+    /* Set Vendor-Specific-Application-Id AVP */
+    ret = ogs_diam_message_vendor_specific_appid_set(
+            req, OGS_DIAM_S6A_APPLICATION_ID);
+    ogs_assert(ret == 0);
+
+    /* Keep a pointer to the session data for debug purpose,
+     * in real life we would not need it */
+    svg = sess_data;
+
+    /* Store this value in the session */
+    ret = fd_sess_state_store(hss_s6a_reg, session, &sess_data); 
+    ogs_assert(ret == 0);
+    ogs_assert(sess_data == 0);
+
+    /* Send the request */
+    ret = fd_msg_send(&req, hss_s6a_dsa_cb, svg);
+    ogs_assert(ret == 0);
+
+    /* Increment the counter */
+    ogs_assert(pthread_mutex_lock(&ogs_diam_logger_self()->stats_lock) == 0);
+    ogs_diam_logger_self()->stats.nb_sent++;
+    ogs_assert(pthread_mutex_unlock(&ogs_diam_logger_self()->stats_lock) == 0);
+
+    ogs_subscription_data_free(&subscription_data);
+
+    return OGS_OK;
+
+out:
+    ogs_subscription_data_free(&subscription_data);
+
+    return OGS_ERROR;
+}
+
+/* HSS received Delete Subscriber Data Answer from MME */
+static void hss_s6a_dsa_cb(void *data, struct msg **msg)
+{
+    int ret;
+
+    struct sess_state *sess_data = NULL;
+    struct session *session;
+    int new;
+
+    ogs_debug("[HSS] Delete-Subscriber-Data-Answer");
 
     /* Search the session, retrieve its data */
     ret = fd_msg_sess_get(fd_g_config->cnf_dict, *msg, &session, &new);

@@ -203,7 +203,7 @@ typedef struct ogs_diam_s6a_dsr_message_s {
 #define OGS_DIAM_S6A_DSR_FLAGS_REGIONAL_SUBSCRIPTION                   (1)
 #define OGS_DIAM_S6A_DSR_FLAGS_COMPLETE_APN_CONFIGURATION_PROFILE      (1 << 1)
 #define OGS_DIAM_S6A_DSR_FLAGS_SUBSCRIBED_CHARGING_CHARACTERISTICS     (1 << 2)
-#define OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION                        (1 << 3)
+#define OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION_CONTEXT                (1 << 3)
 #define OGS_DIAM_S6A_DSR_FLAGS_STN_SR                                  (1 << 4)
 #define OGS_DIAM_S6A_DSR_FLAGS_COMPLETE_PDP_CONTEXT_LIST               (1 << 5)
 #define OGS_DIAM_S6A_DSR_FLAGS_PDP_CONTEXTS                            (1 << 6)
