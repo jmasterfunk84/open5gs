@@ -1515,7 +1515,7 @@ int hss_s6a_send_dsr(char *imsi_bcd, uint32_t dsr_flags,
     ogs_assert(sess_data);
 
     /* Create the request */
-    ret = fd_msg_new(ogs_diam_s6a_cmd_idr, MSGFL_ALLOC_ETEID, &req);
+    ret = fd_msg_new(ogs_diam_s6a_cmd_dsr, MSGFL_ALLOC_ETEID, &req);
     ogs_assert(ret == 0);
 
     /* Create a new session */
@@ -1589,8 +1589,7 @@ int hss_s6a_send_dsr(char *imsi_bcd, uint32_t dsr_flags,
                 imsi_bcd);
             goto out;
         } else if (
-                (dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION_CONTEXT) || 
-                (dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDP_CONTEXTS)) {
+                (dsr_flags & OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION_CONTEXT)) {
             ret = fd_msg_avp_new(ogs_diam_s6a_context_identifier, 0, &avp);
             ogs_assert(ret == 0);
             val.u32 = context_identifier;

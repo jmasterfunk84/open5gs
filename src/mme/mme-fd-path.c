@@ -1941,7 +1941,8 @@ static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
         dsr_message->context_identifier = hdr->avp_value->i32;
     }
 
-    if (dsr_message->context_identifier == mme_ue->context_identifier) {
+    if (dsr_message->context_identifier && 
+            (dsr_message->context_identifier == mme_ue->context_identifier)) {
         ogs_error("[%s] PDN Subscription Deletion of Default APN not "
             "allowed", imsi_bcd);
         /* Set the Origin-Host, Origin-Realm, and Result-Code AVPs */
@@ -1951,7 +1952,8 @@ static int mme_ogs_diam_s6a_dsr_cb( struct msg **msg, struct avp *avp,
         goto outnoexp;
     }
 
-    if (!mme_session_find_by_context_identifier(mme_ue,
+    if (dsr_message->context_identifier && 
+            !mme_session_find_by_context_identifier(mme_ue,
             dsr_message->context_identifier)) {
         ogs_error("[%s] Unknown Context-Identifier [%d]", imsi_bcd,
             dsr_message->context_identifier);
