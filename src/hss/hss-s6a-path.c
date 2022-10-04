@@ -1584,7 +1584,7 @@ int hss_s6a_send_dsr(char *imsi_bcd, uint32_t dsr_flags,
 
     /* Set the Context-Identifier for session or context deletion */
     if (context_identifier) {
-        if (context_identifier == subscription_data.context_identifier) {
+        if (context_identifier == 1) {
             ogs_error("[%s] Unable to withdrawal default APN configuration", 
                 imsi_bcd);
             goto out;

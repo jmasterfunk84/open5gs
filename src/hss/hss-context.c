@@ -1198,7 +1198,7 @@ int hss_handle_change_event(const bson_t *document)
 
     bool send_clr_flag = false;
     bool send_idr_flag = false;
-    bool send_idr_flag = false;
+    bool send_dsr_flag = false;
     uint32_t subdatamask = 0;
     uint32_t dsr_flags = 0;
 
@@ -1260,7 +1260,7 @@ int hss_handle_change_event(const bson_t *document)
                                 OGS_DIAM_S6A_SUBDATA_MSISDN);
                             subdatamask = (subdatamask |
                                 OGS_DIAM_S6A_SUBDATA_A_MSISDN);
-                        if (msisdn_count == 1) {
+                        } else if (msisdn_count == 1) {
                             /* MSISDN Added/Updated or A-MSISDN Removed */
                             send_idr_flag = true;
                             subdatamask = (subdatamask |
@@ -1317,9 +1317,8 @@ int hss_handle_change_event(const bson_t *document)
 
     if (send_clr_flag) {
         ogs_info("[%s] Cancel Location Requested", imsi_bcd);
-        rv = hss_s6a_send_clr(imsi_bcd, NULL, NULL,
+        hss_s6a_send_clr(imsi_bcd, NULL, NULL,
             OGS_DIAM_S6A_CT_SUBSCRIPTION_WITHDRAWL);
-        if (rv != OGS_OK) goto out;
     }
 
     if (send_idr_flag) {
