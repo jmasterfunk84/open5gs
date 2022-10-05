@@ -259,6 +259,8 @@ void mme_s6a_handle_dsr(
         sess = mme_sess_find_by_context_identifier(mme_ue,
             dsr_message->context_identifier);
         if (sess) {
+            mme_bearer_t *bearer = mme_default_bearer_in_sess(sess);
+            ogs_assert(bearer);
             if (mme_sess_count(mme_ue) == 1) /* Last Session */ {
                 /* mme_detach_explicit(mme_ue, FALSE); */
             } else if (ECM_IDLE(mme_ue)) {
@@ -270,8 +272,6 @@ void mme_s6a_handle_dsr(
                 mme_send_delete_session_by_sess_or_deactivate_bearer_context(
                     mme_ue, sess);
             }
-            mme_bearer_t *bearer = mme_default_bearer_in_sess(sess);
-            ogs_assert(bearer);
             OGS_FSM_TRAN(&bearer->sm, esm_state_pdn_will_disconnect);
         }
         mme_session_remove_by_context_identifier(mme_ue,
