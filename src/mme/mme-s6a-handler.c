@@ -262,17 +262,17 @@ void mme_s6a_handle_dsr(
             if (mme_sess_count(mme_ue) == 1) /* Last Session */ {
                 /* mme_detach_explicit(mme_ue, FALSE); */
             } else if (ECM_IDLE(mme_ue)) {
-                mme_bearer_t *bearer = mme_default_bearer_in_sess(sess);
-                ogs_assert(bearer);
                 MME_STORE_PAGING_INFO(mme_ue, MME_PAGING_TYPE_DELETE_BEARER, 
                     bearer);
                 ogs_assert(OGS_OK == s1ap_send_paging(mme_ue, 
                     S1AP_CNDomain_ps));
-                OGS_FSM_TRAN(&bearer->sm, esm_state_pdn_will_disconnect);
             } else {
                 mme_send_delete_session_by_sess_or_deactivate_bearer_context(
                     mme_ue, sess);
             }
+            mme_bearer_t *bearer = mme_default_bearer_in_sess(sess);
+            ogs_assert(bearer);
+            OGS_FSM_TRAN(&bearer->sm, esm_state_pdn_will_disconnect);
         }
         mme_session_remove_by_context_identifier(mme_ue,
             dsr_message->context_identifier);
