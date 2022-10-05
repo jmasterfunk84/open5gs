@@ -256,14 +256,12 @@ void mme_s6a_handle_dsr(
     if (dsr_message->dsr_flags & 
             OGS_DIAM_S6A_DSR_FLAGS_PDN_SUBSCRIPTION_CONTEXT) {
 
-    ogs_assert(mme_ue);
-
         sess = mme_sess_find_by_context_identifier(mme_ue,
             dsr_message->context_identifier);
         if (sess) {
             if (mme_sess_count(mme_ue) == 1) /* Last Session */ {
                 /* mme_detach_explicit(mme_ue, FALSE); */
-            } elseif (ECM_IDLE(mme_ue)) {
+            } else if (ECM_IDLE(mme_ue)) {
                 mme_bearer_t *bearer = mme_default_bearer_in_sess(sess);
                 ogs_assert(bearer);
                 MME_STORE_PAGING_INFO(mme_ue, MME_PAGING_TYPE_DELETE_BEARER, 
