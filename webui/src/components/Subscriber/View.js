@@ -16,6 +16,8 @@ import KeyboardControlIcon from 'react-icons/lib/md/keyboard-control';
 
 import { Modal, Tooltip, Dimmed } from 'components';
 
+import { MODEL, updateSubscriber } from 'modules/crud/subscriber';
+
 const Wrapper = styled.div`
   display: flex;
   flex-direction: column;
@@ -166,7 +168,28 @@ const Pdn = styled.div`
     }
   }
 `
-const View = ({ visible, disableOnClickOutside, subscriber, onEdit, onDelete, onHide }) => {
+
+
+
+handleCancelLocation = (formData) => {
+  const { dispatch, action } = this.props;
+  formData.request_cancel_location = "true";
+
+  console.log("here we go");
+
+  NProgress.configure({ 
+    parent: '#nprogress-base-form',
+    trickleSpeed: 5
+  });
+  NProgress.start();
+
+  dispatch(updateSubscriber(formData.imsi, {}, formData));
+}
+
+
+class View extends Component {
+
+const View = ({ visible, disableOnClickOutside, subscriber, onCancelLocation, onEdit, onDelete, onHide }) => {
   const imsi = (subscriber || {}).imsi;
   const msisdn_list = ((subscriber || {}).msisdn || []);
   const imeisv = (subscriber || {}).imeisv;
@@ -187,6 +210,9 @@ const View = ({ visible, disableOnClickOutside, subscriber, onEdit, onDelete, on
           <Header>
             <div className="title">{imsi}</div>
             <div className="actions">
+              <Tooltip content='CancelLocation' width="60px">
+                <CircleButton onClick={() => onCancelLocation(imsi)}><CloseIcon/></CircleButton>
+              </Tooltip>
               <Tooltip content='Edit' width="60px">
                 <CircleButton onClick={() => onEdit(imsi)}><EditIcon/></CircleButton>
               </Tooltip>
@@ -280,6 +306,11 @@ const View = ({ visible, disableOnClickOutside, subscriber, onEdit, onDelete, on
                         <div className="data">
                           {purge_flag === true ? ( "Purged" ) : ( "Not Purged" )}
                           <span style={{color:oc.gray[5]}}><KeyboardControlIcon/>UE is Purged at MME</span>
+                        </div>
+                        <div className="data">
+                          <Button onclick="{console.log('hi')}" class="btn btn-danger">
+                            Send Cancel Location
+                          </Button>
                         </div>
                       </div>
                     </div>

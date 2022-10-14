@@ -247,6 +247,7 @@ class Collection extends Component {
           subscriber={data.filter(subscriber => 
             subscriber.imsi === this.state.view.imsi)[0]}
           disableOnClickOutside={this.state.view.disableOnClickOutside}
+          onCancelLocation={documentHandler.actions.update}
           onEdit={documentHandler.actions.update}
           onDelete={confirmHandler.show}
           onHide={viewHandler.hide}/>
