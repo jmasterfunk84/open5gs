@@ -104,7 +104,7 @@ void mme_context_init()
     ogs_pool_init(&sgw_ue_pool, ogs_app()->max.ue);
     ogs_pool_init(&mme_sess_pool, ogs_app()->pool.sess);
     ogs_pool_init(&mme_bearer_pool, ogs_app()->pool.bearer);
-    ogs_pool_init(&self.m_tmsi, ogs_app()->max.ue);
+    ogs_pool_init(&self.m_tmsi, ogs_app()->max.ue*2);
 
     self.enb_addr_hash = ogs_hash_make();
     ogs_assert(self.enb_addr_hash);
@@ -1942,7 +1942,11 @@ enb_ue_t *enb_ue_add(mme_enb_t *enb, uint32_t enb_ue_s1ap_id)
     ogs_assert(enb);
 
     ogs_pool_alloc(&enb_ue_pool, &enb_ue);
-    ogs_assert(enb_ue);
+    if (enb_ue == NULL) {
+        ogs_error("Could not allocate enb_ue context from pool");
+        return NULL;
+    }
+
     memset(enb_ue, 0, sizeof *enb_ue);
 
     enb_ue->t_s1_holding = ogs_timer_add(
@@ -2266,7 +2270,11 @@ mme_ue_t *mme_ue_add(enb_ue_t *enb_ue)
     ogs_assert(enb);
 
     ogs_pool_alloc(&mme_ue_pool, &mme_ue);
-    ogs_assert(mme_ue);
+    if (mme_ue == NULL) {
+        ogs_error("Could not allocate mme_ue context from pool");
+        return NULL;
+    }
+
     memset(mme_ue, 0, sizeof *mme_ue);
 
     /* Add All Timers */
@@ -2698,7 +2706,7 @@ int mme_ue_set_imsi(mme_ue_t *mme_ue, char *imsi_bcd)
             if (SESSION_CONTEXT_IS_AVAILABLE(old_mme_ue)) {
                 ogs_warn("[%s] Trigger OLD Session Remove", mme_ue->imsi_bcd);
                 mme_gtp_send_delete_all_sessions(old_mme_ue,
-                        OGS_GTP_DELETE_UE_CONTEXT_REMOVE);
+                        OGS_GTP_DELETE_UE_CONTEXT_REMOVE_PARTIAL);
             }
         }
     }
@@ -3472,7 +3480,7 @@ int mme_m_tmsi_pool_generate()
     int index = 0;
 
     ogs_trace("M-TMSI Pool try to generate...");
-    for (i = 0; index < ogs_app()->max.ue; i++) {
+    for (i = 0; index < ogs_app()->max.ue*2; i++) {
         mme_m_tmsi_t *m_tmsi = NULL;
         int conflict = 0;
 

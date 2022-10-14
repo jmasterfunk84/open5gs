@@ -60,7 +60,7 @@ void amf_context_init(void)
     ogs_pool_init(&amf_ue_pool, ogs_app()->max.ue);
     ogs_pool_init(&ran_ue_pool, ogs_app()->max.ue);
     ogs_pool_init(&amf_sess_pool, ogs_app()->pool.sess);
-    ogs_pool_init(&self.m_tmsi, ogs_app()->max.ue);
+    ogs_pool_init(&self.m_tmsi, ogs_app()->max.ue*2);
 
     ogs_list_init(&self.gnb_list);
     ogs_list_init(&self.amf_ue_list);
@@ -1063,7 +1063,11 @@ ran_ue_t *ran_ue_add(amf_gnb_t *gnb, uint32_t ran_ue_ngap_id)
     ogs_assert(gnb);
 
     ogs_pool_alloc(&ran_ue_pool, &ran_ue);
-    ogs_assert(ran_ue);
+    if (ran_ue == NULL) {
+        ogs_error("Could not allocate ran_ue context from pool");
+        return NULL;
+    }
+
     memset(ran_ue, 0, sizeof *ran_ue);
 
     ran_ue->t_ng_holding = ogs_timer_add(
@@ -1257,7 +1261,11 @@ amf_ue_t *amf_ue_add(ran_ue_t *ran_ue)
     ogs_assert(gnb);
 
     ogs_pool_alloc(&amf_ue_pool, &amf_ue);
-    ogs_assert(amf_ue);
+    if (amf_ue == NULL) {
+        ogs_error("Could not allocate amf_ue context from pool");
+        return NULL;
+    }
+
     memset(amf_ue, 0, sizeof *amf_ue);
 
     /* Add All Timers */
@@ -1387,6 +1395,8 @@ void amf_ue_remove(amf_ue_t *amf_ue)
 
     if (amf_ue->policy_association_id)
         ogs_free(amf_ue->policy_association_id);
+    if (amf_ue->data_change_subscription_id)
+        ogs_free(amf_ue->data_change_subscription_id);
 
     if (amf_ue->confirmation_url_for_5g_aka)
         ogs_free(amf_ue->confirmation_url_for_5g_aka);
@@ -2118,7 +2128,7 @@ int amf_m_tmsi_pool_generate()
     int index = 0;
 
     ogs_trace("M-TMSI Pool try to generate...");
-    for (i = 0; index < ogs_app()->max.ue; i++) {
+    for (i = 0; index < ogs_app()->max.ue*2; i++) {
         amf_m_tmsi_t *m_tmsi = NULL;
         int conflict = 0;
 
