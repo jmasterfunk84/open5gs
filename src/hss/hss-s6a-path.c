@@ -1216,7 +1216,6 @@ static int hss_ogs_diam_s6a_nor_cb( struct msg **msg, struct avp *avp,
                 (char*)"DIAMETER_ERROR_UNKNOWN_SERVING_NODE", NULL, NULL, 1);
         ogs_assert(ret == 0);
         goto outnoexp;
-        }
     }
 
     ret = fd_msg_search_avp(qry, ogs_diam_service_selection, &avp);
@@ -1238,8 +1237,7 @@ static int hss_ogs_diam_s6a_nor_cb( struct msg **msg, struct avp *avp,
         if (avpch1) {
             ret = fd_msg_avp_value_interpret(avpch1, &addr.sa);
             ogs_assert(ret == 0);
-            if (addr.ogs_sa_family == AF_INET)
-            {
+            if (addr.ogs_sa_family == AF_INET) {
                 session->smf_ip.ipv4 = 1;
                 session->smf_ip.addr =
                     addr.sin.sin_addr.s_addr;
