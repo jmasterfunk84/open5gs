@@ -575,6 +575,9 @@ const uiSchema = {
           },
           "smf" : {
             classNames: "col-xs-12",
+            "static": {
+              classNames: "col-xs-12",
+            },
             "addr" : {
               classNames: "col-xs-6"
             },
