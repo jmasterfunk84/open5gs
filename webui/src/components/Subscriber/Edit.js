@@ -288,7 +288,7 @@ const schema = {
                       "title": "SMF IPv6 Address",
                       "format" : "ipv6"
                     },
-                    "addr6": {
+                    "static": {
                       "type": "boolean",
                       "title": "Enable Static SMF Allocation",
                     }
