@@ -664,9 +664,8 @@ int ogs_dbi_subscription_data(char *supi,
                                                     child5_key, "static") &&
                                             BSON_ITER_HOLDS_BOOL(
                                                 &child5_iter)) {
-                                            session->smf_ip.static = 
+                                            session->smf_static_allocation = 
                                                 bson_iter_bool(&child5_iter);
-                                            }
                                         }
                                     }
                                 } else if (!strcmp(child4_key, "ue") &&
