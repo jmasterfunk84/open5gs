@@ -58,6 +58,19 @@ extern "C" {
 #define OGS_DIAM_S6A_ULR_NODE_TYPE_IND                  (1 << 4)
 #define OGS_DIAM_S6A_ULR_INITIAL_ATTACH_IND             (1 << 5)
 #define OGS_DIAM_S6A_ULR_PS_LCS_SUPPORTED_BY_UE         (1 << 6)
+#define OGS_DIAM_S6A_ULR_SMS_ONLY_INDICATION            (1 << 7)
+#define OGS_DIAM_S6A_ULR_DUAL_REG_5G_INDICATION         (1 << 8)
+
+#define OGS_DIAM_S6A_NOR_SINGLE_REGISTRATION_IND        (1)
+#define OGS_DIAM_S6A_NOR_SGSN_AREA_RESTRICTED           (1 << 1)
+#define OGS_DIAM_S6A_NOR_READY_FOR_SM_FROM_SGSN         (1 << 2)
+#define OGS_DIAM_S6A_NOR_UE_REACHABLE_FROM_MME          (1 << 3)
+#define OGS_DIAM_S6A_NOR_RESERVED                       (1 << 4)
+#define OGS_DIAM_S6A_NOR_UE_REACHABLE_FROM_SGSN         (1 << 5)
+#define OGS_DIAM_S6A_NOR_READY_FOR_SM_FROM_MME          (1 << 6)
+#define OGS_DIAM_S6A_NOR_SUPPORT_OF_IMSVOPS             (1 << 7)
+#define OGS_DIAM_S6A_NOR_S6A_S6D_INDICATOR              (1 << 8)
+#define OGS_DIAM_S6A_NOR_REMOVAL_OF_MME_REG_FOR_SMS     (1 << 9)
 
 #define OGS_DIAM_S6A_UE_SRVCC_NOT_SUPPORTED             (0)
 #define OGS_DIAM_S6A_UE_SRVCC_SUPPORTED                 (1)
@@ -99,12 +112,15 @@ extern struct dict_object *ogs_diam_s6a_cmd_clr;
 extern struct dict_object *ogs_diam_s6a_cmd_cla;
 extern struct dict_object *ogs_diam_s6a_cmd_idr;
 extern struct dict_object *ogs_diam_s6a_cmd_ida;
+extern struct dict_object *ogs_diam_s6a_cmd_nor;
+extern struct dict_object *ogs_diam_s6a_cmd_noa;
 
 extern struct dict_object *ogs_diam_s6a_ulr_flags;
 extern struct dict_object *ogs_diam_s6a_ula_flags;
 extern struct dict_object *ogs_diam_s6a_pua_flags;
 extern struct dict_object *ogs_diam_s6a_clr_flags;
 extern struct dict_object *ogs_diam_s6a_idr_flags;
+extern struct dict_object *ogs_diam_s6a_nor_flags;
 extern struct dict_object *ogs_diam_s6a_cancellation_type;
 extern struct dict_object *ogs_diam_s6a_subscription_data;
 extern struct dict_object *ogs_diam_s6a_req_eutran_auth_info;
@@ -206,6 +222,7 @@ typedef struct ogs_diam_s6a_message_s {
 #define OGS_DIAM_S6A_CMD_CODE_AUTHENTICATION_INFORMATION    318
 #define OGS_DIAM_S6A_CMD_CODE_INSERT_SUBSCRIBER_DATA        319
 #define OGS_DIAM_S6A_CMD_CODE_PURGE_UE                      321
+#define OGS_DIAM_S6A_CMD_CODE_NOTIFY                        323
     uint16_t                        cmd_code;
 
     /* Experimental Result Code */

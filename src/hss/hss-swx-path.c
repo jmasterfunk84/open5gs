@@ -729,7 +729,7 @@ static int hss_ogs_diam_swx_sar_cb( struct msg **msg, struct avp *avp,
                             MSG_BRW_LAST_CHILD, mip_home_agent_address);
                     ogs_assert(ret == 0);
                 }
-
+/* static dynamic here*/
                 if (session->smf_ip.ipv6) {
                     ret = fd_msg_avp_new(ogs_diam_mip_home_agent_address, 0,
                                 &mip_home_agent_address);

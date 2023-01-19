@@ -660,6 +660,13 @@ int ogs_dbi_subscription_data(char *supi,
                                                         ipsub.sub,
                                                         sizeof(ipsub.sub));
                                             }
+                                        } else if (!strcmp(
+                                                    child5_key, "static") &&
+                                            BSON_ITER_HOLDS_BOOL(
+                                                &child5_iter)) {
+                                            session->smf_ip.static = 
+                                                bson_iter_bool(&child5_iter);
+                                            }
                                         }
                                     }
                                 } else if (!strcmp(child4_key, "ue") &&

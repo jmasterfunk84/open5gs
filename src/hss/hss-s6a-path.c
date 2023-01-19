@@ -642,7 +642,7 @@ static int hss_s6a_avp_add_subscription_data(
                             MSG_BRW_LAST_CHILD, mip_home_agent_address);
                     ogs_assert(ret == 0);
                 }
-
+/* static dynamic here*/
                 if (session->smf_ip.ipv6) {
                     ret = fd_msg_avp_new(ogs_diam_mip_home_agent_address, 0,
                                 &mip_home_agent_address);

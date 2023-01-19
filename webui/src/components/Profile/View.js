@@ -396,7 +396,7 @@ const View = ({ visible, disableOnClickOutside, profile, onEdit, onDelete, onHid
                           <div className="large_data">{(session.ue || {}).addr6}</div>
                         </div>
                       }
-                      {session['smf'] !== undefined &&
+                      {session['smf'] !== undefined ? ((session.smf || {}).addr || (session.smf || {}).addr6) &&
                         <div className="body">
                           <div className="medium_data"></div>
                           <div className="medium_data" style={{color:oc.gray[5]}}>{"SMF IPv4"} </div>
@@ -406,6 +406,7 @@ const View = ({ visible, disableOnClickOutside, profile, onEdit, onDelete, onHid
                           <div className="large_data" style={{color:oc.gray[5]}}>{"Static SMF"} </div>
                           <div className="large_data">{(session.smf || {}).static ? "STATIC" : "DYNAMIC"}</div>
                         </div>
+                      : ''
                       }
                       {session['pcc_rule'] !== undefined &&
                         session.pcc_rule.map((pcc_rule, index) =>
