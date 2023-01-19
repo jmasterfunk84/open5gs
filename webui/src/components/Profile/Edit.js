@@ -569,15 +569,15 @@ const uiSchema = {
           },
           "smf" : {
             classNames: "col-xs-12",
-            "static": {
-              classNames: "col-xs-12",
-            },
             "addr" : {
               classNames: "col-xs-6"
             },
             "addr6" : {
               classNames: "col-xs-6"
             },
+            "static": {
+              classNames: "col-xs-12",
+            }
           },
           "pcc_rule": {
             classNames: "col-xs-12",
