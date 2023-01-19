@@ -288,6 +288,10 @@ const schema = {
                       "title": "SMF IPv6 Address",
                       "format" : "ipv6"
                     },
+                    "addr6": {
+                      "type": "boolean",
+                      "title": "Enable Static SMF Allocation",
+                    }
                   }
                 },
                 "pcc_rule": {

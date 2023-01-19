@@ -425,6 +425,8 @@ const View = ({ visible, disableOnClickOutside, subscriber, onEdit, onDelete, on
                       {session['smf'] !== undefined &&
                         <div className="body">
                           <div className="medium_data"></div>
+                          <div className="medium_data" style={{color:oc.gray[5]}}>{"SMF Allocation"} </div>
+                          <div className="large_data">{(session.smf || {}).static}</div>
                           <div className="medium_data" style={{color:oc.gray[5]}}>{"SMF IPv4"} </div>
                           <div className="large_data">{(session.smf || {}).addr}</div>
                           <div className="medium_data" style={{color:oc.gray[5]}}>{"SMF IPv6"} </div>

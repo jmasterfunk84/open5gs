@@ -282,6 +282,10 @@ const schema = {
                       "title": "SMF IPv6 Address",
                       "format" : "ipv6"
                     },
+                    "static": {
+                      "type": "boolean",
+                      "title": "Enable Static SMF Allocation"
+                    }
                   }
                 },
                 "pcc_rule": {
@@ -564,6 +568,9 @@ const uiSchema = {
             },
           },
           "smf" : {
+            "static": {
+              classNames: "col-xs-12",
+            },
             classNames: "col-xs-12",
             "addr" : {
               classNames: "col-xs-6"

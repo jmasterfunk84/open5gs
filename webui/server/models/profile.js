@@ -51,7 +51,8 @@ const Profile = new Schema({
       },
       smf: {
         addr: String,
-        addr6: String
+        addr6: String,
+        static: Boolean
       },
       pcc_rule: [{
         flow: [{
