@@ -1206,7 +1206,7 @@ static int hss_ogs_diam_s6a_nor_cb( struct msg **msg, struct avp *avp,
         ogs_min(hdr->avp_value->os.len, OGS_MAX_FQDN_LEN)+1);
 
     if (strcmp(subscription_data.mme_host, mme_host) ||
-            strcmp(subscription_data.mme_realm, mme_realm))) {
+            strcmp(subscription_data.mme_realm, mme_realm)) {
         ogs_error("Notify-Request not from serving MME:'%s'", imsi_bcd);
         ogs_error("    Expected Host: %s, Received Host: %s", 
             subscription_data.mme_host, mme_host);
@@ -1217,6 +1217,20 @@ static int hss_ogs_diam_s6a_nor_cb( struct msg **msg, struct avp *avp,
         ogs_assert(ret == 0);
         goto outnoexp;
     }
+
+    slice_data = &subscription_data->slice[0];
+    // slice_data-> session -> name
+    // search for service-selection in the slice_data
+    // if found, check if it's dynamic.
+    // if dynamic, then update, if static then error out. with unable to comply
+    rv = hss_db_update_dnn_smf(imsi_bcd, );
+        if (rv != OGS_OK) {
+            ogs_error("Cannot update UE Purged at MME flag:'%s'", imsi_bcd);
+            ret = fd_msg_rescode_set(ans,
+                    (char*)"DIAMETER_UNABLE_TO_COMPLY", NULL, NULL, 1);
+            ogs_assert(ret == 0);
+            goto outnoexp;
+        }
 
     ret = fd_msg_search_avp(qry, ogs_diam_service_selection, &avp);
     ogs_assert(ret == 0);
