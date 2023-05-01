@@ -38,6 +38,10 @@ void mme_s6a_send_ulr(mme_ue_t *mme_ue);
 /* MME Sends Purge UE Request to HSS */
 void mme_s6a_send_pur(mme_ue_t *mme_ue);
 
+/* MME Sends MO Forward Short Message Request to SMSC */
+void mme_sgd_send_ofr(mme_ue_t *mme_ue, 
+    ogs_nas_eps_message_container_t *nas_message_container);
+
 #ifdef __cplusplus
 }
 #endif
