@@ -24,14 +24,13 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
 {
     ogs_info("temp: activate");
     ogs_sbi_message_t message;
-    ogs_sbi_header_t header;
     ogs_sbi_request_t *request = NULL;
     ogs_sbi_server_t *server = NULL;
 
     //OpenAPI_sms_record_data_t SmsRecordData;
 
     OpenAPI_user_location_t ueLocation;
-    OpenAPI_sms_payload_t smsPayload;
+    //OpenAPI_sms_payload_t smsPayload;
 
     ogs_assert(amf_ue);
     ogs_assert(amf_ue->supi);

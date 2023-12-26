@@ -31,7 +31,7 @@ int smsf_initialize(void)
     rv = ogs_app_parse_local_conf(APP_NAME);
     if (rv != OGS_OK) return rv;
 
-    ogs_sbi_context_init(OpenAPI_nf_type_smsf);
+    ogs_sbi_context_init(OpenAPI_nf_type_SMSF);
     smsf_context_init();
 
     rv = ogs_sbi_context_parse_config(APP_NAME, "nrf", "scp");
