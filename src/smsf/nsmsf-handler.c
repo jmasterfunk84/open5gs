@@ -26,12 +26,17 @@ bool smsf_nsmsf_sm_service_handle_activate(
 {
     ogs_info("Activate");
 
-    response = ogs_sbi_build_response(
-                &sendmsg, OGS_SBI_HTTP_STATUS_OK);
-    ogs_assert(response);
+    ogs_sbi_message_t sendmsg;
+    ogs_sbi_response_t *response = NULL;
 
-    ogs_assert(true ==
-            ogs_sbi_server_send_response(stream, response));
+    ogs_assert(stream);
+
+    memset(&sendmsg, 0, sizeof(sendmsg));
+
+    response = ogs_sbi_build_response(
+            &sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
     return OGS_OK;
 }
