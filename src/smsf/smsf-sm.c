@@ -79,7 +79,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
         }
 
         SWITCH(message.h.service.name)
-        CASE(OGS_SBI_SERVICE_NAME_NSMSF_NSSELECTION)
+        CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
             api_version = OGS_SBI_API_V2;
             break;
         DEFAULT
@@ -97,13 +97,13 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
         }
 
         SWITCH(message.h.service.name)
-        CASE(OGS_SBI_SERVICE_NAME_NSMSF_NSSELECTION)
+        CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
 
             SWITCH(message.h.resource.component[0])
             CASE(OGS_SBI_RESOURCE_NAME_NETWORK_SLICE_INFORMATION)
                 SWITCH(message.h.method)
                 CASE(OGS_SBI_HTTP_METHOD_GET)
-                    smsf_nnrf_nsselection_handle_get(stream, &message);
+                    //smsf_nnrf_nsselection_handle_get(stream, &message);
                     break;
 
                 DEFAULT

@@ -36,9 +36,9 @@ int smsf_sbi_open(void)
 
     /* Build NF service information. It will be transmitted to NRF. */
     if (ogs_sbi_nf_service_is_available(
-                OGS_SBI_SERVICE_NAME_NSMSF_NSSELECTION)) {
+                OGS_SBI_SERVICE_NAME_NSMSF_SMS)) {
         service = ogs_sbi_nf_service_build_default(
-                    nf_instance, OGS_SBI_SERVICE_NAME_NSMSF_NSSELECTION);
+                    nf_instance, OGS_SBI_SERVICE_NAME_NSMSF_SMS);
         ogs_assert(service);
         ogs_sbi_nf_service_add_version(
                     service, OGS_SBI_API_V2, OGS_SBI_API_V2_0_0, NULL);
