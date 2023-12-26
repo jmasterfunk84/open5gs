@@ -64,11 +64,6 @@ static int smsf_context_prepare(void)
 
 static int smsf_context_validation(void)
 {
-    if (ogs_list_first(&self.nsi_list) == NULL) {
-        ogs_error("No smsf.nsi in '%s'", ogs_app()->file);
-        return OGS_ERROR;
-    }
-
     return OGS_OK;
 }
 

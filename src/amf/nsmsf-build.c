@@ -37,7 +37,7 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
     ogs_assert(ran_ue_cycle(amf_ue->ran_ue));
 
     memset(&message, 0, sizeof(message));
-    message.h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
+    message.h.method = (char *)OGS_SBI_HTTP_METHOD_PUT;
     message.h.service.name =
         (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
     message.h.api.version = (char *)OGS_SBI_API_V2;
