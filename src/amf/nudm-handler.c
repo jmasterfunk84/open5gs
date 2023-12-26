@@ -266,6 +266,7 @@ int amf_nudm_sdm_handle_provisioned(
             ogs_assert(r != OGS_ERROR);
         }
         else {
+            ogs_info("EntryA - Potential Code Change");
             r = amf_ue_sbi_discover_and_send(
                     OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
                     amf_nudm_sdm_build_subscription,
@@ -323,11 +324,19 @@ int amf_nudm_sdm_handle_provisioned(
 
         ogs_sbi_header_free(&header);
 
+        ogs_info("EntryB - Finding SMSF not PCF");
+        r = amf_ue_sbi_discover_and_send(
+                OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                amf_nsmsf_sm_service_build_activate, amf_ue, 0, NULL);
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
+        /* If SMS not required, do this.  Also add to nsmsf-handler.
         r = amf_ue_sbi_discover_and_send(
                 OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL, NULL,
                 amf_npcf_am_policy_control_build_create, amf_ue, state, NULL);
         ogs_expect(r == OGS_OK);
         ogs_assert(r != OGS_ERROR);
+        */
         break;
 
     DEFAULT

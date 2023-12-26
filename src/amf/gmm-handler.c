@@ -1066,29 +1066,29 @@ int gmm_handle_ul_nas_transport(amf_ue_t *amf_ue,
         return OGS_ERROR;
     }
 
-    if ((ul_nas_transport->presencemask &
-        OGS_NAS_5GS_UL_NAS_TRANSPORT_PDU_SESSION_ID_PRESENT) == 0) {
-        ogs_error("[%s] No PDU session ID", amf_ue->supi);
-        r = nas_5gs_send_gmm_status(
-                amf_ue, OGS_5GMM_CAUSE_INVALID_MANDATORY_INFORMATION);
-        ogs_expect(r == OGS_OK);
-        ogs_assert(r != OGS_ERROR);
-        return OGS_ERROR;
-    }
-
-    pdu_session_id = &ul_nas_transport->pdu_session_id;
-    if (*pdu_session_id == OGS_NAS_PDU_SESSION_IDENTITY_UNASSIGNED) {
-        ogs_error("[%s] PDU session identity is unassigned",
-                amf_ue->supi);
-        r = nas_5gs_send_gmm_status(
-                amf_ue, OGS_5GMM_CAUSE_INVALID_MANDATORY_INFORMATION);
-        ogs_expect(r == OGS_OK);
-        ogs_assert(r != OGS_ERROR);
-        return OGS_ERROR;
-    }
-
     switch (payload_container_type->value) {
     case OGS_NAS_PAYLOAD_CONTAINER_N1_SM_INFORMATION:
+        if ((ul_nas_transport->presencemask &
+            OGS_NAS_5GS_UL_NAS_TRANSPORT_PDU_SESSION_ID_PRESENT) == 0) {
+            ogs_error("[%s] No PDU session ID", amf_ue->supi);
+            r = nas_5gs_send_gmm_status(
+                    amf_ue, OGS_5GMM_CAUSE_INVALID_MANDATORY_INFORMATION);
+            ogs_expect(r == OGS_OK);
+            ogs_assert(r != OGS_ERROR);
+            return OGS_ERROR;
+        }
+
+        pdu_session_id = &ul_nas_transport->pdu_session_id;
+        if (*pdu_session_id == OGS_NAS_PDU_SESSION_IDENTITY_UNASSIGNED) {
+            ogs_error("[%s] PDU session identity is unassigned",
+                    amf_ue->supi);
+            r = nas_5gs_send_gmm_status(
+                    amf_ue, OGS_5GMM_CAUSE_INVALID_MANDATORY_INFORMATION);
+            ogs_expect(r == OGS_OK);
+            ogs_assert(r != OGS_ERROR);
+            return OGS_ERROR;
+        }
+
         gsm_header = (ogs_nas_5gsm_header_t *)payload_container->buffer;
         ogs_assert(gsm_header);
 
@@ -1392,6 +1392,16 @@ int gmm_handle_ul_nas_transport(amf_ue_t *amf_ue,
                 break;
             }
         }
+        break;
+
+    case OGS_NAS_PAYLOAD_CONTAINER_SMS:
+        ogs_info("Got an SMS");
+                r = amf_ue_sbi_discover_and_send(
+                OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                amf_nsmsf_sm_service_build_uplink_sms,
+                amf_ue, AMF_UPDATE_SM_CONTEXT_MODIFIED, &payload_container);
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
         break;
 
     default:

@@ -67,6 +67,9 @@ ogs_pkbuf_t *gmm_build_registration_accept(amf_ue_t *amf_ue)
     /* Registration Result */
     registration_result->length = 1;
     registration_result->value = amf_ue->nas.access_type;
+    /* Should be made conditional based on configuration or if SMSF is up? */
+    /* Yes, based on 4.13.3.1, we need to look at the Update_type from the registration */
+    registration_result->sms_over_nas_transport_allowed = 1;
 
     /* Set GUTI */
     if (amf_ue->next.m_tmsi) {

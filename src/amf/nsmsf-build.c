@@ -23,18 +23,56 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
         amf_ue_t *amf_ue, void *data)
 {
     ogs_info("temp: activate");
+    ogs_sbi_message_t message;
+    ogs_sbi_header_t header;
+    ogs_sbi_request_t *request = NULL;
+    ogs_sbi_server_t *server = NULL;
+
+    //OpenAPI_sms_record_data_t SmsRecordData;
+
+    OpenAPI_user_location_t ueLocation;
+    OpenAPI_sms_payload_t smsPayload;
+
+    ogs_assert(amf_ue);
+    ogs_assert(amf_ue->supi);
+    ogs_assert(ran_ue_cycle(amf_ue->ran_ue));
+
+    memset(&message, 0, sizeof(message));
+    message.h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
+    message.h.service.name =
+        (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
+    message.h.api.version = (char *)OGS_SBI_API_V2;
+    message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
+    message.h.resource.component[1] = amf_ue->supi;
+
+
+    memset(&ueLocation, 0, sizeof(ueLocation));
+
+    server = ogs_sbi_server_first();
+    if (!server) {
+        ogs_error("No server");
+        goto end;
+    }
+
+    request = ogs_sbi_build_request(&message);
+    ogs_expect(request);
+
+end:
+    return request;
 }
 
 ogs_sbi_request_t *amf_nsmsf_sm_service_build_deactivate(
         amf_ue_t *amf_ue, void *data)
 {
     ogs_info("temp: deactivate");
+    return OGS_OK;
 }
 
 ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
         amf_ue_t *amf_ue, void *data)
 {
     ogs_info("temp: uplinksms");
+    return OGS_OK;
 /*
     ogs_sbi_message_t message;
     ogs_sbi_header_t header;
@@ -59,7 +97,7 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
         (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
     message.h.api.version = (char *)OGS_SBI_API_V2;
     message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
-    message.h.resource.component[1] = smf_ue->supi;
+    message.h.resource.component[1] = amf_ue->supi;
     message.h.resource.component[2] = (char *)OGS_SBI_RESOURCE_NAME_SEND_SMS;
 
 
