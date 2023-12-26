@@ -24,18 +24,29 @@
 bool smsf_nsmsf_sm_service_handle_activate(
         ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
 {
+    ogs_info("Activate");
+
+    response = ogs_sbi_build_response(
+                &sendmsg, OGS_SBI_HTTP_STATUS_OK);
+    ogs_assert(response);
+
+    ogs_assert(true ==
+            ogs_sbi_server_send_response(stream, response));
+
     return OGS_OK;
 }
 
 bool smsf_nsmsf_sm_service_handle_deactivate(
         ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
 {
+    ogs_info("Deactivate");
     return OGS_OK;
 }
 
 bool smsf_nsmsf_sm_service_handle_uplink_sms(
         ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
 {
+    ogs_info("SMS");
     return OGS_OK;
 }
 

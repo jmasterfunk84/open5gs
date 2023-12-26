@@ -101,28 +101,28 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
             SWITCH(message.h.resource.component[0])
             CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
-                SWITCH(sbi_message.h.resource.component[2])
+                SWITCH(message.h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SEND_SMS)
-                    SWITCH(sbi_message.h.method)
+                    SWITCH(message.h.method)
                     CASE(OGS_SBI_HTTP_METHOD_POST)
                         rv = smsf_nsmsf_sm_service_handle_uplink_sms(
-                                stream, &sbi_message);
+                                stream, &message);
                         if (rv != OGS_OK) {
                             ogs_assert(true ==
                                 ogs_sbi_server_send_error(stream,
                                     OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                                    &sbi_message,
+                                    &message,
                                     "No UplinkSMSData", NULL));
                         }
                         break;
 
                     DEFAULT
                         ogs_error("Invalid HTTP method [%s]",
-                                sbi_message.h.method);
+                                message.h.method);
                         ogs_assert(true ==
                             ogs_sbi_server_send_error(stream,
-                                OGS_SBI_HTTP_STATUS_FORBIDDEN, &sbi_message,
-                                "Invalid HTTP method", sbi_message.h.method));
+                                OGS_SBI_HTTP_STATUS_FORBIDDEN, &message,
+                                "Invalid HTTP method", message.h.method));
                     END
                     break;
 
@@ -130,24 +130,27 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                     SWITCH(message.h.method)
                     CASE(OGS_SBI_HTTP_METHOD_PUT)
                         rv = smsf_nsmsf_sm_service_handle_activate(
-                                stream, &sbi_message);
+                                stream, &message);
                         if (rv != OGS_OK) {
                             ogs_assert(true ==
                                 ogs_sbi_server_send_error(stream,
                                     OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                                    &sbi_message,
+                                    &message,
                                     "No ActivateData", NULL));
                         }
+                        break;
+
                     CASE(OGS_SBI_HTTP_METHOD_DELETE)
                         rv = smsf_nsmsf_sm_service_handle_deactivate(
-                                stream, &sbi_message);
+                                stream, &message);
                         if (rv != OGS_OK) {
                             ogs_assert(true ==
                                 ogs_sbi_server_send_error(stream,
                                     OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                                    &sbi_message,
+                                    &message,
                                     "No DeactivateData", NULL));
                         }
+                        break;
 
                     DEFAULT
                         ogs_error("Invalid HTTP method [%s]", message.h.method);
