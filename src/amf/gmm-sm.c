@@ -27,6 +27,7 @@
 #include "nsmf-handler.h"
 #include "nudm-handler.h"
 #include "npcf-handler.h"
+#include "nsmsf-handler.h"
 #include "sbi-path.h"
 #include "amf-sm.h"
 

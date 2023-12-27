@@ -27,7 +27,7 @@ extern "C" {
 #include "context.h"
 
 int amf_nsmsf_sm_service_handle_activate(
-        amf_ue_t *amf_ue, ogs_sbi_message_t *recvmsg);
+        amf_ue_t *amf_ue, int state, ogs_sbi_message_t *recvmsg);
 
 int amf_nsmsf_sm_service_handle_deactivate(
         amf_ue_t *amf_ue, ogs_sbi_message_t *recvmsg);

@@ -23,8 +23,10 @@
 #include "nas-path.h"
 
 int amf_nsmsf_sm_service_handle_activate(
-        amf_ue_t *amf_ue, ogs_sbi_message_t *recvmsg)
+        amf_ue_t *amf_ue, int state, ogs_sbi_message_t *recvmsg)
 {
+    int r;
+
     r = amf_ue_sbi_discover_and_send(
             OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL, NULL,
             amf_npcf_am_policy_control_build_create, amf_ue, state, NULL);
