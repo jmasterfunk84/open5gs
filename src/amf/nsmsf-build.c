@@ -27,10 +27,8 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
     ogs_sbi_request_t *request = NULL;
     ogs_sbi_server_t *server = NULL;
 
-    //OpenAPI_sms_record_data_t SmsRecordData;
-
+    OpenAPI_ue_sms_context_data_t UeSmsContextData;
     OpenAPI_user_location_t ueLocation;
-    //OpenAPI_sms_payload_t smsPayload;
 
     ogs_assert(amf_ue);
     ogs_assert(amf_ue->supi);
@@ -44,6 +42,50 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
     message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
     message.h.resource.component[1] = amf_ue->supi;
 
+    memset(&ueLocation, 0, sizeof(ueLocation));
+
+    UeSmsContextData.amf_id = NF_INSTANCE_ID(ogs_sbi_self()->nf_instance);
+    if (!UeSmsContextData.amf_id) {
+        ogs_error("No amf_instance_id");
+        goto end;
+    }
+
+    UeSmsContextData.supi = amf_ue->supi;
+    if (!UeSmsContextData.supi) {
+        ogs_error("No supi");
+        goto end;
+    }
+
+    UeSmsContextData.access_type = amf_ue->access_type;
+    if (!UeSmsContextData.access_type) {
+        ogs_error("No access_type");
+        goto end;
+    }
+
+    if (amf_ue->num_of_msisdn) {
+        if (amf_ue->msisdn[0]) {
+            UeSmsContextData.gpsi = ogs_msprintf("%s-%s",
+                        OGS_ID_GPSI_TYPE_MSISDN, amf_ue->msisdn[0]);
+            if (!UeSmsContextData.gpsi) {
+                ogs_error("No gpsi");
+                goto end;
+            }
+        }
+    }
+
+    ueLocation.nr_location = ogs_sbi_build_nr_location(
+            &amf_ue->nr_tai, &amf_ue->nr_cgi);
+    if (!ueLocation.nr_location) {
+        ogs_error("No ueLocation.nr_location");
+        goto end;
+    }
+    ueLocation.nr_location->ue_location_timestamp =
+        ogs_sbi_gmtime_string(amf_ue->ue_location_timestamp);
+    if (!ueLocation.nr_location->ue_location_timestamp) {
+        ogs_error("No ueLocation.nr_location->ue_location_timestamp");
+        goto end;
+    }
+    UeSmsContextData.ue_location = &ueLocation;
 
     memset(&ueLocation, 0, sizeof(ueLocation));
 
@@ -57,6 +99,17 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
     ogs_expect(request);
 
 end:
+    if (SmsRecordData.gpsi)
+        ogs_free(SmsRecordData.gpsi);
+
+    if (ueLocation.nr_location) {
+        if (ueLocation.nr_location->ue_location_timestamp)
+            ogs_free(ueLocation.nr_location->ue_location_timestamp);
+        ogs_sbi_free_nr_location(ueLocation.nr_location);
+    }
+    if (PolicyAssociationRequest.time_zone)
+        ogs_free(PolicyAssociationRequest.time_zone);
+
     return request;
 }
 
