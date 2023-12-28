@@ -189,6 +189,8 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
         OpenAPI_sec_negotiate_req_data_free(message->SecNegotiateReqData);
     if (message->SecNegotiateRspData)
         OpenAPI_sec_negotiate_rsp_data_free(message->SecNegotiateRspData);
+    if (message->UeSmsContextData)
+        OpenAPI_ue_sms_context_data_free(message->UeSmsContextData);
 
     /* HTTP Part */
     for (i = 0; i < message->num_of_part; i++) {
@@ -1339,7 +1341,10 @@ static char *build_json(ogs_sbi_message_t *message)
         item = OpenAPI_sec_negotiate_rsp_data_convertToJSON(
             message->SecNegotiateRspData);
         ogs_assert(item);
-    }
+    } else if (message->UeSmsContextData) {
+        item = OpenAPI_ue_sms_context_data_convertToJSON(
+            message->UeSmsContextData);
+        ogs_assert(item);
 
     if (item) {
         content = cJSON_PrintUnformatted(item);
@@ -2440,6 +2445,32 @@ static int parse_json(ogs_sbi_message_t *message,
                 rv = OGS_ERROR;
                 ogs_error("Unknown resource name [%s]",
                         message->h.resource.component[0]);
+            END
+            break;
+
+        CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
+            SWITCH(message->h.resource.component[1])
+            CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
+                if (message->res_status == 0) {
+                    message->UeSmsContextData =
+                        OpenAPI_ue_sms_context_data_parseFromJSON(item);
+                    if (!message->UeSmsContextData) {
+                        rv = OGS_ERROR;
+                        ogs_error("JSON parse error");
+                    }
+                } else if (message->res_status == OGS_SBI_HTTP_STATUS_OK) {
+                    message->UeSmsContextData =
+                        OpenAPI_ue_sms_context_data_parseFromJSON(item);
+                    if (!message->UeSmsContextData) {
+                        rv = OGS_ERROR;
+                        ogs_error("JSON parse error");
+                    }
+                }
+                break;
+            DEFAULT
+                rv = OGS_ERROR;
+                ogs_error("Unknown resource name [%s]",
+                        message->h.resource.component[2]);
             END
             break;
 

@@ -56,7 +56,7 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
         goto end;
     }
 
-    UeSmsContextData.access_type = amf_ue->access_type;
+    UeSmsContextData.access_type = amf_ue->nas.access_type;
     if (!UeSmsContextData.access_type) {
         ogs_error("No access_type");
         goto end;
@@ -73,6 +73,8 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
         }
     }
 
+    memset(&ueLocation, 0, sizeof(ueLocation));
+    
     ueLocation.nr_location = ogs_sbi_build_nr_location(
             &amf_ue->nr_tai, &amf_ue->nr_cgi);
     if (!ueLocation.nr_location) {
@@ -87,7 +89,12 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
     }
     UeSmsContextData.ue_location = &ueLocation;
 
-    memset(&ueLocation, 0, sizeof(ueLocation));
+    UeSmsContextData.ue_time_zone =
+        ogs_sbi_timezone_string(ogs_timezone());
+    if (!UeSmsContextData.ue_time_zone) {
+        ogs_error("No time_zone");
+        goto end;
+    }
 
     server = ogs_sbi_server_first();
     if (!server) {
@@ -95,20 +102,22 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
         goto end;
     }
 
+    message.UeSmsContextData = &UeSmsContextData;
+
     request = ogs_sbi_build_request(&message);
     ogs_expect(request);
 
 end:
-    if (SmsRecordData.gpsi)
-        ogs_free(SmsRecordData.gpsi);
+    if (UeSmsContextData.gpsi)
+        ogs_free(UeSmsContextData.gpsi);
 
     if (ueLocation.nr_location) {
         if (ueLocation.nr_location->ue_location_timestamp)
             ogs_free(ueLocation.nr_location->ue_location_timestamp);
         ogs_sbi_free_nr_location(ueLocation.nr_location);
     }
-    if (PolicyAssociationRequest.time_zone)
-        ogs_free(PolicyAssociationRequest.time_zone);
+    if (UeSmsContextData.ue_time_zone)
+        ogs_free(UeSmsContextData.ue_time_zone);
 
     return request;
 }
