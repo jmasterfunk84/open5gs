@@ -2174,15 +2174,10 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
             break;
 
         CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
-            SWITCH(sbi_message->h.resource.component[1])
-            CASE(OGS_SBI_RESOURCE_NAME_SM_CONTEXTS)
-            CASE(OGS_SBI_RESOURCE_NAME_SMF_SELECT_DATA)
-            CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMF_DATA)
-            CASE(OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS)
-                /* is OK a valid in MUDM_SDM?*/
+            SWITCH(sbi_message->h.resource.component[0])
+            CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
                 if (sbi_message->res_status != OGS_SBI_HTTP_STATUS_CREATED &&
-                    sbi_message->res_status != OGS_SBI_HTTP_STATUS_NO_CONTENT &&
-                    sbi_message->res_status != OGS_SBI_HTTP_STATUS_OK) {
+                    sbi_message->res_status != OGS_SBI_HTTP_STATUS_NO_CONTENT) {
                     ogs_error("[%s] HTTP response error [%d]",
                             amf_ue->supi, sbi_message->res_status);
                     /* Nothing bad happens, just don't allow SMS in attach accept */
@@ -2201,7 +2196,7 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
 
             DEFAULT
                 ogs_error("Invalid resource name [%s]",
-                        sbi_message->h.resource.component[1]);
+                        sbi_message->h.resource.component[0]);
                 ogs_assert_if_reached();
             END
             break;

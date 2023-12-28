@@ -103,6 +103,7 @@ extern "C" {
 #define OGS_SBI_RESOURCE_NAME_REGISTRATIONS         "registrations"
 #define OGS_SBI_RESOURCE_NAME_AMF_3GPP_ACCESS       "amf-3gpp-access"
 #define OGS_SBI_RESOURCE_NAME_SMF_REGISTRATIONS     "smf-registrations"
+#define OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS      "smsf-3gpp-access"
 
 #define OGS_SBI_RESOURCE_NAME_SUBSCRIPTION_DATA     "subscription-data"
 #define OGS_SBI_RESOURCE_NAME_AUTHENTICATION_DATA   "authentication-data"
