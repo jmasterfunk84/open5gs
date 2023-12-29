@@ -223,6 +223,11 @@ smsf_ue_t *smsf_ue_find_by_supi(char *supi)
     return (smsf_ue_t *)ogs_hash_get(self.supi_hash, supi, strlen(supi));
 }
 
+smsf_ue_t *smsf_ue_cycle(smsf_ue_t *smsf_ue)
+{
+    return ogs_pool_cycle(&smsf_ue_pool, smsf_ue);
+}
+
 int get_ue_load(void)
 {
     return (((ogs_pool_size(&smsf_ue_pool) -

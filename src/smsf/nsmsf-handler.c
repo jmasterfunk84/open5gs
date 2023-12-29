@@ -57,22 +57,12 @@ bool smsf_nsmsf_sm_service_handle_activate(
         return false;
     }
 
-/*
-    if (udm_ue->dereg_callback_uri)
-        ogs_free(udm_ue->dereg_callback_uri);
-    udm_ue->dereg_callback_uri = ogs_strdup(
-            Amf3GppAccessRegistration->dereg_callback_uri);
-    ogs_assert(udm_ue->dereg_callback_uri);
+    if (UeSmsContextData->gpsi) {
+        smsf_ue->gpsi = ogs_strdup(UeSmsContextData->gpsi);
+    } else {
+        ogs_info("[%s] No gpsi.  MT SMS will not be possible.", smsf_ue->supi);
+    }
 
-    ogs_sbi_parse_guami(&udm_ue->guami, Guami);
-
-    udm_ue->rat_type = Amf3GppAccessRegistration->rat_type;
-
-    udm_ue->amf_3gpp_access_registration =
-        OpenAPI_amf3_gpp_access_registration_copy(
-            udm_ue->amf_3gpp_access_registration,
-                message->Amf3GppAccessRegistration);
-*/
     int r;
     r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
             smsf_nudm_uecm_build_registration, smsf_ue, stream, NULL);

@@ -26,6 +26,8 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_registration(
     ogs_sbi_request_t *request = NULL;
     ogs_sbi_server_t *server = NULL;
 
+    OpenAPI_plmn_id_t *plmn_id = NULL;
+
     OpenAPI_smsf_registration_t SmsfRegistration;
 
     ogs_assert(smsf_ue);
@@ -51,7 +53,30 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_registration(
     }
 
     // Mandatory:
-    // SmsfRegistration.plmn_id
+    // should pull from config!
+    if (ogs_local_conf()->num_of_serving_plmn_id) {
+        OpenAPI_list_t *PlmnIdList = NULL;
+        int i;
+
+        PlmnIdList = OpenAPI_list_create();
+        ogs_assert(PlmnIdList);
+
+        for (i = 0; i < ogs_local_conf()->num_of_serving_plmn_id; i++) {
+            plmn_id = ogs_sbi_build_plmn_id(
+                    &ogs_local_conf()->serving_plmn_id[i]);
+            ogs_assert(plmn_id);
+            OpenAPI_list_add(PlmnIdList, plmn_id);
+        }
+
+        if (PlmnIdList->count)
+            SmsfRegistration.plmn_id = plmn_id;
+        else
+            OpenAPI_list_free(PlmnIdList);
+    }
+    if (!SmsfRegistration.plmn_id) {
+        ogs_error("No plmn_id");
+        goto end;
+    }
 
     server = ogs_sbi_server_first();
     if (!server) {

@@ -67,6 +67,8 @@ void smsf_ue_remove(smsf_ue_t *smsf_ue);
 void smsf_ue_remove_all(void);
 smsf_ue_t *smsf_ue_find_by_supi(char *supi);
 
+smsf_ue_t *smsf_ue_cycle(smsf_ue_t *smsf_ue);
+
 int get_ue_load(void);
 
 #ifdef __cplusplus
