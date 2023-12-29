@@ -349,3 +349,12 @@ Can't just do this.  you need to trigger an event back on nsmsf.
 
     return OGS_OK;
 }
+
+bool smsf_nudm_uecm_handle_registration(
+    smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
+{
+
+    ogs_info('got the data');
+
+    return true;
+}

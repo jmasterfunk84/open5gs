@@ -310,9 +310,9 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
             break;
 
         CASE(OGS_SBI_SERVICE_NAME_NUDM_UECM)
-            SWITCH(message.h.resource.component[2])
+            SWITCH(message.h.resource.component[1])
             CASE(OGS_SBI_RESOURCE_NAME_REGISTRATIONS)
-                SWITCH(message.h.resource.component[3])
+                SWITCH(message.h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
                     sbi_xact = e->h.sbi.data;
                     ogs_assert(sbi_xact);
@@ -349,14 +349,14 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
                 DEFAULT
                     ogs_error("Invalid resource name  [%s]", 
-                            message.h.resource.component[3]);
+                            message.h.resource.component[2]);
                     ogs_assert_if_reached();
                 END
             break;
 
             DEFAULT
                 ogs_error("Invalid resource name [%s]",
-                        message.h.resource.component[0]);
+                        message.h.resource.component[1]);
                 ogs_assert_if_reached();
             END
 
