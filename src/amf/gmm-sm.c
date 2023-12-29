@@ -2135,29 +2135,40 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
                         break;
                     }
 
-                    ogs_assert(amf_ue->nas.message_type ==
-                            OGS_NAS_5GS_REGISTRATION_REQUEST);
-                    CLEAR_AMF_UE_TIMER(amf_ue->t3550);
-                    r = nas_5gs_send_registration_accept(amf_ue);
-                    ogs_expect(r == OGS_OK);
-                    ogs_assert(r != OGS_ERROR);
+                    /* add AND condition here if need to activate based on attach req */
+                    if (!SMSF_SM_SERVICE_ACTIVATED(amf_ue)) {
+                        /* per 23.502 4.13.3.1-1, this is after step 20.  After PCF. */
+                        /* But, we should be discoverying earlier */
+                        r = amf_ue_sbi_discover_and_send(
+                                OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                                amf_nsmsf_sm_service_build_activate, amf_ue, 0, NULL);
+                        ogs_expect(r == OGS_OK);
+                        ogs_assert(r != OGS_ERROR);
+                    } else {
+                        ogs_assert(amf_ue->nas.message_type ==
+                                OGS_NAS_5GS_REGISTRATION_REQUEST);
+                        CLEAR_AMF_UE_TIMER(amf_ue->t3550);
+                        r = nas_5gs_send_registration_accept(amf_ue);
+                        ogs_expect(r == OGS_OK);
+                        ogs_assert(r != OGS_ERROR);
 
-                    /* In nsmf-handler.c
-                     *
-                     * 1. AMF_SESS_STORE_N2_TRANSFER
-                     * 2. if PCF_AM_POLICY is NOT associated
-                     * 3. AMF sends npcf-am-policy-control/create to PCF
-                     *
-                     * In gmm-sm.c
-                     * 4. Send Registration Accept
-                     * 5. We should clear N2 transfer
-                     *    (PDUSessionResourceSetupRequest)
-                     */
-                    AMF_UE_CLEAR_N2_TRANSFER(
-                            amf_ue, pdu_session_resource_setup_request);
+                        /* In nsmf-handler.c
+                        *
+                        * 1. AMF_SESS_STORE_N2_TRANSFER
+                        * 2. if PCF_AM_POLICY is NOT associated
+                        * 3. AMF sends npcf-am-policy-control/create to PCF
+                        *
+                        * In gmm-sm.c
+                        * 4. Send Registration Accept
+                        * 5. We should clear N2 transfer
+                        *    (PDUSessionResourceSetupRequest)
+                        */
+                        AMF_UE_CLEAR_N2_TRANSFER(
+                                amf_ue, pdu_session_resource_setup_request);
 
-                    if (!amf_ue->next.m_tmsi)
-                        OGS_FSM_TRAN(s, &gmm_state_registered);
+                        if (!amf_ue->next.m_tmsi)
+                            OGS_FSM_TRAN(s, &gmm_state_registered);
+                    }
                     break;
 
                 DEFAULT
@@ -2192,6 +2203,30 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
                     OGS_FSM_TRAN(&amf_ue->sm, &gmm_state_exception);
                     break;
                 }
+
+                ogs_assert(amf_ue->nas.message_type ==
+                        OGS_NAS_5GS_REGISTRATION_REQUEST);
+                CLEAR_AMF_UE_TIMER(amf_ue->t3550);
+                r = nas_5gs_send_registration_accept(amf_ue);
+                ogs_expect(r == OGS_OK);
+                ogs_assert(r != OGS_ERROR);
+
+                /* In nsmf-handler.c
+                *
+                * 1. AMF_SESS_STORE_N2_TRANSFER
+                * 2. if PCF_AM_POLICY is NOT associated
+                * 3. AMF sends npcf-am-policy-control/create to PCF
+                *
+                * In gmm-sm.c
+                * 4. Send Registration Accept
+                * 5. We should clear N2 transfer
+                *    (PDUSessionResourceSetupRequest)
+                */
+                AMF_UE_CLEAR_N2_TRANSFER(
+                        amf_ue, pdu_session_resource_setup_request);
+
+                if (!amf_ue->next.m_tmsi)
+                    OGS_FSM_TRAN(s, &gmm_state_registered);
                 break;
 
             DEFAULT
