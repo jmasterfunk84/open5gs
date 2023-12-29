@@ -38,6 +38,11 @@ typedef struct smsf_context_s {
     ogs_list_t      nsi_list; /* NSI List */
 } smsf_context_t;
 
+/*
+struct pcf_ue_s {
+};
+*/
+
 void smsf_context_init(void);
 void smsf_context_final(void);
 smsf_context_t *smsf_self(void);

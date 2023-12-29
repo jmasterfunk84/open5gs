@@ -21,6 +21,9 @@ libsmsf_sources = files('''
 
     nsmsf-handler.c
 
+    nudm-handler.c
+    nudm-build.c
+
     sbi-path.c
     smsf-sm.c
 

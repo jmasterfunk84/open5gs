@@ -1345,6 +1345,7 @@ static char *build_json(ogs_sbi_message_t *message)
         item = OpenAPI_ue_sms_context_data_convertToJSON(
             message->UeSmsContextData);
         ogs_assert(item);
+    }
 
     if (item) {
         content = cJSON_PrintUnformatted(item);

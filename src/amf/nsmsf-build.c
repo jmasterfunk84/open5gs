@@ -43,6 +43,7 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
     message.h.resource.component[1] = amf_ue->supi;
 
     memset(&ueLocation, 0, sizeof(ueLocation));
+    memset(&UeSmsContextData, 0, sizeof(UeSmsContextData));
 
     UeSmsContextData.amf_id = NF_INSTANCE_ID(ogs_sbi_self()->nf_instance);
     if (!UeSmsContextData.amf_id) {
@@ -62,6 +63,7 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
         goto end;
     }
 
+    // These aren't mandatory, should they really go to end?
     if (amf_ue->num_of_msisdn) {
         if (amf_ue->msisdn[0]) {
             UeSmsContextData.gpsi = ogs_msprintf("%s-%s",
@@ -74,7 +76,6 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
     }
 
     memset(&ueLocation, 0, sizeof(ueLocation));
-    
     ueLocation.nr_location = ogs_sbi_build_nr_location(
             &amf_ue->nr_tai, &amf_ue->nr_cgi);
     if (!ueLocation.nr_location) {
