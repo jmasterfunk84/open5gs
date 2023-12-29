@@ -65,7 +65,7 @@ bool smsf_nsmsf_sm_service_handle_activate(
 
     int r;
     r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
-            smsf_nudm_uecm_build_registration, smsf_ue, stream, NULL);
+            smsf_nudm_uecm_build_smsf_registration, smsf_ue, stream, NULL);
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);
 

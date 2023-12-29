@@ -48,6 +48,7 @@ struct udm_ue_s {
 
     OpenAPI_auth_event_t *auth_event;
     OpenAPI_amf3_gpp_access_registration_t *amf_3gpp_access_registration;
+    OpenAPI_smsf_registration_t *smsf_registration;
 
     char *ctx_id;
     char *suci;

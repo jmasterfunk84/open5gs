@@ -19,7 +19,7 @@
 
 #include "nudm-build.h"
 
-ogs_sbi_request_t *smsf_nudm_uecm_build_registration(
+ogs_sbi_request_t *smsf_nudm_uecm_build_smsf_registration(
         smsf_ue_t *smsf_ue, void *data)
 {
     ogs_sbi_message_t message;
@@ -94,7 +94,7 @@ end:
     return request;
 }
 
-ogs_sbi_request_t *smsf_nudm_uecm_build_registration_delete(
+ogs_sbi_request_t *smsf_nudm_uecm_build_smsf_registration_delete(
         smsf_ue_t *smsf_ue, void *data)
 {
     ogs_sbi_message_t message;

@@ -557,6 +557,71 @@ bool udm_nudm_uecm_handle_smf_deregistration(
     return true;
 }
 
+bool udm_nudm_uecm_handle_smsf_registration(
+    udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
+{
+    OpenAPI_smsf_registration_t *SmsfRegistration = NULL;
+
+    int r;
+
+    ogs_assert(udm_ue);
+    ogs_assert(stream);
+    ogs_assert(message);
+
+    SmsfRegistration = message->SmsfRegistration;
+    if (!SmsfRegistration) {
+        ogs_error("[%s] No SmsfRegistration", udm_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No SmsfRegistration", udm_ue->supi));
+        return false;
+    }
+
+    if (!SmsfRegistration->smsf_instance_id) {
+        ogs_error("[%s] No smsfInstanceId", udm_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No smsfInstanceId", udm_ue->supi));
+        return false;
+    }
+
+    if (!SmsfRegistration->plmn_id) {
+        ogs_error("[%s] No PlmnId", udm_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No PlmnId", udm_ue->supi));
+        return false;
+    }
+
+    if (!SmsfRegistration->plmn_id->mnc) {
+        ogs_error("[%s] No PlmnId.Mnc", udm_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No PlmnId.Mnc", udm_ue->supi));
+        return false;
+    }
+
+    if (!SmsfRegistration->plmn_id->mcc) {
+        ogs_error("[%s] No PlmnId.Mcc", udm_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No PlmnId.Mcc", udm_ue->supi));
+        return false;
+    }
+
+    udm_ue->amf_3gpp_access_registration =
+        OpenAPI_amf3_gpp_access_registration_copy(
+            udm_ue->amf_3gpp_access_registration,
+                message->SmsfRegistration);
+
+    r = udm_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDR_DR, NULL,
+            udm_nudr_dr_build_update_smsf_context, udm_ue, stream, NULL);
+    ogs_expect(r == OGS_OK);
+    ogs_assert(r != OGS_ERROR);
+
+    return true;
+}
+
 bool udm_nudm_sdm_handle_subscription_provisioned(
     udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
