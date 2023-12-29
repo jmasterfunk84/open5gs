@@ -57,6 +57,7 @@ struct udm_ue_s {
 
     char *ausf_instance_id;
     char *amf_instance_id;
+    char *smsf_instance_id;
 
     char *dereg_callback_uri;
     char *data_change_callback_uri;
