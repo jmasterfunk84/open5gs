@@ -584,7 +584,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_error("[%s] No SmsfRegistration", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    message, "No SmsfRegistration", udm_ue->supi));
+                    recvmsg, "No SmsfRegistration", udm_ue->supi));
             return false;
         }
 
@@ -592,7 +592,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_error("[%s] No smsfInstanceId", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    message, "No smsfInstanceId", udm_ue->supi));
+                    recvmsg, "No smsfInstanceId", udm_ue->supi));
             return false;
         }
 
@@ -600,7 +600,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_error("[%s] No PlmnId", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    message, "No PlmnId", udm_ue->supi));
+                    recvmsg, "No PlmnId", udm_ue->supi));
             return false;
         }
 
@@ -608,7 +608,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_error("[%s] No PlmnId.Mnc", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    message, "No PlmnId.Mnc", udm_ue->supi));
+                    recvmsg, "No PlmnId.Mnc", udm_ue->supi));
             return false;
         }
 
@@ -616,7 +616,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_error("[%s] No PlmnId.Mcc", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    message, "No PlmnId.Mcc", udm_ue->supi));
+                    recvmsg, "No PlmnId.Mcc", udm_ue->supi));
             return false;
         }
 
