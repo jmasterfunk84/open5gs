@@ -38,7 +38,6 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
     ogs_sbi_stream_t *stream = NULL;
     ogs_sbi_message_t *message = NULL;
-    int r;
 
     ogs_assert(s);
     ogs_assert(e);
@@ -129,8 +128,16 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
             CASE(OGS_SBI_RESOURCE_NAME_REGISTRATIONS)
                 SWITCH(message->h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
-                    smsf_nudm_uecm_handle_smf_registration(
+                    smsf_nudm_uecm_handle_smsf_registration(
                             smsf_ue, stream, message);
+                    
+                    r = smsf_ue_sbi_discover_and_send(
+                            OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
+                            smsf_nudm_sdm_build_get,
+                            amf_ue, stream,
+                            (char *)OGS_SBI_RESOURCE_NAME_SMS_DATA);
+                    ogs_expect(r == OGS_OK);
+                    ogs_assert(r != OGS_ERROR);
                     break;
 
                 DEFAULT

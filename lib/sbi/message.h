@@ -115,6 +115,7 @@ extern "C" {
 #define OGS_SBI_RESOURCE_NAME_POLICY_DATA           "policy-data"
 #define OGS_SBI_RESOURCE_NAME_UES                   "ues"
 #define OGS_SBI_RESOURCE_NAME_AM_DATA               "am-data"
+#define OGS_SBI_RESOURCE_NAME_SMS_DATA               "sms-data"
 
 #define OGS_SBI_RESOURCE_NAME_SM_CONTEXTS           "sm-contexts"
 #define OGS_SBI_RESOURCE_NAME_MODIFY                "modify"

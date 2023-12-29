@@ -204,6 +204,7 @@ void udm_ue_remove(udm_ue_t *udm_ue)
     OpenAPI_auth_event_free(udm_ue->auth_event);
     OpenAPI_amf3_gpp_access_registration_free(
             udm_ue->amf_3gpp_access_registration);
+    OpenAPI_smsf_registration_free(udm_ue->smsf_registration);
 
     ogs_assert(udm_ue->ctx_id);
     ogs_free(udm_ue->ctx_id);

@@ -43,7 +43,7 @@ struct smsf_ue_s {
     ogs_sbi_object_t sbi;
     ogs_fsm_t sm;
 
-    OpenAPI_smsf_registration_t *SmsfRegistration;
+    OpenAPI_smsf_registration_t *smsf_registration;
 
     char *ctx_id;
     char *supi;

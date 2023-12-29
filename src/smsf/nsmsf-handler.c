@@ -63,6 +63,11 @@ bool smsf_nsmsf_sm_service_handle_activate(
         ogs_info("[%s] No gpsi.  MT SMS will not be possible.", smsf_ue->supi);
     }
 
+/*
+    udm_ue->smsf_registration = OpenAPI_smsf_registration_copy(
+            udm_ue->smsf_registration,
+            message->SmsfRegistration);
+*/
     int r;
     r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
             smsf_nudm_uecm_build_smsf_registration, smsf_ue, stream, NULL);
