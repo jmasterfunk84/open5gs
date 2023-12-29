@@ -25,6 +25,14 @@
 int amf_nsmsf_sm_service_handle_activate(
         amf_ue_t *amf_ue, int state, ogs_sbi_message_t *recvmsg)
 {
+/* Could check for errors?
+        if (sbi_message->res_status != OGS_SBI_HTTP_STATUS_CREATED &&
+        sbi_message->res_status != OGS_SBI_HTTP_STATUS_NO_CONTENT) {
+        ogs_error("[%s] HTTP response error [%d]",
+                amf_ue->supi, sbi_message->res_status);
+        break;
+        }
+*/
     ogs_assert(amf_ue);
     /* Load SBI Response here */
 

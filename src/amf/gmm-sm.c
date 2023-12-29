@@ -2187,14 +2187,6 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
         CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
             SWITCH(sbi_message->h.resource.component[0])
             CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
-                if (sbi_message->res_status != OGS_SBI_HTTP_STATUS_CREATED &&
-                    sbi_message->res_status != OGS_SBI_HTTP_STATUS_NO_CONTENT) {
-                    ogs_error("[%s] HTTP response error [%d]",
-                            amf_ue->supi, sbi_message->res_status);
-                    /* Nothing bad happens, just don't allow SMS in attach accept */
-                    break;
-                }
-
                 rv = amf_nsmsf_sm_service_handle_activate(
                         amf_ue, state, sbi_message);
                 if (rv != OGS_OK) {
