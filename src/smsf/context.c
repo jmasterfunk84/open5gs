@@ -139,7 +139,7 @@ int smsf_context_parse_config(void)
 
 smsf_ue_t *smsf_ue_add(char *supi)
 {
-//    smsf_event_t e;
+    smsf_event_t e;
     smsf_ue_t *smsf_ue = NULL;
 
     ogs_assert(supi);
@@ -172,9 +172,9 @@ smsf_ue_t *smsf_ue_add(char *supi)
 
     ogs_hash_set(self.supi_hash, smsf_ue->supi, strlen(smsf_ue->supi), smsf_ue);
 
-//    memset(&e, 0, sizeof(e));
-//    e.smsf_ue = smsf_ue;
-//    ogs_fsm_init(&smsf_ue->sm, smsf_ue_state_initial, smsf_ue_state_final, &e);
+    memset(&e, 0, sizeof(e));
+    e.smsf_ue = smsf_ue;
+    ogs_fsm_init(&smsf_ue->sm, smsf_ue_state_initial, smsf_ue_state_final, &e);
 
     ogs_list_add(&self.smsf_ue_list, smsf_ue);
 
@@ -183,15 +183,15 @@ smsf_ue_t *smsf_ue_add(char *supi)
 
 void smsf_ue_remove(smsf_ue_t *smsf_ue)
 {
-//    smsf_event_t e;
+    smsf_event_t e;
 
     ogs_assert(smsf_ue);
 
     ogs_list_remove(&self.smsf_ue_list, smsf_ue);
 
-//    memset(&e, 0, sizeof(e));
-//    e.smsf_ue = smsf_ue;
-//    ogs_fsm_fini(&smsf_ue->sm, &e);
+    memset(&e, 0, sizeof(e));
+    e.smsf_ue = smsf_ue;
+    ogs_fsm_fini(&smsf_ue->sm, &e);
 
     /* Free SBI object memory */
     ogs_sbi_object_free(&smsf_ue->sbi);

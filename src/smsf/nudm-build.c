@@ -125,6 +125,7 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_registration_delete(
     ogs_expect(request);
 
 end:
+    ogs_info("Maybe Free something?");
     return request;
 }
 

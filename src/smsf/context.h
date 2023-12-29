@@ -41,7 +41,7 @@ typedef struct smsf_context_s {
 
 struct smsf_ue_s {
     ogs_sbi_object_t sbi;
-//    ogs_fsm_t sm;
+    ogs_fsm_t sm;
 
     OpenAPI_smsf_registration_t *SmsfRegistration;
 
