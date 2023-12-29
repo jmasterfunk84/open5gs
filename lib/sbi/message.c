@@ -1826,6 +1826,19 @@ static int parse_json(ogs_sbi_message_t *message,
                                     message->res_status);
                         }
                         break;
+                    CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
+                        if (message->res_status < 300) {
+                            message->SmsfRegistration =
+                                OpenAPI_smsf_registration_parseFromJSON(item);
+                            if (!message->SmsfRegistration) {
+                                rv = OGS_ERROR;
+                                ogs_error("JSON parse error");
+                            }
+                        } else {
+                            ogs_error("HTTP ERROR Status : %d",
+                                    message->res_status);
+                        }
+                        break;
                     DEFAULT
                         rv = OGS_ERROR;
                         ogs_error("Unknown resource name [%s]",

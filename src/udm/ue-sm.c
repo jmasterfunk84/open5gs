@@ -115,7 +115,7 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
             CASE(OGS_SBI_HTTP_METHOD_PUT)
                 SWITCH(message->h.resource.component[1])
                 CASE(OGS_SBI_RESOURCE_NAME_REGISTRATIONS)
-                    SWITCH(message->h.resource.component[1])
+                    SWITCH(message->h.resource.component[2])
                     CASE(OGS_SBI_RESOURCE_NAME_AMF_3GPP_ACCESS)
                         udm_nudm_uecm_handle_amf_registration(
                                 udm_ue, stream, message);
