@@ -125,9 +125,9 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
         SWITCH(message->h.service.name)
         CASE(OGS_SBI_SERVICE_NAME_NUDM_UECM)
-            SWITCH(message.h.resource.component[1])
+            SWITCH(message->h.resource.component[1])
             CASE(OGS_SBI_RESOURCE_NAME_REGISTRATIONS)
-                SWITCH(message.h.resource.component[2])
+                SWITCH(message->h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
                     smsf_nsmsf_sm_service_handle_activate(
                             smsf_ue, stream, message);
