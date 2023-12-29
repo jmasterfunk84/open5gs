@@ -324,20 +324,13 @@ int amf_nudm_sdm_handle_provisioned(
 
         ogs_sbi_header_free(&header);
 
-        ogs_info("EntryB - Finding SMSF not PCF");
-        /* Maybe double check, 23.502 4.13.3.1-1, isn't this after step 20?  After PCF? */
-        r = amf_ue_sbi_discover_and_send(
-                OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
-                amf_nsmsf_sm_service_build_activate, amf_ue, 0, NULL);
-        ogs_expect(r == OGS_OK);
-        ogs_assert(r != OGS_ERROR);
-        /* If SMS not required, do this.  Also add to nsmsf-handler.
+        ogs_info("EntryB - Maybe Change Here?");
+
         r = amf_ue_sbi_discover_and_send(
                 OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL, NULL,
                 amf_npcf_am_policy_control_build_create, amf_ue, state, NULL);
         ogs_expect(r == OGS_OK);
         ogs_assert(r != OGS_ERROR);
-        */
         break;
 
     DEFAULT

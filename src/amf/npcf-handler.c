@@ -128,5 +128,14 @@ int amf_npcf_am_policy_control_handle_create(
 
     ogs_sbi_header_free(&header);
 
+    /* per 23.502 4.13.3.1-1, this is after step 20.  After PCF. */
+    /* But, we should be discoverying earlier */
+    r = amf_ue_sbi_discover_and_send(
+            OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+            amf_nsmsf_sm_service_build_activate, amf_ue, 0, NULL);
+    ogs_expect(r == OGS_OK);
+    ogs_assert(r != OGS_ERROR);
+    /* If SMS not required, do this.  Also add to nsmsf-handler.
+
     return OGS_OK;
 }

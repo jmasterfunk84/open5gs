@@ -25,13 +25,11 @@
 int amf_nsmsf_sm_service_handle_activate(
         amf_ue_t *amf_ue, int state, ogs_sbi_message_t *recvmsg)
 {
-    int r;
+    ogs_assert(amf_ue);
+    /* Load SBI Response here */
 
-    r = amf_ue_sbi_discover_and_send(
-            OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL, NULL,
-            amf_npcf_am_policy_control_build_create, amf_ue, state, NULL);
-    ogs_expect(r == OGS_OK);
-    ogs_assert(r != OGS_ERROR);
+    ogs_info("We should turn on that SMS Flag in the Attach Accept!");
+
     return OGS_OK;
 }
 
