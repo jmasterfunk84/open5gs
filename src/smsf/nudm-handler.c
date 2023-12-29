@@ -350,11 +350,97 @@ Can't just do this.  you need to trigger an event back on nsmsf.
     return OGS_OK;
 }
 
-bool smsf_nudm_uecm_handle_registration(
+bool smsf_nudm_uecm_handle_smf_registration(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
+    int status;
 
     ogs_info("got the data");
+    OpenAPI_smsf_registration_t *SmsfRegistration = NULL;
+
+    SmsfRegistration = smsf_ue->smsf_registration;
+
+    if (!SmsfRegistration) {
+        ogs_error("[%s] No SmsfRegistration", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                recvmsg, "No SmsfRegistration", smsf_ue->supi));
+        return false;
+    }
+
+    if (!SmsfRegistration->smsf_instance_id) {
+        ogs_error("[%s] No smsfInstanceId", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                recvmsg, "No smsfInstanceId", smsf_ue->supi));
+        return false;
+    }
+
+    if (!SmsfRegistration->plmn_id) {
+        ogs_error("[%s] No PlmnId", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                recvmsg, "No PlmnId", smsf_ue->supi));
+        return false;
+    }
+
+    if (!SmsfRegistration->plmn_id->mnc) {
+        ogs_error("[%s] No PlmnId.Mnc", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                recvmsg, "No PlmnId.Mnc", smsf_ue->supi));
+        return false;
+    }
+
+    if (!SmsfRegistration->plmn_id->mcc) {
+        ogs_error("[%s] No PlmnId.Mcc", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                recvmsg, "No PlmnId.Mcc", smsf_ue->supi));
+        return false;
+    }
+
+    memset(&sendmsg, 0, sizeof(sendmsg));
+
+    memset(&header, 0, sizeof(header));
+    header.service.name = (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
+    header.api.version = (char *)OGS_SBI_API_V2;
+    header.resource.component[0] =
+        (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
+    header.resource.component[1] = smsf_ue->supi;
+
+/*
+    if (smsf_ue->smsf_instance_id &&
+        strcmp(smsf_ue->smsf_instance_id,
+            SmsfRegistration->smsf_instance_id) == 0) {
+
+        status = OGS_SBI_HTTP_STATUS_OK;
+    } else {
+        if (smsf_ue->smsf_instance_id)
+            ogs_free(smsf_ue->smsf_instance_id);
+        smsf_ue->smsf_instance_id =
+            ogs_strdup(SmsfRegistration->smsf_instance_id);
+        ogs_assert(smsf_ue->smsf_instance_id);
+
+        status = OGS_SBI_HTTP_STATUS_CREATED;
+    }
+*/
+    status = OGS_SBI_HTTP_STATUS_OK;
+
+    if (status == OGS_SBI_HTTP_STATUS_CREATED)
+        sendmsg.http.location = ogs_sbi_server_uri(server, &header);
+
+    sendmsg.SmsfRegistration = OpenAPI_smsf_registration_copy(
+            sendmsg.SmsfRegistration,
+            smsf_ue->smsf_registration);
+
+    response = ogs_sbi_build_response(&sendmsg, status);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+    ogs_free(sendmsg.http.location);
+    OpenAPI_smsf_registration_free(
+            sendmsg.SmsfRegistration);
 
     return true;
 }

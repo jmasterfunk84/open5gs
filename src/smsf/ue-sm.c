@@ -129,7 +129,7 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
             CASE(OGS_SBI_RESOURCE_NAME_REGISTRATIONS)
                 SWITCH(message->h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
-                    smsf_nsmsf_sm_service_handle_activate(
+                    smsf_nudm_uecm_handle_smf_registration(
                             smsf_ue, stream, message);
                     break;
 
