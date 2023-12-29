@@ -20,6 +20,7 @@
 #include "sbi-path.h"
 #include "nnrf-handler.h"
 #include "nsmsf-handler.h"
+#include "nudm-build.h"
 
 bool smsf_nsmsf_sm_service_handle_activate(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
@@ -41,7 +42,7 @@ bool smsf_nsmsf_sm_service_handle_activate(
     }
 
     if (!UeSmsContextData->amf_id) {
-        ogs_error("[%s] No amf_id", smsf_ue->suci);
+        ogs_error("[%s] No amf_id", smsf_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
                 message, "No amfInstanceId", smsf_ue->supi));
@@ -72,8 +73,8 @@ bool smsf_nsmsf_sm_service_handle_activate(
             udm_ue->amf_3gpp_access_registration,
                 message->Amf3GppAccessRegistration);
 */
-
-    r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_NAME_NUDM_UECM, NULL,
+    int r;
+    r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
             smsf_nudm_uecm_build_registration, smsf_ue, stream, NULL);
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);

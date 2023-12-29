@@ -50,6 +50,8 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
     ogs_sbi_response_t *response = NULL;
     ogs_sbi_message_t message;
 
+    smsf_ue_t *smsf_ue = NULL;
+
     smsf_sm_debug(e);
 
     ogs_assert(s);

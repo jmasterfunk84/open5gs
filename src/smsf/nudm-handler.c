@@ -24,7 +24,8 @@
 int smsf_nudm_sdm_handle_provisioned(
         smsf_ue_t *smsf_ue, int state, ogs_sbi_message_t *recvmsg)
 {
-
+/*
+Can't just do this.  you need to trigger an event back on nsmsf.
     ogs_sbi_message_t sendmsg;
     ogs_sbi_response_t *response = NULL;
 
@@ -34,6 +35,8 @@ int smsf_nudm_sdm_handle_provisioned(
             &sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
     ogs_assert(response);
     ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+*/
 /*
     int i, r;
     ran_ue_t *ran_ue = NULL;

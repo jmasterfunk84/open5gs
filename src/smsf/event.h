@@ -30,6 +30,7 @@ typedef struct smsf_ue_s smsf_ue_t;
 
 typedef struct smsf_event_s {
     ogs_event_t h;
+    smsf_ue_t *smsf_ue;
 } smsf_event_t;
 
 OGS_STATIC_ASSERT(OGS_EVENT_SIZE >= sizeof(smsf_event_t));

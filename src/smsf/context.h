@@ -36,15 +36,16 @@ extern int __smsf_log_domain;
 
 typedef struct smsf_context_s {
     ogs_list_t      smsf_ue_list;
+    ogs_hash_t      *supi_hash;
 } smsf_context_t;
 
 struct smsf_ue_s {
-//    ogs_sbi_object_t sbi;
+    ogs_sbi_object_t sbi;
 //    ogs_fsm_t sm;
 
     OpenAPI_smsf_registration_t *SmsfRegistration;
 
-//    char *ctx_id;
+    char *ctx_id;
     char *supi;
     char *gpsi;
 //    char *serving_network_name;
@@ -61,9 +62,10 @@ smsf_context_t *smsf_self(void);
 
 int smsf_context_parse_config(void);
 
-smsf_ue_t *smsf_ue_add(char *suci);
+smsf_ue_t *smsf_ue_add(char *supi);
 void smsf_ue_remove(smsf_ue_t *smsf_ue);
 void smsf_ue_remove_all(void);
+smsf_ue_t *smsf_ue_find_by_supi(char *supi);
 
 int get_ue_load(void);
 

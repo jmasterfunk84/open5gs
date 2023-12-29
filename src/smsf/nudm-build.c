@@ -93,15 +93,6 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_registration_delete(
     memset(&SmsfRegistration, 0,
             sizeof(SmsfRegistration));
 
-    SmsfRegistration.guami =
-            ogs_sbi_build_guami(smsf_ue->guami);
-    if (!SmsfRegistration.guami) {
-        ogs_error("No guami");
-        goto end;
-    }
-    SmsfRegistration.is_purge_flag = true;
-    SmsfRegistration.purge_flag = 1;
-
     message.SmsfRegistration =
             &SmsfRegistration;
 
@@ -109,10 +100,6 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_registration_delete(
     ogs_expect(request);
 
 end:
-
-    if (SmsfRegistration.guami)
-        ogs_sbi_free_guami(SmsfRegistration.guami);
-
     return request;
 }
 
@@ -222,7 +209,6 @@ ogs_sbi_request_t *smsf_nudm_sdm_build_subscription_delete(
 
     ogs_assert(smsf_ue);
     ogs_assert(smsf_ue->supi);
-    ogs_assert(smsf_ue->data_change_subscription_id);
 
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_DELETE;
@@ -231,7 +217,6 @@ ogs_sbi_request_t *smsf_nudm_sdm_build_subscription_delete(
     message.h.resource.component[0] = smsf_ue->supi;
     message.h.resource.component[1] =
             (char *)OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS;
-    message.h.resource.component[2] = smsf_ue->data_change_subscription_id;
 
     request = ogs_sbi_build_request(&message);
     ogs_expect(request);
