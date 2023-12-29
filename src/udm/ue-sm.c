@@ -115,8 +115,25 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
             CASE(OGS_SBI_HTTP_METHOD_PUT)
                 SWITCH(message->h.resource.component[1])
                 CASE(OGS_SBI_RESOURCE_NAME_REGISTRATIONS)
-                    udm_nudm_uecm_handle_amf_registration(
-                            udm_ue, stream, message);
+                    SWITCH(message->h.resource.component[1])
+                    CASE(OGS_SBI_RESOURCE_NAME_AMF_3GPP_ACCESS)
+                        udm_nudm_uecm_handle_amf_registration(
+                                udm_ue, stream, message);
+                        break;
+
+                    CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
+                        udm_nudm_uecm_handle_smsf_registration(
+                                udm_ue, stream, message);
+                        break;
+
+                    DEFAULT
+                        ogs_error("[%s] Invalid resource name [%s]",
+                            udm_ue->suci, message->h.resource.component[1]);
+                        ogs_assert(true ==
+                            ogs_sbi_server_send_error(stream,
+                                OGS_SBI_HTTP_STATUS_BAD_REQUEST, message,
+                                "Invalid resource name", message->h.method));
+                    END
                     break;
 
                 DEFAULT
@@ -128,6 +145,7 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
                             "Invalid HTTP method", message->h.method));
                 END
                 break;
+
             CASE(OGS_SBI_HTTP_METHOD_PATCH)
                 SWITCH(message->h.resource.component[1])
                 CASE(OGS_SBI_RESOURCE_NAME_REGISTRATIONS)
