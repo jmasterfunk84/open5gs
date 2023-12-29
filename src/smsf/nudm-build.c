@@ -23,11 +23,10 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_registration(
         smsf_ue_t *smsf_ue, void *data)
 {
     ogs_sbi_message_t message;
-    ogs_sbi_header_t header;
     ogs_sbi_request_t *request = NULL;
     ogs_sbi_server_t *server = NULL;
 
-    OpenAPI_smsf_registration_t Smsf3GppRegistration;
+    OpenAPI_smsf_registration_t SmsfRegistration;
 
     ogs_assert(smsf_ue);
     ogs_assert(smsf_ue->supi);
@@ -42,14 +41,17 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_registration(
     message.h.resource.component[2] =
             (char *)OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS;
 
-    memset(&Smsf3GppRegistration, 0, sizeof(Smsf3GppRegistration));
+    memset(&SmsfRegistration, 0, sizeof(SmsfRegistration));
 
-    Smsf3GppRegistration.smsf_instance_id =
+    SmsfRegistration.smsf_instance_id =
         NF_INSTANCE_ID(ogs_sbi_self()->nf_instance);
-    if (!Smsf3GppRegistration.smsf_instance_id) {
+    if (!SmsfRegistration.smsf_instance_id) {
         ogs_error("No smsf_instance_id");
         goto end;
     }
+
+    // Mandatory:
+    // SmsfRegistration.plmn_id
 
     server = ogs_sbi_server_first();
     if (!server) {
@@ -57,26 +59,12 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_registration(
         goto end;
     }
 
-    memset(&header, 0, sizeof(header));
-    header.service.name = (char *)OGS_SBI_SERVICE_NAME_NAMF_CALLBACK;
-    header.api.version = (char *)OGS_SBI_API_V1;
-    header.resource.component[0] = smsf_ue->supi;
-    header.resource.component[1] = (char *)OGS_SBI_RESOURCE_NAME_DEREG_NOTIFY;
-
-    message.Smsf3GppRegistration = &Smsf3GppRegistration;
-
-    message.http.custom.callback =
-        (char *)OGS_SBI_CALLBACK_NUDM_UECM_DEREGISTRATION_NOTIFICATION;
+    message.SmsfRegistration = &SmsfRegistration;
 
     request = ogs_sbi_build_request(&message);
     ogs_expect(request);
 
 end:
-
-    if (Smsf3GppRegistration.guami)
-        ogs_sbi_free_guami(Smsf3GppRegistration.guami);
-    if (Smsf3GppRegistration.dereg_callback_uri)
-        ogs_free(Smsf3GppRegistration.dereg_callback_uri);
 
     return request;
 }
@@ -87,7 +75,7 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_registration_delete(
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
 
-    OpenAPI_smsf_registration_t Smsf3GppRegistration;
+    OpenAPI_smsf_registration_t SmsfRegistration;
 
     ogs_assert(smsf_ue);
     ogs_assert(smsf_ue->supi);
@@ -102,28 +90,28 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_registration_delete(
     message.h.resource.component[2] =
             (char *)OGS_SBI_RESOURCE_NAME_AMF_3GPP_ACCESS;
 
-    memset(&Smsf3GppRegistration, 0,
-            sizeof(Smsf3GppRegistration));
+    memset(&SmsfRegistration, 0,
+            sizeof(SmsfRegistration));
 
-    Smsf3GppRegistration.guami =
+    SmsfRegistration.guami =
             ogs_sbi_build_guami(smsf_ue->guami);
-    if (!Smsf3GppRegistration.guami) {
+    if (!SmsfRegistration.guami) {
         ogs_error("No guami");
         goto end;
     }
-    Smsf3GppRegistration.is_purge_flag = true;
-    Smsf3GppRegistration.purge_flag = 1;
+    SmsfRegistration.is_purge_flag = true;
+    SmsfRegistration.purge_flag = 1;
 
-    message.Smsf3GppRegistration =
-            &Smsf3GppRegistration;
+    message.SmsfRegistration =
+            &SmsfRegistration;
 
     request = ogs_sbi_build_request(&message);
     ogs_expect(request);
 
 end:
 
-    if (Smsf3GppRegistration.guami)
-        ogs_sbi_free_guami(Smsf3GppRegistration.guami);
+    if (SmsfRegistration.guami)
+        ogs_sbi_free_guami(SmsfRegistration.guami);
 
     return request;
 }

@@ -20,16 +20,72 @@
 #include "sbi-path.h"
 #include "nnrf-handler.h"
 #include "nsmsf-handler.h"
+#include "nsmsf-build.h"
 
 bool smsf_nsmsf_sm_service_handle_activate(
         ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
 {
     ogs_info("Activate");
+    OpenAPI_ue_sms_context_data_t *UeSmsContextData = NULL;
+
+    ogs_assert(stream);
+    ogs_assert(message);
+
+    UeSmsContextData = message->UeSmsContextData;
+    if (!UeSmsContextData) {
+        ogs_error("[%s] No UeSmsContextData", udm_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No UeSmsContextData", udm_ue->supi));
+        return false;
+    }
+
+    if (!UeSmsContextData->amf_id) {
+        ogs_error("[%s] No amf_id", udm_ue->suci);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No amfInstanceId", udm_ue->supi));
+        return false;
+    }
+
+    if (!UeSmsContextData->supi) {
+        ogs_error("[%s] No supi", udm_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No supi", udm_ue->supi));
+        return false;
+    }
+
+/*
+    if (udm_ue->dereg_callback_uri)
+        ogs_free(udm_ue->dereg_callback_uri);
+    udm_ue->dereg_callback_uri = ogs_strdup(
+            Amf3GppAccessRegistration->dereg_callback_uri);
+    ogs_assert(udm_ue->dereg_callback_uri);
+
+    ogs_sbi_parse_guami(&udm_ue->guami, Guami);
+
+    udm_ue->rat_type = Amf3GppAccessRegistration->rat_type;
+
+    udm_ue->amf_3gpp_access_registration =
+        OpenAPI_amf3_gpp_access_registration_copy(
+            udm_ue->amf_3gpp_access_registration,
+                message->Amf3GppAccessRegistration);
+*/
+
+    r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_NAME_NUDM_UECM, NULL,
+            smsf_nudm_uecm_build_registration, smsf_ue, stream, NULL);
+    ogs_expect(r == OGS_OK);
+    ogs_assert(r != OGS_ERROR);
+
+    return OGS_OK;
+
+
+
+
 
     ogs_sbi_message_t sendmsg;
     ogs_sbi_response_t *response = NULL;
-
-    ogs_assert(stream);
 
     memset(&sendmsg, 0, sizeof(sendmsg));
 

@@ -85,6 +85,7 @@
 #include "model/patch_item.h"
 #include "model/ue_authentication_ctx.h"
 #include "model/ue_sms_context_data.h"
+#include "model/smsf_registration.h"
 
 #include "custom/links.h"
 

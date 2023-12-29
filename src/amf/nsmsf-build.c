@@ -47,7 +47,7 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
 
     UeSmsContextData.amf_id = NF_INSTANCE_ID(ogs_sbi_self()->nf_instance);
     if (!UeSmsContextData.amf_id) {
-        ogs_error("No amf_instance_id");
+        ogs_error("No amf_id");
         goto end;
     }
 

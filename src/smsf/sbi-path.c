@@ -64,3 +64,70 @@ void smsf_sbi_close(void)
     ogs_sbi_client_stop_all();
     ogs_sbi_server_stop_all();
 }
+
+/* check if used? */
+bool udm_sbi_send_request(
+        ogs_sbi_nf_instance_t *nf_instance, ogs_sbi_xact_t *xact)
+{
+    ogs_assert(nf_instance);
+    ogs_assert(xact);
+    return ogs_sbi_send_request_to_nf_instance(nf_instance, xact);
+}
+
+static int smsf_sbi_discover_and_send(
+        ogs_sbi_object_t *sbi_object,
+        ogs_sbi_service_type_e service_type,
+        ogs_sbi_discovery_option_t *discovery_option,
+        ogs_sbi_build_f build,
+        void *context, ogs_sbi_stream_t *stream, void *data)
+{
+    ogs_sbi_xact_t *xact = NULL;
+    int r;
+
+    ogs_assert(service_type);
+    ogs_assert(sbi_object);
+    ogs_assert(stream);
+    ogs_assert(build);
+
+    xact = ogs_sbi_xact_add(
+            sbi_object, service_type, discovery_option,
+            (ogs_sbi_build_f)build, context, data);
+    if (!xact) {
+        ogs_error("smsf_sbi_discover_and_send() failed");
+        return OGS_ERROR;
+    }
+
+    xact->assoc_stream = stream;
+
+    r = ogs_sbi_discover_and_send(xact);
+    if (r != OGS_OK) {
+        ogs_error("smsf_sbi_discover_and_send() failed");
+        ogs_sbi_xact_remove(xact);
+        return r;
+    }
+
+    return OGS_OK;
+}
+
+int smsf_ue_sbi_discover_and_send(
+        ogs_sbi_service_type_e service_type,
+        ogs_sbi_discovery_option_t *discovery_option,
+        ogs_sbi_request_t *(*build)(smsf_ue_t *smsf_ue, void *data),
+        smsf_ue_t *smsf_ue, int state, void *data)
+{
+    int r;
+
+    r = smsf_sbi_discover_and_send(
+                &smsf_ue->sbi, service_type, discovery_option,
+                (ogs_sbi_build_f)build, smsf_ue, stream, data);
+    if (r != OGS_OK) {
+        ogs_error("smsf_ue_sbi_discover_and_send() failed");
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream,
+                OGS_SBI_HTTP_STATUS_GATEWAY_TIMEOUT, NULL,
+                "Cannot discover", smsf_ue->supi));
+        return r;
+    }
+
+    return OGS_OK;
+}

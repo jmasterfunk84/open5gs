@@ -191,6 +191,8 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
         OpenAPI_sec_negotiate_rsp_data_free(message->SecNegotiateRspData);
     if (message->UeSmsContextData)
         OpenAPI_ue_sms_context_data_free(message->UeSmsContextData);
+    if (message->SmsfRegistration)
+        OpenAPI_ue_sms_context_data_free(message->SmsfRegistration);
 
     /* HTTP Part */
     for (i = 0; i < message->num_of_part; i++) {
@@ -1345,6 +1347,10 @@ static char *build_json(ogs_sbi_message_t *message)
         item = OpenAPI_ue_sms_context_data_convertToJSON(
             message->UeSmsContextData);
         ogs_assert(item);
+    } else if (message->SmsfRegistration) {
+        item = OpenAPI_ue_sms_context_data_convertToJSON(
+            message->SmsfRegistration);
+        ogs_assert(item);
     }
 
     if (item) {
@@ -1627,6 +1633,19 @@ static int parse_json(ogs_sbi_message_t *message,
                         message->SmfRegistration =
                             OpenAPI_smf_registration_parseFromJSON(item);
                         if (!message->SmfRegistration) {
+                            rv = OGS_ERROR;
+                            ogs_error("JSON parse error");
+                        }
+                    } else {
+                        ogs_error("HTTP ERROR Status : %d",
+                                message->res_status);
+                    }
+                    break;
+                CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
+                    if (message->res_status < 300) {
+                        message->SmsfRegistration =
+                            OpenAPI_smsf_registration_parseFromJSON(item);
+                        if (!message->SmsfRegistration) {
                             rv = OGS_ERROR;
                             ogs_error("JSON parse error");
                         }
@@ -2450,7 +2469,7 @@ static int parse_json(ogs_sbi_message_t *message,
             break;
 
         CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
-            SWITCH(message->h.resource.component[1])
+            SWITCH(message->h.resource.component[0])
             CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
                 if (message->res_status == 0) {
                     message->UeSmsContextData =
