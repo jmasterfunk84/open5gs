@@ -325,6 +325,7 @@ int amf_nudm_sdm_handle_provisioned(
         ogs_sbi_header_free(&header);
 
         ogs_info("EntryB - Finding SMSF not PCF");
+        /* Maybe double check, 23.502 4.13.3.1-1, isn't this after step 20?  After PCF? */
         r = amf_ue_sbi_discover_and_send(
                 OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
                 amf_nsmsf_sm_service_build_activate, amf_ue, 0, NULL);
