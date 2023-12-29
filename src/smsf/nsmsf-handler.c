@@ -20,10 +20,10 @@
 #include "sbi-path.h"
 #include "nnrf-handler.h"
 #include "nsmsf-handler.h"
-#include "nsmsf-build.h"
 
 bool smsf_nsmsf_sm_service_handle_activate(
-        ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
+        smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+        ogs_sbi_message_t *message)
 {
     ogs_info("Activate");
     OpenAPI_ue_sms_context_data_t *UeSmsContextData = NULL;
@@ -33,26 +33,26 @@ bool smsf_nsmsf_sm_service_handle_activate(
 
     UeSmsContextData = message->UeSmsContextData;
     if (!UeSmsContextData) {
-        ogs_error("[%s] No UeSmsContextData", udm_ue->supi);
+        ogs_error("[%s] No UeSmsContextData", smsf_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                message, "No UeSmsContextData", udm_ue->supi));
+                message, "No UeSmsContextData", smsf_ue->supi));
         return false;
     }
 
     if (!UeSmsContextData->amf_id) {
-        ogs_error("[%s] No amf_id", udm_ue->suci);
+        ogs_error("[%s] No amf_id", smsf_ue->suci);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                message, "No amfInstanceId", udm_ue->supi));
+                message, "No amfInstanceId", smsf_ue->supi));
         return false;
     }
 
     if (!UeSmsContextData->supi) {
-        ogs_error("[%s] No supi", udm_ue->supi);
+        ogs_error("[%s] No supi", smsf_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                message, "No supi", udm_ue->supi));
+                message, "No supi", smsf_ue->supi));
         return false;
     }
 
@@ -79,21 +79,7 @@ bool smsf_nsmsf_sm_service_handle_activate(
     ogs_assert(r != OGS_ERROR);
 
     return OGS_OK;
-
-
-
-
-
-    ogs_sbi_message_t sendmsg;
-    ogs_sbi_response_t *response = NULL;
-
-    memset(&sendmsg, 0, sizeof(sendmsg));
-
-    response = ogs_sbi_build_response(
-            &sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
-    ogs_assert(response);
-    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
-
+ 
     /* Must hand off to PCF for AM POLICY.  ../src/amf/nudm-handler.c:327
     Or is it done in smsf-sm? to handle error cases.*/
 
@@ -101,14 +87,16 @@ bool smsf_nsmsf_sm_service_handle_activate(
 }
 
 bool smsf_nsmsf_sm_service_handle_deactivate(
-        ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
+        smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+        ogs_sbi_message_t *message)
 {
     ogs_info("Deactivate");
     return OGS_OK;
 }
 
 bool smsf_nsmsf_sm_service_handle_uplink_sms(
-        ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
+        smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+        ogs_sbi_message_t *message)
 {
     ogs_info("SMS");
     return OGS_OK;
@@ -121,9 +109,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     char *strerror = NULL;
 
     OpenAPI_authorized_network_slice_info_t AuthorizedNetworkSliceInfo;
-    OpenAPI_nsi_information_t NsiInformation;
 
-    smsf_nsi_t *nsi = NULL;
 
     ogs_sbi_message_t sendmsg;
     ogs_sbi_response_t *response = NULL;
@@ -149,20 +135,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         goto cleanup;
     }
 
-    nsi = smsf_nsi_find_by_s_nssai(&recvmsg->param.s_nssai);
-    if (!nsi) {
-        status = OGS_SBI_HTTP_STATUS_FORBIDDEN;
-        strerror = ogs_msprintf("Cannot find NSI by S-NSSAI[SST:%d SD:0x%x]",
-            recvmsg->param.s_nssai.sst, recvmsg->param.s_nssai.sd.v);
-        goto cleanup;
-    }
-
-    memset(&NsiInformation, 0, sizeof(NsiInformation));
-    NsiInformation.nrf_id = nsi->nrf_id;
-    NsiInformation.nsi_id = nsi->nsi_id;
 
     memset(&AuthorizedNetworkSliceInfo, 0, sizeof(AuthorizedNetworkSliceInfo));
-    AuthorizedNetworkSliceInfo.nsi_information = &NsiInformation;
 
     memset(&sendmsg, 0, sizeof(sendmsg));
     sendmsg.AuthorizedNetworkSliceInfo = &AuthorizedNetworkSliceInfo;

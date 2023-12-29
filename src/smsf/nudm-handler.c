@@ -20,11 +20,21 @@
 #include "nudm-handler.h"
 
 #include "sbi-path.h"
-#include "nas-path.h"
 
 int smsf_nudm_sdm_handle_provisioned(
         smsf_ue_t *smsf_ue, int state, ogs_sbi_message_t *recvmsg)
 {
+
+    ogs_sbi_message_t sendmsg;
+    ogs_sbi_response_t *response = NULL;
+
+    memset(&sendmsg, 0, sizeof(sendmsg));
+
+    response = ogs_sbi_build_response(
+            &sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+/*
     int i, r;
     ran_ue_t *ran_ue = NULL;
 
@@ -33,7 +43,7 @@ int smsf_nudm_sdm_handle_provisioned(
 
     ran_ue = ran_ue_cycle(smsf_ue->ran_ue);
     if (!ran_ue) {
-        /* ran_ue is required for smsf_ue_is_rat_restricted() */
+
         ogs_error("NG context has already been removed");
         r = nas_5gs_send_gmm_reject(
                 smsf_ue, OGS_5GMM_CAUSE_5GS_SERVICES_NOT_ALLOWED);
@@ -57,7 +67,7 @@ int smsf_nudm_sdm_handle_provisioned(
 
             OpenAPI_lnode_t *node = NULL;
 
-            /* Clear MSISDN */
+
             for (i = 0; i < smsf_ue->num_of_msisdn; i++) {
                 ogs_assert(smsf_ue->msisdn[i]);
                 ogs_free(smsf_ue->msisdn[i]);
@@ -86,7 +96,7 @@ int smsf_nudm_sdm_handle_provisioned(
                 }
             }
 
-            /* Clear Subscribed-UE-AMBR */
+
             smsf_ue->ue_ambr.uplink = 0;
             smsf_ue->ue_ambr.downlink = 0;
 
@@ -101,7 +111,7 @@ int smsf_nudm_sdm_handle_provisioned(
                 OpenAPI_list_t *DefaultSingleNssaiList = NULL;
                 OpenAPI_list_t *SingleNssaiList = NULL;
 
-                /* Clear SubscribedInfo */
+
                 amf_clear_subscribed_info(smsf_ue);
 
                 DefaultSingleNssaiList = NSSAI->default_single_nssais;
@@ -117,7 +127,7 @@ int smsf_nudm_sdm_handle_provisioned(
                                 ogs_s_nssai_sd_from_string(Snssai->sd);
                         }
 
-                        /* DEFAULT S-NSSAI */
+
                         slice->default_indicator = true;
 
                         smsf_ue->num_of_slice++;
@@ -136,7 +146,7 @@ int smsf_nudm_sdm_handle_provisioned(
                                     ogs_s_nssai_sd_from_string(Snssai->sd);
                             }
 
-                            /* Non default S-NSSAI */
+
                             slice->default_indicator = false;
 
                             smsf_ue->num_of_slice++;
@@ -256,8 +266,6 @@ int smsf_nudm_sdm_handle_provisioned(
 
     CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMF_DATA)
         if (smsf_ue->data_change_subscription_id) {
-            /* we already have a SDM subscription to UDM; continue without
-             * subscribing again */
             r = smsf_ue_sbi_discover_and_send(
                     OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL, NULL,
                     amf_npcf_am_policy_control_build_create,
@@ -330,17 +338,11 @@ int smsf_nudm_sdm_handle_provisioned(
                 amf_nsmsf_sm_service_build_activate, smsf_ue, 0, NULL);
         ogs_expect(r == OGS_OK);
         ogs_assert(r != OGS_ERROR);
-        /* If SMS not required, do this.  Also add to nsmsf-handler.
-        r = smsf_ue_sbi_discover_and_send(
-                OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL, NULL,
-                amf_npcf_am_policy_control_build_create, smsf_ue, state, NULL);
-        ogs_expect(r == OGS_OK);
-        ogs_assert(r != OGS_ERROR);
-        */
         break;
 
     DEFAULT
     END
+*/
 
     return OGS_OK;
 }

@@ -27,13 +27,16 @@ extern "C" {
 #endif
 
 bool smsf_nsmsf_sm_service_handle_activate(
-        ogs_sbi_stream_t *stream, ogs_sbi_message_t *message);
+        smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+        ogs_sbi_message_t *message);
 
 bool smsf_nsmsf_sm_service_handle_deactivate(
-        ogs_sbi_stream_t *stream, ogs_sbi_message_t *message);
+        smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+        ogs_sbi_message_t *message);
 
 bool smsf_nsmsf_sm_service_handle_uplink_sms(
-        ogs_sbi_stream_t *stream, ogs_sbi_message_t *message);
+        smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+        ogs_sbi_message_t *message);
 
 #ifdef __cplusplus
 }

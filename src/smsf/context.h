@@ -35,13 +35,25 @@ extern int __smsf_log_domain;
 #define OGS_LOG_DOMAIN __smsf_log_domain
 
 typedef struct smsf_context_s {
-    ogs_list_t      nsi_list; /* NSI List */
+    ogs_list_t      smsf_ue_list;
 } smsf_context_t;
 
-/*
-struct pcf_ue_s {
+struct smsf_ue_s {
+//    ogs_sbi_object_t sbi;
+//    ogs_fsm_t sm;
+
+    OpenAPI_smsf_registration_t *SmsfRegistration;
+
+//    char *ctx_id;
+    char *supi;
+    char *gpsi;
+//    char *serving_network_name;
+
+    char *amf_instance_id;
+
+//    OpenAPI_auth_type_e auth_type;
+//    OpenAPI_rat_type_e rat_type;
 };
-*/
 
 void smsf_context_init(void);
 void smsf_context_final(void);
@@ -49,21 +61,11 @@ smsf_context_t *smsf_self(void);
 
 int smsf_context_parse_config(void);
 
-typedef struct smsf_nsi_s {
-    ogs_lnode_t     lnode;
+smsf_ue_t *smsf_ue_add(char *suci);
+void smsf_ue_remove(smsf_ue_t *smsf_ue);
+void smsf_ue_remove_all(void);
 
-    char *nrf_id;
-    char *nsi_id;
-
-    ogs_s_nssai_t s_nssai;
-} smsf_nsi_t;
-
-smsf_nsi_t *smsf_nsi_add(char *nrf_id, uint8_t sst, ogs_uint24_t sd);
-void smsf_nsi_remove(smsf_nsi_t *nsi);
-void smsf_nsi_remove_all(void);
-smsf_nsi_t *smsf_nsi_find_by_s_nssai(ogs_s_nssai_t *s_nssai);
-
-int get_nsi_load(void);
+int get_ue_load(void);
 
 #ifdef __cplusplus
 }
