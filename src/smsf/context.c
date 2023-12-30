@@ -206,6 +206,11 @@ void smsf_ue_remove(smsf_ue_t *smsf_ue)
     if (smsf_ue->amf_instance_id)
         ogs_free(smsf_ue->amf_instance_id);
 
+    if (smsf_ue->smsf_registration)
+        OpenAPI_smsf_registration_free(smsf_ue->smsf_registration);
+    if (smsf_ue->sms_management_subscription_data)
+        OpenAPI_smsf_registration_free(smsf_ue->sms_management_subscription_data);
+
     ogs_pool_free(&smsf_ue_pool, smsf_ue);
 }
 
