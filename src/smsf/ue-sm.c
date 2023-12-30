@@ -39,6 +39,7 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
     ogs_sbi_stream_t *stream = NULL;
     ogs_sbi_message_t *message = NULL;
+    ogs_sbi_server_t *server = NULL;
 
     int r;
 
@@ -49,6 +50,8 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
     smsf_ue = e->smsf_ue;
     ogs_assert(smsf_ue);
+    server = ogs_sbi_server_from_stream(stream);
+    ogs_assert(server);
 
     switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
@@ -192,12 +195,12 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                 UeSmsContextData = smsf_ue->ue_sms_context_data;
 
 // Trying to make a better header?
-                memset(&message, 0, sizeof(message));
-                message.h.service.name =
+                memset(&header, 0, sizeof(header));
+                header.service.name =
                     (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
-                message.h.api.version = (char *)OGS_SBI_API_V2;
-                message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
-                message.h.resource.component[1] = smsf_ue->supi;
+                header.api.version = (char *)OGS_SBI_API_V2;
+                header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
+                header.resource.component[1] = smsf_ue->supi;
 
                 memset(&sendmsg, 0, sizeof(sendmsg));
                 sendmsg.UeSmsContextData = &UeSmsContextData;
