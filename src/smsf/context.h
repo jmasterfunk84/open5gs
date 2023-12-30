@@ -44,6 +44,7 @@ struct smsf_ue_s {
     ogs_fsm_t sm;
 
     OpenAPI_smsf_registration_t *smsf_registration;
+    OpenAPI_sms_subscription_data_t *sms_subscription_data;
 
     char *ctx_id;
     char *supi;
@@ -66,6 +67,7 @@ smsf_ue_t *smsf_ue_add(char *supi);
 void smsf_ue_remove(smsf_ue_t *smsf_ue);
 void smsf_ue_remove_all(void);
 smsf_ue_t *smsf_ue_find_by_supi(char *supi);
+smsf_ue_t *smsf_ue_find_by_gpsi(char *gpsi);
 
 smsf_ue_t *smsf_ue_cycle(smsf_ue_t *smsf_ue);
 

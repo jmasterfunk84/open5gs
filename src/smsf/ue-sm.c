@@ -138,7 +138,7 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                             OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
                             smsf_nudm_sdm_build_get,
                             smsf_ue, stream,
-                            (char *)OGS_SBI_RESOURCE_NAME_SMS_DATA);
+                            (char *)OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA);
                     ogs_expect(r == OGS_OK);
                     ogs_assert(r != OGS_ERROR);
                     break;
@@ -156,6 +156,23 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                         ogs_assert_if_reached();
                     END
                 END
+                break;
+
+            DEFAULT
+                ogs_error("Invalid resource name [%s]",
+                        message->h.resource.component[1]);
+                ogs_assert_if_reached();
+            END
+            break;
+
+        CASE(OGS_SBI_SERVICE_NAME_NUDM_SDM)
+            SWITCH(message.h.resource.component[1])
+            CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
+                smsf_nudm_sdm_handle_provisioned(
+                        smsf_ue, stream, message);
+
+                // Then we go do a subscribe from here.
+                ogs_info("reach");
                 break;
 
             DEFAULT

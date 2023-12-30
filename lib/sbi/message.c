@@ -193,8 +193,8 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
         OpenAPI_ue_sms_context_data_free(message->UeSmsContextData);
     if (message->SmsfRegistration)
         OpenAPI_smsf_registration_free(message->SmsfRegistration);
-    if (message->SmsSubscriptionData)
-        OpenAPI_sms_subscription_data_free(message->SmsSubscriptionData);
+    if (message->SmsManagementSubscriptionData)
+        OpenAPI_sms_subscription_data_free(message->SmsManagementSubscriptionData);
 
     /* HTTP Part */
     for (i = 0; i < message->num_of_part; i++) {
@@ -1353,9 +1353,9 @@ static char *build_json(ogs_sbi_message_t *message)
         item = OpenAPI_smsf_registration_convertToJSON(
             message->SmsfRegistration);
         ogs_assert(item);
-    } else if (message->SmsSubscriptionData) {
-        item = OpenAPI_sms_subscription_data_convertToJSON(
-            message->SmsSubscriptionData);
+    } else if (message->SmsManagementSubscriptionData) {
+        item = OpenAPI_sms_management_subscription_data_convertToJSON(
+            message->SmsManagementSubscriptionData);
         ogs_assert(item);
     }
 
@@ -1760,11 +1760,11 @@ static int parse_json(ogs_sbi_message_t *message,
                 }
                 break;
 
-            CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+            CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
                 if (message->res_status < 300) {
-                    message->SmsSubscriptionData =
-                        OpenAPI_sms_subscription_data_parseFromJSON(item);
-                    if (!message->SmsSubscriptionData) {
+                    message->SmsManagementSubscriptionData =
+                        OpenAPI_sms_management_subscription_data_parseFromJSON(item);
+                    if (!message->SmsManagementSubscriptionData) {
                         rv = OGS_ERROR;
                         ogs_error("JSON parse error");
                     }
@@ -1941,12 +1941,12 @@ static int parse_json(ogs_sbi_message_t *message,
                             }
                             break;
 
-                        CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+                        CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
                             if (message->res_status < 300) {
-                                message->SmsSubscriptionData =
-                                    OpenAPI_sms_subscription_data_parseFromJSON(
+                                message->SmsManagementSubscriptionData =
+                                    OpenAPI_sms_management_subscription_data_parseFromJSON(
                                             item);
-                                if (!message->SmsSubscriptionData) {
+                                if (!message->SmsManagementSubscriptionData) {
                                     rv = OGS_ERROR;
                                     ogs_error("JSON parse error");
                                 }

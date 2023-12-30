@@ -801,32 +801,33 @@ bool udm_nudr_dr_handle_subscription_provisioned(
 
         break;
 
-    CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
-        OpenAPI_sms_subscription_data_t *SmsSubscriptionData = NULL;
+    CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
+        OpenAPI_sms_management_subscription_data_t *SmsManagementSubscriptionData = NULL;
 
-        SmsSubscriptionData = recvmsg->SmsSubscriptionData;
-        if (!SmsSubscriptionData) {
-            ogs_error("[%s] No SmsSubscriptionData", udm_ue->supi);
+        SmsManagementSubscriptionData = recvmsg->SmsManagementSubscriptionData;
+        if (!SmsManagementSubscriptionData) {
+            ogs_error("[%s] No SmsManagementSubscriptionData", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(
                     stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    recvmsg, "No SmsSubscriptionData",
+                    recvmsg, "No SmsManagementSubscriptionData",
                     udm_ue->supi));
             return false;
         }
 
         memset(&sendmsg, 0, sizeof(sendmsg));
 
-        sendmsg.SmsSubscriptionData = OpenAPI_sms_subscription_data_copy(
-                sendmsg.SmsSubscriptionData,
-                recvmsg->SmsSubscriptionData);
+        sendmsg.SmsManagementSubscriptionData =
+            OpenAPI_sms_management_subscription_data_copy(
+                sendmsg.SmsManagementSubscriptionData,
+                recvmsg->SmsManagementSubscriptionData);
 
         response = ogs_sbi_build_response(&sendmsg, recvmsg->res_status);
         ogs_assert(response);
         ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
         OpenAPI_sms_subscription_data_free(
-                sendmsg.SmsSubscriptionData);
+                sendmsg.SmsManagementSubscriptionData);
         break;
 
     DEFAULT

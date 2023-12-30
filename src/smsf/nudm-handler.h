@@ -26,8 +26,8 @@ extern "C" {
 
 #include "context.h"
 
-int smsf_nudm_sdm_handle_provisioned(
-        smsf_ue_t *smsf_ue, int state, ogs_sbi_message_t *recvmsg);
+int smsf_nudm_sdm_handle_provisioned_data(
+    smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg);
 bool smsf_nudm_uecm_handle_smsf_registration(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg);
 

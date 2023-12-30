@@ -333,8 +333,6 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                         break;
                     }
 
-                        //state = sbi_xact->state;
-
                     smsf_ue = (smsf_ue_t *)sbi_xact->sbi_object;
                     ogs_assert(smsf_ue);
 
@@ -349,8 +347,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                     ogs_assert(OGS_FSM_STATE(&smsf_ue->sm));
 
                     e->smsf_ue = smsf_ue;
-                    e->h.sbi.message = &message;;
-                        //e->h.sbi.state = state;
+                    e->h.sbi.message = &message;
 
                     ogs_fsm_dispatch(&smsf_ue->sm, e);
                     break;
@@ -370,12 +367,45 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
         break;
 
         CASE(OGS_SBI_SERVICE_NAME_NUDM_SDM)
-            ogs_info("%s", message.h.resource.component[0]);
-            ogs_info("%s", message.h.resource.component[1]);
-            ogs_info("%s", message.h.resource.component[2]);
-            ogs_info("%s", message.h.resource.component[3]);
+            SWITCH(message.h.resource.component[1])
+            CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
+                sbi_xact = e->h.sbi.data;
+                ogs_assert(sbi_xact);
+
+                sbi_xact = ogs_sbi_xact_cycle(sbi_xact);
+                if (!sbi_xact) {
+                    /* CLIENT_WAIT timer could remove SBI transaction
+                    * before receiving SBI message */
+                    ogs_error("SBI transaction has already been removed");
+                    break;
+                }
+
+                smsf_ue = (smsf_ue_t *)sbi_xact->sbi_object;
+                ogs_assert(smsf_ue);
+
+                ogs_sbi_xact_remove(sbi_xact);
+
+                smsf_ue = smsf_ue_cycle(smsf_ue);
+                if (!smsf_ue) {
+                    ogs_error("UE(smsf_ue) Context has already been removed");
+                    break;
+                }
+
+                ogs_assert(OGS_FSM_STATE(&smsf_ue->sm));
+
+                e->smsf_ue = smsf_ue;
+                e->h.sbi.message = &message;
+
+                ogs_fsm_dispatch(&smsf_ue->sm, e);
+                break;
+
+            DEFAULT
+                ogs_error("Invalid resource name  [%s]", 
+                        message.h.resource.component[2]);
+                ogs_assert_if_reached();
+            END
             break;
-            
+
         DEFAULT
             ogs_error("Invalid API name [%s]", message.h.service.name);
             ogs_assert_if_reached();

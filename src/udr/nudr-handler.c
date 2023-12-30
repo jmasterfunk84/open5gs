@@ -1068,16 +1068,21 @@ bool udr_nudr_dr_handle_subscription_provisioned(
 
         break;
 
-    CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
-        OpenAPI_sms_subscription_data_t SmsSubscriptionData;
+    CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
+        OpenAPI_sms_management_subscription_data_t SmsManagementSubscriptionData;
 
-        memset(&SmsSubscriptionData, 0, sizeof(SmsSubscriptionData));
+        memset(&SmsManagementSubscriptionData, 0, 
+                sizeof(SmsManagementSubscriptionData));
 
-        SmsSubscriptionData.is_sms_subscribed = true;
-        SmsSubscriptionData.sms_subscribed = 1;
+        SmsManagementSubscriptionData.mtSmsSubscribed = true;
+        SmsManagementSubscriptionData.mtSmsBarringAll = false;
+        SmsManagementSubscriptionData.mtSmsBarringRoaming = true;
+        SmsManagementSubscriptionData.moSmsSubscribed = true;
+        SmsManagementSubscriptionData.moSmsBarringAll = false;
+        SmsManagementSubscriptionData.moSmsBarringRoaming = true;
 
         memset(&sendmsg, 0, sizeof(sendmsg));
-        sendmsg.SmsSubscriptionData = &SmsSubscriptionData;
+        sendmsg.SmsManagementSubscriptionData = &SmsManagementSubscriptionData;
 
         response = ogs_sbi_build_response(
                 &sendmsg, OGS_SBI_HTTP_STATUS_OK);
