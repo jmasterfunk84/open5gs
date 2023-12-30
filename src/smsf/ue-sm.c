@@ -171,8 +171,13 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                 smsf_nudm_sdm_handle_provisioned_data(
                         smsf_ue, stream, message);
 
-                // Then we go do a subscribe from here.
-                ogs_info("reach");
+                r = smsf_ue_sbi_discover_and_send(
+                        OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
+                        smsf_nudm_sdm_build_subscription,
+                        smsf_ue, stream,
+                        (char *)OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA);
+                ogs_expect(r == OGS_OK);
+                ogs_assert(r != OGS_ERROR);
                 break;
 
             DEFAULT
