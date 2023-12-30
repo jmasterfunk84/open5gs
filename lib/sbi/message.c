@@ -194,7 +194,7 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
     if (message->SmsfRegistration)
         OpenAPI_smsf_registration_free(message->SmsfRegistration);
     if (message->SmsManagementSubscriptionData)
-        OpenAPI_sms_subscription_data_free(message->SmsManagementSubscriptionData);
+        OpenAPI_sms_management_subscription_data_free(message->SmsManagementSubscriptionData);
 
     /* HTTP Part */
     for (i = 0; i < message->num_of_part; i++) {
