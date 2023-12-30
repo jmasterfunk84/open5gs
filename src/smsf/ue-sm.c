@@ -166,9 +166,9 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
             break;
 
         CASE(OGS_SBI_SERVICE_NAME_NUDM_SDM)
-            SWITCH(message.h.resource.component[1])
+            SWITCH(message->h.resource.component[1])
             CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
-                smsf_nudm_sdm_handle_provisioned(
+                smsf_nudm_sdm_handle_provisioned_data(
                         smsf_ue, stream, message);
 
                 // Then we go do a subscribe from here.
