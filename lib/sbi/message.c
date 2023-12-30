@@ -1354,7 +1354,7 @@ static char *build_json(ogs_sbi_message_t *message)
             message->SmsfRegistration);
         ogs_assert(item);
     } else if (message->SmsSubscriptionData) {
-        item = OpenAPI_sms_subscription_convertToJSON(
+        item = OpenAPI_sms_subscription_data_convertToJSON(
             message->SmsSubscriptionData);
         ogs_assert(item);
     }
