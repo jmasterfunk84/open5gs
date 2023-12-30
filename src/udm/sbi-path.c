@@ -66,6 +66,7 @@ int udm_sbi_open(void)
                     service, OGS_SBI_API_V2, OGS_SBI_API_V2_0_0, NULL);
         ogs_sbi_nf_service_add_allowed_nf_type(service, OpenAPI_nf_type_AMF);
         ogs_sbi_nf_service_add_allowed_nf_type(service, OpenAPI_nf_type_SMF);
+        ogs_sbi_nf_service_add_allowed_nf_type(service, OpenAPI_nf_type_SMSF);
     }
 
     /* Initialize NRF NF Instance */

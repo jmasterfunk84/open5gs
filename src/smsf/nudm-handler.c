@@ -353,13 +353,6 @@ Can't just do this.  you need to trigger an event back on nsmsf.
 bool smsf_nudm_uecm_handle_smsf_registration(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
-    int status;
-    ogs_sbi_server_t *server = NULL;
-
-    ogs_sbi_message_t sendmsg;
-    ogs_sbi_header_t header;
-    ogs_sbi_response_t *response = NULL;
-
     ogs_info("got the data");
     OpenAPI_smsf_registration_t *SmsfRegistration = NULL;
 
@@ -407,9 +400,6 @@ bool smsf_nudm_uecm_handle_smsf_registration(
 
     smsf_ue->smsf_registration = OpenAPI_smsf_registration_copy(
             smsf_ue->smsf_registration,
-            SmsfRegistration);
-
-    OpenAPI_smsf_registration_free(
             SmsfRegistration);
 
     return true;

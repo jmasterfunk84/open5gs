@@ -359,6 +359,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                         message.h.resource.component[1]);
                 ogs_assert_if_reached();
             END
+        break;
 
         DEFAULT
             ogs_error("Invalid API name [%s]", message.h.service.name);
