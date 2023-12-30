@@ -234,7 +234,15 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
             break;
         }
 
-        if (strcmp(message.h.api.version, OGS_SBI_API_V1) != 0) {
+        SWITCH(message.h.service.name)
+        CASE(OGS_SBI_SERVICE_NAME_NUDM_SDM)
+            api_version = OGS_SBI_API_V2;
+            break;
+        DEFAULT
+            api_version = OGS_SBI_API_V1;
+        END
+
+        if (strcmp(message.h.api.version, api_version) != 0) {
             ogs_error("Not supported version [%s]", message.h.api.version);
             ogs_sbi_message_free(&message);
             ogs_sbi_response_free(response);
@@ -325,7 +333,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                         break;
                     }
 
-//                        state = sbi_xact->state;
+                        //state = sbi_xact->state;
 
                     smsf_ue = (smsf_ue_t *)sbi_xact->sbi_object;
                     ogs_assert(smsf_ue);
@@ -342,7 +350,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
                     e->smsf_ue = smsf_ue;
                     e->h.sbi.message = &message;;
-//                        e->h.sbi.state = state;
+                        //e->h.sbi.state = state;
 
                     ogs_fsm_dispatch(&smsf_ue->sm, e);
                     break;
@@ -361,6 +369,13 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
             END
         break;
 
+        CASE(OGS_SBI_SERVICE_NAME_NUDM_SDM)
+            ogs_info("%s", message.h.resource.component[0]);
+            ogs_info("%s", message.h.resource.component[1]);
+            ogs_info("%s", message.h.resource.component[2]);
+            ogs_info("%s", message.h.resource.component[3]);
+            break;
+            
         DEFAULT
             ogs_error("Invalid API name [%s]", message.h.service.name);
             ogs_assert_if_reached();

@@ -1074,6 +1074,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         memset(&SmsSubscriptionData, 0, sizeof(SmsSubscriptionData));
 
         SmsSubscriptionData.is_sms_subscribed = true;
+        SmsSubscriptionData.sms_subscribed = 1;
 
         memset(&sendmsg, 0, sizeof(sendmsg));
         sendmsg.SmsSubscriptionData = &SmsSubscriptionData;
