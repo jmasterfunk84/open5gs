@@ -189,29 +189,29 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
                 OpenAPI_ue_sms_context_data_t *UeSmsContextData = NULL;
 
-                UeSmsContextData = smsf_ue->UeSmsContextData;
-                if (!UeSmsContextData) {
-                    ogs_error("[%s] No UeSmsContextData", udm_ue->supi);
-                    ogs_assert(true ==
-                        ogs_sbi_server_send_error(
-                            stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                            recvmsg, "No UeSmsContextData",
-                            udm_ue->supi));
-                    return false;
-                }
+                UeSmsContextData = smsf_ue->ue_sms_context_data;
+
+// Trying to make a better header?
+                memset(&message, 0, sizeof(message));
+                message.h.service.name =
+                    (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
+                message.h.api.version = (char *)OGS_SBI_API_V2;
+                message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
+                message.h.resource.component[1] = smsf_ue->supi;
 
                 memset(&sendmsg, 0, sizeof(sendmsg));
+                sendmsg.UeSmsContextData = &UeSmsContextData;
+                sendmsg.http.location = ogs_sbi_server_uri(server, &header);
 
-                sendmsg.UeSmsContextData =
-                    OpenAPI_ue_sms_context_data_copy(
-                        sendmsg.UeSmsContextData,
-                        recvmsg->UeSmsContextData);
 
-                response = ogs_sbi_build_response(&sendmsg, recvmsg->res_status);
+// ERROR: stream has already been removed 
+                response = ogs_sbi_build_response(&sendmsg,
+                    OGS_SBI_HTTP_STATUS_CREATED);
                 ogs_assert(response);
                 ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
-                OpenAPI_sms_management_subscription_data_free(
+//                ogs_free(sendmsg.http.location);
+                OpenAPI_ue_sms_context_data_free(
                         sendmsg.UeSmsContextData);
                 /* Ending here */
                 break;

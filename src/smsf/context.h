@@ -43,7 +43,9 @@ struct smsf_ue_s {
     ogs_sbi_object_t sbi;
     ogs_fsm_t sm;
 
+    /* where is this used??? */
     OpenAPI_smsf_registration_t *smsf_registration;
+    OpenAPI_ue_sms_context_data_t *ue_sms_context_data;
     OpenAPI_sms_management_subscription_data_t *sms_management_subscription_data;
 
     char *ctx_id;

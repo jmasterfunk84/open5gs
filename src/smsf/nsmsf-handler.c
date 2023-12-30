@@ -63,11 +63,10 @@ bool smsf_nsmsf_sm_service_handle_activate(
         ogs_info("[%s] No gpsi.  MT SMS will not be possible.", smsf_ue->supi);
     }
 
-/*
-    smsf_ue->smsf_registration = OpenAPI_smsf_registration_copy(
-            smsf_ue->smsf_registration,
-            message->SmsfRegistration);
-*/
+    smsf_ue->ue_sms_context_data = OpenAPI_ue_sms_context_data_copy(
+            smsf_ue->ue_sms_context_data,
+            message->UeSmsContextData);
+
     int r;
     r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
             smsf_nudm_uecm_build_smsf_registration, smsf_ue, stream, NULL);
@@ -86,6 +85,9 @@ bool smsf_nsmsf_sm_service_handle_deactivate(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message)
 {
+    ogs_assert(stream);
+    ogs_assert(message);
+
     ogs_info("Deactivate");
     return OGS_OK;
 }
@@ -94,6 +96,9 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message)
 {
+    ogs_assert(stream);
+    ogs_assert(message);
+
     ogs_info("SMS");
     return OGS_OK;
 }
