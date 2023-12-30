@@ -1320,6 +1320,15 @@ bool udr_nudr_dr_handle_policy_data(
 
                 break;
 
+            DEFAULT
+                strerror = ogs_msprintf("Invalid resource name [%s]",
+                        recvmsg->h.resource.component[3]);
+                status = OGS_SBI_HTTP_STATUS_MEHTOD_NOT_ALLOWED;
+                goto cleanup;
+            END
+
+            break;
+
         DEFAULT
             strerror = ogs_msprintf("Invalid HTTP method [%s]",
                     recvmsg->h.method);
