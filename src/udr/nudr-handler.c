@@ -1068,6 +1068,24 @@ bool udr_nudr_dr_handle_subscription_provisioned(
 
         break;
 
+    CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+        OpenAPI_sms_subscription_data_t SmsSubscriptionData;
+
+        memset(&SmsSubscriptionData, 0, sizeof(SmsSubscriptionData));
+
+        SmsSubscriptionData.is_sms_subscribed = true;
+
+        memset(&sendmsg, 0, sizeof(sendmsg));
+        sendmsg.SmsSubscriptionData = &SmsSubscriptionData;
+
+        response = ogs_sbi_build_response(
+                &sendmsg, OGS_SBI_HTTP_STATUS_OK);
+        ogs_assert(response);
+        ogs_assert(true ==
+                ogs_sbi_server_send_response(stream, response));
+
+        break;
+
     DEFAULT
         strerror = ogs_msprintf("Invalid resource name [%s]",
                 recvmsg->h.resource.component[3]);
@@ -1301,30 +1319,6 @@ bool udr_nudr_dr_handle_policy_data(
                 OpenAPI_list_free(SmPolicySnssaiDataList);
 
                 break;
-
-            CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
-                OpenAPI_sms_subscription_data_t SmsSubscriptionData;
-                SmsSubscriptionData->is_sms_subscribed = TRUE;
-
-                memset(&sendmsg, 0, sizeof(sendmsg));
-                sendmsg.SmsSubscriptionData = &SmsSubscriptionData;
-
-                response = ogs_sbi_build_response(
-                        &sendmsg, OGS_SBI_HTTP_STATUS_OK);
-                ogs_assert(response);
-                ogs_assert(true ==
-                        ogs_sbi_server_send_response(stream, response));
-
-                break;
-
-            DEFAULT
-                strerror = ogs_msprintf("Invalid resource name [%s]",
-                        recvmsg->h.resource.component[3]);
-                status = OGS_SBI_HTTP_STATUS_MEHTOD_NOT_ALLOWED;
-                goto cleanup;
-            END
-
-            break;
 
         DEFAULT
             strerror = ogs_msprintf("Invalid HTTP method [%s]",
