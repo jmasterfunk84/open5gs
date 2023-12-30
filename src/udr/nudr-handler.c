@@ -1074,12 +1074,13 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         memset(&SmsManagementSubscriptionData, 0, 
                 sizeof(SmsManagementSubscriptionData));
 
-        SmsManagementSubscriptionData.mtSmsSubscribed = true;
-        SmsManagementSubscriptionData.mtSmsBarringAll = false;
-        SmsManagementSubscriptionData.mtSmsBarringRoaming = true;
-        SmsManagementSubscriptionData.moSmsSubscribed = true;
-        SmsManagementSubscriptionData.moSmsBarringAll = false;
-        SmsManagementSubscriptionData.moSmsBarringRoaming = true;
+        /* do we need the is_ */
+        SmsManagementSubscriptionData.mt_sms_subscribed = true;
+        SmsManagementSubscriptionData.mt_sms_barring_all = false;
+        SmsManagementSubscriptionData.mt_sms_barring_roaming = false;
+        SmsManagementSubscriptionData.mo_sms_subscribed = true;
+        SmsManagementSubscriptionData.mo_sms_barring_all = false;
+        SmsManagementSubscriptionData.mo_sms_barring_all = false;
 
         memset(&sendmsg, 0, sizeof(sendmsg));
         sendmsg.SmsManagementSubscriptionData = &SmsManagementSubscriptionData;
