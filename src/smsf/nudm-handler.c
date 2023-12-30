@@ -36,11 +36,19 @@ int smsf_nudm_sdm_handle_provisioned_data(
         return false;
     }
 
-    if (!SmsManagementSubscriptionData->moSmsSubscribed) {
+    if (!SmsManagementSubscriptionData->mo_sms_subscribed) {
         ogs_error("[%s] No moSmsSubscribed", smsf_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
                 recvmsg, "No moSmsSubscribed", smsf_ue->supi));
+        return false;
+    }
+
+    if (!SmsManagementSubscriptionData->mt_sms_subscribed) {
+        ogs_error("[%s] No mtSmsSubscribed", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                recvmsg, "No mtSmsSubscribed", smsf_ue->supi));
         return false;
     }
 
