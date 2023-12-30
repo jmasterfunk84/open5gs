@@ -180,6 +180,44 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                 ogs_assert(r != OGS_ERROR);
                 break;
 
+            CASE(OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS)
+                /* Could handle the subscription here */
+                /* this all could move to the handler...*/
+
+                ogs_sbi_message_t sendmsg;
+                ogs_sbi_response_t *response = NULL;
+
+                OpenAPI_ue_sms_context_data_t *UeSmsContextData = NULL;
+
+                UeSmsContextData = smsf_ue->UeSmsContextData;
+                if (!UeSmsContextData) {
+                    ogs_error("[%s] No UeSmsContextData", udm_ue->supi);
+                    ogs_assert(true ==
+                        ogs_sbi_server_send_error(
+                            stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                            recvmsg, "No UeSmsContextData",
+                            udm_ue->supi));
+                    return false;
+                }
+
+                memset(&sendmsg, 0, sizeof(sendmsg));
+
+                sendmsg.UeSmsContextData =
+                    OpenAPI_ue_sms_context_data_copy(
+                        sendmsg.UeSmsContextData,
+                        recvmsg->UeSmsContextData);
+
+                response = ogs_sbi_build_response(&sendmsg, recvmsg->res_status);
+                ogs_assert(response);
+                ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+                OpenAPI_sms_management_subscription_data_free(
+                        sendmsg.UeSmsContextData);
+                /* Ending here */
+                break;
+
+
+
             DEFAULT
                 ogs_error("Invalid resource name [%s]",
                         message->h.resource.component[1]);

@@ -184,7 +184,7 @@ ogs_sbi_request_t *smsf_nudm_sdm_build_subscription(smsf_ue_t *smsf_ue, void *da
     }
 
     memset(&header, 0, sizeof(header));
-    header.service.name = (char *)OGS_SBI_SERVICE_NAME_NAMF_CALLBACK;
+    header.service.name = (char *)OGS_SBI_SERVICE_NAME_NSMSF_CALLBACK;
     header.api.version = (char *)OGS_SBI_API_V1;
     header.resource.component[0] = smsf_ue->supi;
     header.resource.component[1] =

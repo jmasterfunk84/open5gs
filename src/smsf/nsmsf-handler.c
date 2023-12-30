@@ -64,8 +64,8 @@ bool smsf_nsmsf_sm_service_handle_activate(
     }
 
 /*
-    udm_ue->smsf_registration = OpenAPI_smsf_registration_copy(
-            udm_ue->smsf_registration,
+    smsf_ue->smsf_registration = OpenAPI_smsf_registration_copy(
+            smsf_ue->smsf_registration,
             message->SmsfRegistration);
 */
     int r;
@@ -97,59 +97,3 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     ogs_info("SMS");
     return OGS_OK;
 }
-
-/*bool smsf_nnrf_nsselection_handle_get(
-        ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
-{
-    int status = OGS_SBI_HTTP_STATUS_OK;
-    char *strerror = NULL;
-
-    OpenAPI_authorized_network_slice_info_t AuthorizedNetworkSliceInfo;
-
-
-    ogs_sbi_message_t sendmsg;
-    ogs_sbi_response_t *response = NULL;
-
-    ogs_assert(stream);
-    ogs_assert(recvmsg);
-
-    if (!recvmsg->param.nf_id) {
-        status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
-        strerror = ogs_msprintf("No nf-id");
-        goto cleanup;
-    }
-
-    if (!recvmsg->param.nf_type) {
-        status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
-        strerror = ogs_msprintf("No nf-type");
-        goto cleanup;
-    }
-
-    if (!recvmsg->param.slice_info_request_for_pdu_session_presence) {
-        status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
-        strerror = ogs_msprintf("Not implemented except PDU session");
-        goto cleanup;
-    }
-
-
-    memset(&AuthorizedNetworkSliceInfo, 0, sizeof(AuthorizedNetworkSliceInfo));
-
-    memset(&sendmsg, 0, sizeof(sendmsg));
-    sendmsg.AuthorizedNetworkSliceInfo = &AuthorizedNetworkSliceInfo;
-
-    response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
-    ogs_assert(response);
-    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
-
-    return true;
-
-cleanup:
-    ogs_assert(strerror);
-
-    ogs_error("%s", strerror);
-    ogs_sbi_server_send_error(stream, status, recvmsg, strerror, NULL);
-    ogs_free(strerror);
-
-    return false;
-}
-*/

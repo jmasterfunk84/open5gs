@@ -369,6 +369,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
         CASE(OGS_SBI_SERVICE_NAME_NUDM_SDM)
             SWITCH(message.h.resource.component[1])
             CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
+            CASE(OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS)
                 sbi_xact = e->h.sbi.data;
                 ogs_assert(sbi_xact);
 
@@ -401,7 +402,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
             DEFAULT
                 ogs_error("Invalid resource name  [%s]", 
-                        message.h.resource.component[2]);
+                        message.h.resource.component[1]);
                 ogs_assert_if_reached();
             END
             break;
