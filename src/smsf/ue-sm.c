@@ -20,6 +20,7 @@
 #include "sbi-path.h"
 #include "nsmsf-handler.h"
 #include "nudm-handler.h"
+#include "nudm-build.h"
 
 void smsf_ue_state_initial(ogs_fsm_t *s, smsf_event_t *e)
 {
@@ -38,6 +39,8 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
     ogs_sbi_stream_t *stream = NULL;
     ogs_sbi_message_t *message = NULL;
+
+    int r;
 
     ogs_assert(s);
     ogs_assert(e);
@@ -134,7 +137,7 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                     r = smsf_ue_sbi_discover_and_send(
                             OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
                             smsf_nudm_sdm_build_get,
-                            amf_ue, stream,
+                            smsf_ue, stream,
                             (char *)OGS_SBI_RESOURCE_NAME_SMS_DATA);
                     ogs_expect(r == OGS_OK);
                     ogs_assert(r != OGS_ERROR);
