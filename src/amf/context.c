@@ -1673,8 +1673,6 @@ void amf_ue_remove(amf_ue_t *amf_ue)
 
     if (amf_ue->policy_association_id)
         ogs_free(amf_ue->policy_association_id);
-    if (amf_ue->sm_service_activation_id)
-         ogs_free(amf_ue->sm_service_activation_id);
     if (amf_ue->data_change_subscription_id)
         ogs_free(amf_ue->data_change_subscription_id);
 

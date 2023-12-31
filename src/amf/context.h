@@ -287,11 +287,6 @@ struct amf_ue_s {
         ogs_nas_rejected_s_nssai_t s_nssai[OGS_MAX_NUM_OF_SLICE];
     } rejected_nssai;
 
-    /* SubscriptionId of Subscription to Data Change Notification to UDM */
-#define SMSF_SM_SERVICE_ACTIVATED(__aMF) \
-    ((__aMF) && ((__aMF)->sm_service_activation_id))
-    char *sm_service_activation_id;
-
     /* PCF sends the RESPONSE
      * of [POST] /npcf-am-polocy-control/v1/policies */
 #define PCF_AM_POLICY_ASSOCIATED(__aMF) \
@@ -491,6 +486,9 @@ struct amf_ue_s {
          */
         bool sbi_done;
     } explict_de_registered;
+
+    /* Set when SMSF sends response to [PUT] /nsmsf-sms/v2/ue-contexts */
+    bool            sm_service_activated;
 
     ogs_list_t      sess_list;
 };

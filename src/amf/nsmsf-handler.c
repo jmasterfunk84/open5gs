@@ -25,18 +25,52 @@
 int amf_nsmsf_sm_service_handle_activate(
         amf_ue_t *amf_ue, int state, ogs_sbi_message_t *recvmsg)
 {
-/* Could check for errors?
-        if (sbi_message->res_status != OGS_SBI_HTTP_STATUS_CREATED &&
-        sbi_message->res_status != OGS_SBI_HTTP_STATUS_NO_CONTENT) {
-        ogs_error("[%s] HTTP response error [%d]",
-                amf_ue->supi, sbi_message->res_status);
-        break;
-        }
-*/
-    ogs_assert(amf_ue);
-    /* Load SBI Response here */
+    OpenAPI_ue_sms_context_data_t *UeSmsContextData = NULL;
 
-    ogs_info("We should turn on that SMS Flag in the Attach Accept!");
+    ogs_assert(amf_ue);
+
+    UeSmsContextData = recvmsg->UeSmsContextData;
+
+    if (!UeSmsContextData) {
+        ogs_error("[%s] No UeSmsContextData", smsf_ue->supi);
+        r = nas_5gs_send_gmm_reject_from_sbi(
+                amf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
+        return OGS_ERROR;
+    }
+
+    if (!UeSmsContextData->supi) {
+        ogs_error("[%s] No supi", smsf_ue->supi);
+        r = nas_5gs_send_gmm_reject_from_sbi(
+                amf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
+        return OGS_ERROR;
+    }
+
+    if (!UeSmsContextData->amf_id) {
+        ogs_error("[%s] No amfId", smsf_ue->supi);
+        r = nas_5gs_send_gmm_reject_from_sbi(
+                amf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
+        return OGS_ERROR;
+    }
+
+    if (!UeSmsContextData->access_type) {
+        ogs_error("[%s] No accessType", smsf_ue->supi);
+        r = nas_5gs_send_gmm_reject_from_sbi(
+                amf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
+        return OGS_ERROR;
+    }
+
+    amf_ue->sms_management_subscription_data =
+        OpenAPI_sms_management_subscription_data_copy(
+            smsf_ue->sms_management_subscription_data,
+            SmsManagementSubscriptionData);
 
     return OGS_OK;
 }
