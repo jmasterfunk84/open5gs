@@ -330,6 +330,7 @@ int amf_nudm_sdm_handle_provisioned(
         }
         break;
 
+    CASE(OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS)
         int rv;
         ogs_sbi_message_t message;
         ogs_sbi_header_t header;
