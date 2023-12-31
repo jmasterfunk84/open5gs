@@ -69,6 +69,8 @@ int amf_nsmsf_sm_service_handle_activate(
         return OGS_ERROR;
     }
 
+    amf_ue->sm_service_activated = true;
+
 /*
     amf_ue->sms_management_subscription_data =
         OpenAPI_sms_management_subscription_data_copy(

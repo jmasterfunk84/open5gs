@@ -487,6 +487,8 @@ struct amf_ue_s {
         bool sbi_done;
     } explict_de_registered;
 
+    bool            sms_over_nas_supported;
+    bool            sms_subscribed;
     /* Set when SMSF sends response to [PUT] /nsmsf-sms/v2/ue-contexts */
     bool            sm_service_activated;
 

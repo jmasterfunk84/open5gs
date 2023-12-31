@@ -195,6 +195,10 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
         OpenAPI_smsf_registration_free(message->SmsfRegistration);
     if (message->SmsManagementSubscriptionData)
         OpenAPI_sms_management_subscription_data_free(message->SmsManagementSubscriptionData);
+    if (message->SmsSubscriptionData)
+        OpenAPI_sms_subscription_data_free(message->SmsSubscriptionData);
+    if (message->UeContextInSmsfData)
+        OpenAPI_ue_context_in_smsf_data_free(message->UeContextInSmsfData);
 
     /* HTTP Part */
     for (i = 0; i < message->num_of_part; i++) {
@@ -1357,6 +1361,14 @@ static char *build_json(ogs_sbi_message_t *message)
         item = OpenAPI_sms_management_subscription_data_convertToJSON(
             message->SmsManagementSubscriptionData);
         ogs_assert(item);
+    } else if (message->SmsSubscriptionData) {
+        item = OpenAPI_sms_subscription_data_convertToJSON(
+            message->SmsSubscriptionData);
+        ogs_assert(item);
+    } else if (message->UeContextInSmsfData) {
+        item = OpenAPI_ue_context_in_smsf_data_convertToJSON(
+            message->UeContextInSmsfData);
+        ogs_assert(item);
     }
 
     if (item) {
@@ -1773,6 +1785,33 @@ static int parse_json(ogs_sbi_message_t *message,
                 }
                 break;
 
+            CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+                if (message->res_status < 300) {
+                    message->SmsSubscriptionData =
+                        OpenAPI_sms_subscription_data_parseFromJSON(
+                                item);
+                    if (!message->SmsSubscriptionData) {
+                        rv = OGS_ERROR;
+                        ogs_error("JSON parse error");
+                    }
+                } else {
+                    ogs_error("HTTP ERROR Status : %d", message->res_status);
+                }
+                break;
+
+            CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMSF_DATA)
+                if (message->res_status < 300) {
+                    message->UeContextInSmsfData =
+                        OpenAPI_ue_context_in_smsf_data_parseFromJSON(item);
+                    if (!message->UeContextInSmsfData) {
+                        rv = OGS_ERROR;
+                        ogs_error("JSON parse error");
+                    }
+                } else {
+                    ogs_error("HTTP ERROR Status : %d", message->res_status);
+                }
+                break;
+
             DEFAULT
                 rv = OGS_ERROR;
                 ogs_error("Unknown resource name [%s]",
@@ -1953,6 +1992,20 @@ static int parse_json(ogs_sbi_message_t *message,
                             } else {
                                 ogs_error("HTTP ERROR Status : %d",
                                         message->res_status);
+                            }
+                            break;
+
+                        CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+                            if (message->res_status < 300) {
+                                message->SmsSubscriptionData =
+                                    OpenAPI_sms_subscription_data_parseFromJSON(
+                                            item);
+                                if (!message->SmsSubscriptionData) {
+                                    rv = OGS_ERROR;
+                                    ogs_error("JSON parse error");
+                                }
+                            } else {
+                                ogs_error("HTTP ERROR Status : %d", message->res_status);
                             }
                             break;
 

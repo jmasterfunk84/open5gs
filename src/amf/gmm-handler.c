@@ -49,6 +49,7 @@ ogs_nas_5gmm_cause_t gmm_handle_registration_request(amf_ue_t *amf_ue,
     ogs_nas_5gs_mobile_identity_guti_t *mobile_identity_guti = NULL;
     ogs_nas_ue_security_capability_t *ue_security_capability = NULL;
     ogs_nas_5gs_guti_t nas_guti;
+    ogs_nas_5gs_update_type_t *update_type = NULL;
 
     ogs_assert(amf_ue);
     ran_ue = ran_ue_cycle(amf_ue->ran_ue);
@@ -61,6 +62,8 @@ ogs_nas_5gmm_cause_t gmm_handle_registration_request(amf_ue_t *amf_ue,
     ogs_assert(mobile_identity);
     ue_security_capability = &registration_request->ue_security_capability;
     ogs_assert(ue_security_capability);
+    update_type = &registration_request->update_type;
+    ogs_assert(update_type);
 
     /*
      * TS33.501
@@ -328,6 +331,13 @@ ogs_nas_5gmm_cause_t gmm_handle_registration_request(amf_ue_t *amf_ue,
     if (amf_ue_is_rat_restricted(amf_ue)) {
         ogs_error("Registration rejected due to RAT restrictions");
         return OGS_5GMM_CAUSE_5GS_SERVICES_NOT_ALLOWED;
+    }
+
+ if (registration_request->presencemask &
+            OGS_NAS_5GS_REGISTRATION_REQUEST_5GS_UPDATE_TYPE_PRESENT) {
+        if (update_type->sms_over_nas_supported == 1) {
+            amf_ue->sms_over_nas_supported = true;
+        }
     }
 
     return OGS_5GMM_CAUSE_REQUEST_ACCEPTED;

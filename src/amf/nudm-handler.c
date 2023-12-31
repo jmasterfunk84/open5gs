@@ -255,6 +255,63 @@ int amf_nudm_sdm_handle_provisioned(
         break;
 
     CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMF_DATA)
+        if (amf_ue->sms_over_nas_supported) {
+            /* If SMS is supported, find out if it's subscribed. 
+             * If not, then we'll either SDM Subscribe or skip to AM_POLICY */
+            r = amf_ue_sbi_discover_and_send(
+                    OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
+                    amf_nudm_sdm_build_get,
+                    amf_ue, state, (char *)OGS_SBI_RESOURCE_NAME_SMS_DATA);
+            ogs_expect(r == OGS_OK);
+            ogs_assert(r != OGS_ERROR);
+        } else if (amf_ue->data_change_subscription_id) {
+            /* we already have a SDM subscription to UDM; continue without
+             * subscribing again */
+            r = amf_ue_sbi_discover_and_send(
+                    OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL, NULL,
+                    amf_npcf_am_policy_control_build_create,
+                    amf_ue, state, NULL);
+            ogs_expect(r == OGS_OK);
+            ogs_assert(r != OGS_ERROR);
+        }
+        else {
+            r = amf_ue_sbi_discover_and_send(
+                    OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
+                    amf_nudm_sdm_build_subscription,
+                    amf_ue, state, (char *)OGS_SBI_RESOURCE_NAME_AM_DATA);
+            ogs_expect(r == OGS_OK);
+            ogs_assert(r != OGS_ERROR);
+        }
+        break;
+
+    CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+        /* Parse to see if they are subscribed to SMS */
+        if (recvmsg->SmsSubscriptionData) {
+            if (recvmsg->SmsSubscriptionData->sms_subscribed) {
+                amf_ue->sms_subscribed = 
+                        recvmsg->SmsSubscriptionData->sms_subscribed;
+
+                r = amf_ue_sbi_discover_and_send(
+                        OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
+                        amf_nudm_sdm_build_get,
+                        amf_ue, state,
+                        (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMSF_DATA);
+                ogs_expect(r == OGS_OK);
+                ogs_assert(r != OGS_ERROR);
+            }
+        } else {
+            /* We do not have an SMS subscription, and will skip to AM_POLICY*/
+            r = amf_ue_sbi_discover_and_send(
+                    OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL, NULL,
+                    amf_npcf_am_policy_control_build_create,
+                    amf_ue, state, NULL);
+            ogs_expect(r == OGS_OK);
+            ogs_assert(r != OGS_ERROR);
+        }
+        break;
+
+    CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMSF_DATA)
+        /* if SMSF if present, then use that specific one later, if available */
         if (amf_ue->data_change_subscription_id) {
             /* we already have a SDM subscription to UDM; continue without
              * subscribing again */
@@ -266,7 +323,6 @@ int amf_nudm_sdm_handle_provisioned(
             ogs_assert(r != OGS_ERROR);
         }
         else {
-            ogs_info("EntryA - Potential Code Change");
             r = amf_ue_sbi_discover_and_send(
                     OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
                     amf_nudm_sdm_build_subscription,
@@ -275,8 +331,6 @@ int amf_nudm_sdm_handle_provisioned(
             ogs_assert(r != OGS_ERROR);
         }
         break;
-
-    CASE(OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS)
 
         int rv;
         ogs_sbi_message_t message;

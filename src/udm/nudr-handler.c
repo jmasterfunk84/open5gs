@@ -830,6 +830,35 @@ bool udm_nudr_dr_handle_subscription_provisioned(
                 sendmsg.SmsManagementSubscriptionData);
         break;
 
+    CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+        OpenAPI_sms_subscription_data_t *SmsSubscriptionData = NULL;
+
+        SmsSubscriptionData = recvmsg->SmsSubscriptionData;
+        if (!SmsSubscriptionData) {
+            ogs_error("[%s] No SmsSubscriptionData", udm_ue->supi);
+            ogs_assert(true ==
+                ogs_sbi_server_send_error(
+                    stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                    recvmsg, "No SmsSubscriptionData",
+                    udm_ue->supi));
+            return false;
+        }
+
+        memset(&sendmsg, 0, sizeof(sendmsg));
+
+        sendmsg.SmsSubscriptionData =
+            OpenAPI_sms_subscription_data_copy(
+                sendmsg.SmsSubscriptionData,
+                recvmsg->SmsSubscriptionData);
+
+        response = ogs_sbi_build_response(&sendmsg, recvmsg->res_status);
+        ogs_assert(response);
+        ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+        OpenAPI_sms_subscription_data_free(
+                sendmsg.SmsSubscriptionData);
+        break;
+
     DEFAULT
         strerror = ogs_msprintf("[%s] Invalid resource name [%s]",
                 udm_ue->supi, recvmsg->h.resource.component[3]);
