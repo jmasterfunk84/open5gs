@@ -1256,8 +1256,8 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e,
                         break;
 */
                     } else if (!PCF_AM_POLICY_ASSOCIATED(amf_ue)) {
-                        ogs_info("We Reach Potential Code Requirement - UE
-                            is already SDM subscribed, but is it good for SMS?");
+                        ogs_info("We Reach Potential Code Requirement - UE"
+                            "is already SDM subscribed, but is it good for SMS?");
                         r = amf_ue_sbi_discover_and_send(
                                 OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL,
                                 NULL,
@@ -2092,6 +2092,8 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
             CASE(OGS_SBI_RESOURCE_NAME_AM_DATA)
             CASE(OGS_SBI_RESOURCE_NAME_SMF_SELECT_DATA)
             CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMF_DATA)
+            CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+            CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMSF_DATA)
             CASE(OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS)
                 if ((sbi_message->res_status != OGS_SBI_HTTP_STATUS_OK) &&
                     (sbi_message->res_status != OGS_SBI_HTTP_STATUS_CREATED)) {

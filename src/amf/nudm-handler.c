@@ -273,8 +273,7 @@ int amf_nudm_sdm_handle_provisioned(
                     amf_ue, state, NULL);
             ogs_expect(r == OGS_OK);
             ogs_assert(r != OGS_ERROR);
-        }
-        else {
+        } else {
             r = amf_ue_sbi_discover_and_send(
                     OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
                     amf_nudm_sdm_build_subscription,
@@ -311,7 +310,7 @@ int amf_nudm_sdm_handle_provisioned(
         break;
 
     CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMSF_DATA)
-        /* if SMSF if present, then use that specific one later, if available */
+        /* We do not expect UDM to return a UE Context in SMSF */
         if (amf_ue->data_change_subscription_id) {
             /* we already have a SDM subscription to UDM; continue without
              * subscribing again */
@@ -321,8 +320,7 @@ int amf_nudm_sdm_handle_provisioned(
                     amf_ue, state, NULL);
             ogs_expect(r == OGS_OK);
             ogs_assert(r != OGS_ERROR);
-        }
-        else {
+        } else {
             r = amf_ue_sbi_discover_and_send(
                     OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
                     amf_nudm_sdm_build_subscription,
@@ -388,6 +386,9 @@ int amf_nudm_sdm_handle_provisioned(
         break;
 
     DEFAULT
+        ogs_error("Invalid resource name [%s]",
+                sbi_message->h.resource.component[1]);
+        ogs_assert_if_reached();
     END
 
     return OGS_OK;

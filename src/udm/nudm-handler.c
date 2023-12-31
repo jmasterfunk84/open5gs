@@ -646,6 +646,20 @@ bool udm_nudm_sdm_handle_subscription_provisioned(
 
         break;
 
+    CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMSF_DATA)
+        OpenAPI_ue_context_in_smsf_data_t UeContextInSmsfData;
+
+        memset(&UeContextInSmsfData, 0, sizeof(UeContextInSmsfData));
+
+        memset(&sendmsg, 0, sizeof(sendmsg));
+        sendmsg.UeContextInSmsfData = &UeContextInSmsfData;
+
+        response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
+        ogs_assert(response);
+        ogs_sbi_server_send_response(stream, response);
+
+        break;
+
     DEFAULT
         ogs_error("Invalid resource name [%s]",
                 recvmsg->h.resource.component[3]);

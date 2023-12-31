@@ -333,13 +333,6 @@ ogs_nas_5gmm_cause_t gmm_handle_registration_request(amf_ue_t *amf_ue,
         return OGS_5GMM_CAUSE_5GS_SERVICES_NOT_ALLOWED;
     }
 
- if (registration_request->presencemask &
-            OGS_NAS_5GS_REGISTRATION_REQUEST_5GS_UPDATE_TYPE_PRESENT) {
-        if (update_type->sms_over_nas_supported == 1) {
-            amf_ue->sms_over_nas_supported = true;
-        }
-    }
-
     return OGS_5GMM_CAUSE_REQUEST_ACCEPTED;
 }
 
@@ -535,6 +528,10 @@ ogs_nas_5gmm_cause_t gmm_handle_registration_update(amf_ue_t *amf_ue,
              * when the UE changes USIM.
              */
             OGS_ASN_CLEAR_DATA(&amf_ue->ueRadioCapability);
+        }
+        if (update_type->sms_over_nas_supported == 1) {
+            ogs_info("SMS over NAS supported by UE");
+            amf_ue->sms_over_nas_supported = true;
         }
     }
 
