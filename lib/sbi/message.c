@@ -2518,20 +2518,16 @@ static int parse_json(ogs_sbi_message_t *message,
         CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
             SWITCH(message->h.resource.component[0])
             CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
-                if (message->res_status == 0) {
+                if (message->res_status < 300) {
                     message->UeSmsContextData =
                         OpenAPI_ue_sms_context_data_parseFromJSON(item);
                     if (!message->UeSmsContextData) {
                         rv = OGS_ERROR;
                         ogs_error("JSON parse error");
                     }
-                } else if (message->res_status == OGS_SBI_HTTP_STATUS_OK) {
-                    message->UeSmsContextData =
-                        OpenAPI_ue_sms_context_data_parseFromJSON(item);
-                    if (!message->UeSmsContextData) {
-                        rv = OGS_ERROR;
-                        ogs_error("JSON parse error");
-                    }
+                } else {
+                    ogs_error("HTTP ERROR Status : %d",
+                            message->res_status);
                 }
                 break;
             DEFAULT

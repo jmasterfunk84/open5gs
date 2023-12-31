@@ -547,7 +547,7 @@ typedef struct ogs_sbi_message_s {
     OpenAPI_smf_registration_t *SmfRegistration;
     OpenAPI_sec_negotiate_req_data_t *SecNegotiateReqData;
     OpenAPI_sec_negotiate_rsp_data_t *SecNegotiateRspData;
-//    OpenAPI_sms_record_data_t *SmsRecordData;
+    //OpenAPI_sms_record_data_t *SmsRecordData;
     OpenAPI_ue_sms_context_data_t *UeSmsContextData;
     OpenAPI_smsf_registration_t *SmsfRegistration;
     OpenAPI_sms_management_subscription_data_t *SmsManagementSubscriptionData;
