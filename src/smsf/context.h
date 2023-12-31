@@ -48,6 +48,7 @@ struct smsf_ue_s {
     OpenAPI_ue_sms_context_data_t *ue_sms_context_data;
     OpenAPI_sms_management_subscription_data_t *sms_management_subscription_data;
 
+    /* how do we give it a ctx_id? */
     char *ctx_id;
     char *supi;
     char *amf_instance_id;
