@@ -235,7 +235,17 @@ smsf_ue_t *smsf_ue_find_by_supi(char *supi)
 smsf_ue_t *smsf_ue_find_by_gpsi(char *gpsi)
 {
     ogs_assert(gpsi);
-    return (smsf_ue_t *)ogs_hash_get(self.supi_hash, gpsi, strlen(gpsi));
+
+    smsf_ue_t *smsf_ue = NULL, *next = NULL;
+
+    ogs_list_for_each_safe(&self.smsf_ue_list, next, smsf_ue) {
+        if (!strcmp(smsf_ue->gpsi, gpsi)) {
+            return smsf_ue;
+        }
+        ogs_info("Found: [%s]", smsf_ue->gpsi);
+    }
+    return NULL;
+
 }
 
 smsf_ue_t *smsf_ue_cycle(smsf_ue_t *smsf_ue)
