@@ -29,6 +29,8 @@ int amf_nsmsf_sm_service_handle_activate(
 
     ogs_assert(amf_ue);
 
+    int r;
+
     UeSmsContextData = recvmsg->UeSmsContextData;
 
     if (!UeSmsContextData) {
