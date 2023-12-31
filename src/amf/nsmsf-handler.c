@@ -32,7 +32,7 @@ int amf_nsmsf_sm_service_handle_activate(
     UeSmsContextData = recvmsg->UeSmsContextData;
 
     if (!UeSmsContextData) {
-        ogs_error("[%s] No UeSmsContextData", smsf_ue->supi);
+        ogs_error("[%s] No UeSmsContextData", amf_ue->supi);
         r = nas_5gs_send_gmm_reject_from_sbi(
                 amf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
         ogs_expect(r == OGS_OK);
@@ -41,7 +41,7 @@ int amf_nsmsf_sm_service_handle_activate(
     }
 
     if (!UeSmsContextData->supi) {
-        ogs_error("[%s] No supi", smsf_ue->supi);
+        ogs_error("[%s] No supi", amf_ue->supi);
         r = nas_5gs_send_gmm_reject_from_sbi(
                 amf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
         ogs_expect(r == OGS_OK);
@@ -50,7 +50,7 @@ int amf_nsmsf_sm_service_handle_activate(
     }
 
     if (!UeSmsContextData->amf_id) {
-        ogs_error("[%s] No amfId", smsf_ue->supi);
+        ogs_error("[%s] No amfId", amf_ue->supi);
         r = nas_5gs_send_gmm_reject_from_sbi(
                 amf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
         ogs_expect(r == OGS_OK);
@@ -59,7 +59,7 @@ int amf_nsmsf_sm_service_handle_activate(
     }
 
     if (!UeSmsContextData->access_type) {
-        ogs_error("[%s] No accessType", smsf_ue->supi);
+        ogs_error("[%s] No accessType", amf_ue->supi);
         r = nas_5gs_send_gmm_reject_from_sbi(
                 amf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
         ogs_expect(r == OGS_OK);
@@ -67,10 +67,12 @@ int amf_nsmsf_sm_service_handle_activate(
         return OGS_ERROR;
     }
 
+/*
     amf_ue->sms_management_subscription_data =
         OpenAPI_sms_management_subscription_data_copy(
-            smsf_ue->sms_management_subscription_data,
+            amf_ue->sms_management_subscription_data,
             SmsManagementSubscriptionData);
+*/
 
     return OGS_OK;
 }
