@@ -2140,13 +2140,10 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
 
                     if (amf_ue->sms_subscribed && 
                             !amf_ue->sm_service_activated) {
-                        /* per 23.502 4.13.3.1-1, this is after step 20.  After PCF.
-                         * But, we should be discoverying earlier. we do now
-                         * because we look for sms-data and ue-context-in-smsf
-                         */
                         r = amf_ue_sbi_discover_and_send(
                                 OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
-                                amf_nsmsf_sm_service_build_activate, amf_ue, 0, NULL);
+                                amf_nsmsf_sm_service_build_activate,
+                                amf_ue, 0, NULL);
                         ogs_expect(r == OGS_OK);
                         ogs_assert(r != OGS_ERROR);
                     } else {

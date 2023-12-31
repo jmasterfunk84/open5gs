@@ -67,8 +67,9 @@ ogs_pkbuf_t *gmm_build_registration_accept(amf_ue_t *amf_ue)
     /* Registration Result */
     registration_result->length = 1;
     registration_result->value = amf_ue->nas.access_type;
-    /* Also add condition that service is subscribed... */
-    if (amf_ue->sm_service_activated)
+
+    if (amf_ue->sms_over_nas_supported && amf_ue->sms_subscribed
+            && amf_ue->sm_service_activated)
         registration_result->sms_over_nas_transport_allowed = 1;
 
     /* Set GUTI */
