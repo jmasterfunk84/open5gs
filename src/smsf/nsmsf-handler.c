@@ -41,14 +41,6 @@ bool smsf_nsmsf_sm_service_handle_activate(
         return false;
     }
 
-    if (!UeSmsContextData->amf_id) {
-        ogs_error("[%s] No amf_id", smsf_ue->supi);
-        ogs_assert(true ==
-            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                message, "No amfInstanceId", smsf_ue->supi));
-        return false;
-    }
-
     if (!UeSmsContextData->supi) {
         ogs_error("[%s] No supi", smsf_ue->supi);
         ogs_assert(true ==
@@ -56,6 +48,25 @@ bool smsf_nsmsf_sm_service_handle_activate(
                 message, "No supi", smsf_ue->supi));
         return false;
     }
+    /* shall we compare that the supi inside is the same as outside? */
+
+    if (!UeSmsContextData->amf_id) {
+        ogs_error("[%s] No amf_id", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No amfInstanceId", smsf_ue->supi));
+        return false;
+    }
+    smsf_ue->amf_instance_id = ogs_strdup(UeSmsContextData->amf_id);
+
+    if (!UeSmsContextData->access_type) {
+        ogs_error("[%s] No access_type", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No access_type", smsf_ue->supi));
+        return false;
+    }
+    smsf_ue->access_type = UeSmsContextData->access_type;
 
     if (UeSmsContextData->gpsi) {
         smsf_ue->gpsi = ogs_strdup(UeSmsContextData->gpsi);
@@ -63,6 +74,7 @@ bool smsf_nsmsf_sm_service_handle_activate(
         ogs_info("[%s] No gpsi.  MT SMS will not be possible.", smsf_ue->supi);
     }
 
+    // Can remove if we store the elements seperately.
     smsf_ue->ue_sms_context_data = OpenAPI_ue_sms_context_data_copy(
             smsf_ue->ue_sms_context_data,
             message->UeSmsContextData);
@@ -72,11 +84,6 @@ bool smsf_nsmsf_sm_service_handle_activate(
             smsf_nudm_uecm_build_smsf_registration, smsf_ue, stream, NULL);
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);
-
-    return OGS_OK;
- 
-    /* Must hand off to PCF for AM POLICY.  ../src/amf/nudm-handler.c:327
-    Or is it done in smsf-sm? to handle error cases.*/
 
     return OGS_OK;
 }

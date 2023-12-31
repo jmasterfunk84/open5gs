@@ -158,14 +158,14 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                 DEFAULT
                     SWITCH(message.h.method)
                     CASE(OGS_SBI_HTTP_METHOD_PUT)
-                        rv = smsf_nsmsf_sm_service_handle_activate(
-                                smsf_ue, stream, &message);
-                        if (rv != OGS_OK) {
-                            ogs_assert(true ==
-                                ogs_sbi_server_send_error(stream,
-                                    OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                                    &message,
-                                    "No ActivateData", NULL));
+                        ogs_assert(OGS_FSM_STATE(&smsf_ue->sm));
+
+                        e->smsf_ue = smsf_ue;
+                        e->h.sbi.message = &message;
+                        ogs_fsm_dispatch(&smsf_ue->sm, e);
+                        if (OGS_FSM_CHECK(&smsf_ue->sm, smsf_ue_state_exception)) {
+                            ogs_error("[%s] State machine exception", smsf_ue->supi);
+                            smsf_ue_remove(smsf_ue);
                         }
                         break;
 
@@ -336,6 +336,8 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                     smsf_ue = (smsf_ue_t *)sbi_xact->sbi_object;
                     ogs_assert(smsf_ue);
 
+                    e->h.sbi.data = sbi_xact->assoc_stream;
+
                     ogs_sbi_xact_remove(sbi_xact);
 
                     smsf_ue = smsf_ue_cycle(smsf_ue);
@@ -383,6 +385,8 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
                 smsf_ue = (smsf_ue_t *)sbi_xact->sbi_object;
                 ogs_assert(smsf_ue);
+
+                e->h.sbi.data = sbi_xact->assoc_stream;
 
                 ogs_sbi_xact_remove(sbi_xact);
 

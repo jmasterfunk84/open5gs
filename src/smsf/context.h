@@ -50,13 +50,9 @@ struct smsf_ue_s {
 
     char *ctx_id;
     char *supi;
-    char *gpsi;
-//    char *serving_network_name;
-
     char *amf_instance_id;
-
-//    OpenAPI_auth_type_e auth_type;
-//    OpenAPI_rat_type_e rat_type;
+    OpenAPI_access_type_e access_type;
+    char *gpsi;
 };
 
 void smsf_context_init(void);
