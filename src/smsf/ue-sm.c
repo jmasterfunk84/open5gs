@@ -216,6 +216,9 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                     OGS_SBI_HTTP_STATUS_CREATED);
                 ogs_assert(response);
                 ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+                if (sendmsg.http.location)
+                    ogs_free(sendmsg.http.location);
                 /* Ending here */
                 break;
 

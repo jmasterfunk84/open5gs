@@ -70,8 +70,8 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_smsf_registration(
 
         if (PlmnIdList->count)
             SmsfRegistration.plmn_id = plmn_id;
-        else
-            OpenAPI_list_free(PlmnIdList);
+
+        OpenAPI_list_free(PlmnIdList);
     }
     if (!SmsfRegistration.plmn_id) {
         ogs_error("No plmn_id");
@@ -90,6 +90,8 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_smsf_registration(
     ogs_expect(request);
 
 end:
+    if (SmsfRegistration.plmn_id)
+        ogs_sbi_free_plmn_id(SmsfRegistration.plmn_id);
 
     return request;
 }
