@@ -387,7 +387,7 @@ int amf_nudm_sdm_handle_provisioned(
 
     DEFAULT
         ogs_error("Invalid resource name [%s]",
-                sbi_message->h.resource.component[1]);
+                recvmsg->h.resource.component[1]);
         ogs_assert_if_reached();
     END
 
