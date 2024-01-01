@@ -107,5 +107,36 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     ogs_assert(message);
 
     ogs_info("SMS");
+
+    SmsRecordData = message->SmsRecordData;
+    if (!SmsRecordData) {
+        ogs_error("[%s] No SmsRecordData", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No SmsRecordData", smsf_ue->supi));
+        return false;
+    }
+
+    if (!SmsRecordData->sms_record_id) {
+        ogs_error("[%s] No smsRecordId", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No smsRecordId", smsf_ue->supi));
+        return false;
+    }
+
+    if (!SmsRecordData->sms_payload) {
+        ogs_error("[%s] No smsPayload", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No smsPayload", smsf_ue->supi));
+        return false;
+    }
+
+    /* queue event for MT smsf_ue */
+    /* if UE found, then say so.  If ue not found, respond with error. */
+    /* form the SmsRecordDeliveryData */
+
+
     return OGS_OK;
 }

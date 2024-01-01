@@ -132,6 +132,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
                 SWITCH(message.h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SEND_SMS)
+                    /* Should we move to the ue-sm? */
                     SWITCH(message.h.method)
                     CASE(OGS_SBI_HTTP_METHOD_POST)
                         rv = smsf_nsmsf_sm_service_handle_uplink_sms(
