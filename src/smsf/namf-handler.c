@@ -28,17 +28,17 @@ bool smsf_namf_comm_handle_n1_n2_message_transfer(
     ogs_assert(smsf_ue);
     ogs_assert(recvmsg);
 
-        N1N2MessageTransferRspData = recvmsg->N1N2MessageTransferRspData;
-        if (!N1N2MessageTransferRspData) {
-            ogs_error("No N1N2MessageTransferRspData [status:%d]",
-                    recvmsg->res_status);
-            break;
-        }
+    N1N2MessageTransferRspData = recvmsg->N1N2MessageTransferRspData;
+    if (!N1N2MessageTransferRspData) {
+        ogs_error("No N1N2MessageTransferRspData [status:%d]",
+                recvmsg->res_status);
+        return false;
+    }
 
     if (recvmsg->res_status == OGS_SBI_HTTP_STATUS_OK) {
         if (N1N2MessageTransferRspData->cause ==
             OpenAPI_n1_n2_message_transfer_cause_N1_MSG_NOT_TRANSFERRED) {
-            smsf_n1_n2_message_transfer_param_t param;
+//            smsf_n1_n2_message_transfer_param_t param;
 
         } else if (N1N2MessageTransferRspData->cause ==
             OpenAPI_n1_n2_message_transfer_cause_N1_N2_TRANSFER_INITIATED) {
@@ -49,8 +49,8 @@ bool smsf_namf_comm_handle_n1_n2_message_transfer(
             ogs_assert_if_reached();
         }
     } else {
-        ogs_error("[%s:%d] HTTP response error [status:%d cause:%d]",
-            smsf_ue->supi, sess->psi, recvmsg->res_status,
+        ogs_error("[%s] HTTP response error [status:%d cause:%d]",
+            smsf_ue->supi, recvmsg->res_status,
             N1N2MessageTransferRspData->cause);
     }
 
@@ -91,9 +91,10 @@ bool smsf_namf_comm_handle_n1_n2_message_transfer_failure_notify(
         return false;
     }
 
-    sess = smsf_sess_find_by_paging_n1n2message_location(
+/*
+    smsf_ue = smsf_ue_find_by_paging_n1n2message_location(
         N1N2MsgTxfrFailureNotification->n1n2_msg_data_uri);
-    if (!sess) {
+    if (!smsf_ue) {
         ogs_error("Not found");
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_NOT_FOUND,
@@ -101,7 +102,7 @@ bool smsf_namf_comm_handle_n1_n2_message_transfer_failure_notify(
                 NULL));
         return false;
     }
-
+*/
     /*
      * TODO:
      *
