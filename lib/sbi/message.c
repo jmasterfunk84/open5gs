@@ -2577,11 +2577,11 @@ static int parse_json(ogs_sbi_message_t *message,
         CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
             SWITCH(message->h.resource.component[0])
             CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
-                SWITCH(message->h.resource.component[1])
+                SWITCH(message->h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SEND_SMS)
                     if (message->res_status < 300) {
                         message->SmsRecordData =
-                            OpenAPI_sms_recordData_parseFromJSON(item);
+                            OpenAPI_sms_record_data_parseFromJSON(item);
                         if (!message->UeSmsContextData) {
                             rv = OGS_ERROR;
                             ogs_error("JSON parse error");
@@ -2742,6 +2742,7 @@ static int on_part_data(
         CASE(OGS_SBI_CONTENT_JSON_TYPE)
         CASE(OGS_SBI_CONTENT_5GNAS_TYPE)
         CASE(OGS_SBI_CONTENT_NGAP_TYPE)
+        CASE(OGS_SBI_CONTENT_SMS_TYPE)
             size_t offset = 0;
 
             if (data->part[data->num_of_part].content == NULL) {

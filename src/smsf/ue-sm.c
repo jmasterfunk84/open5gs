@@ -67,7 +67,7 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
         CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
             SWITCH(message->h.method)
             CASE(OGS_SBI_HTTP_METHOD_POST)
-                SWITCH(message->h.resource.component[1])
+                SWITCH(message->h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SEND_SMS)
                     smsf_nsmsf_sm_service_handle_uplink_sms(smsf_ue, stream, message);
                     break;

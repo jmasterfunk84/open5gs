@@ -103,6 +103,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message)
 {
+    OpenAPI_sms_record_data_t *SmsRecordData = NULL;
+
     ogs_assert(stream);
     ogs_assert(message);
 
@@ -110,7 +112,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
     SmsRecordData = message->SmsRecordData;
     if (!SmsRecordData) {
-        ogs_error("[%s] No SmsRecordData", smsf_ue->supi);
+        ogs_error("[%s] No SmsRecordData", smsf_ue->s
+        upi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
                 message, "No SmsRecordData", smsf_ue->supi));
@@ -133,6 +136,9 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         return false;
     }
 
+    /* I think it should split CP data, and RP data.  RP data would normally go to SMSC
+     * but, here we have to rip the userdata from the rp-data to get the destination address.
+     */
     /* queue event for MT smsf_ue */
     /* if UE found, then say so.  If ue not found, respond with error. */
     /* form the SmsRecordDeliveryData */
