@@ -126,8 +126,33 @@ end:
 ogs_sbi_request_t *amf_nsmsf_sm_service_build_deactivate(
         amf_ue_t *amf_ue, void *data)
 {
-    ogs_info("temp: deactivate");
-    return OGS_OK;
+    ogs_sbi_message_t message;
+    ogs_sbi_request_t *request = NULL;
+    ogs_sbi_server_t *server = NULL;
+
+    ogs_assert(amf_ue);
+    ogs_assert(amf_ue->supi);
+
+    memset(&message, 0, sizeof(message));
+    message.h.method = (char *)OGS_SBI_HTTP_METHOD_DELETE;
+    message.h.service.name =
+        (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
+    message.h.api.version = (char *)OGS_SBI_API_V2;
+    message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
+    message.h.resource.component[1] = amf_ue->supi;
+
+    server = ogs_sbi_server_first();
+    if (!server) {
+        ogs_error("No server");
+        goto end;
+    }
+
+    request = ogs_sbi_build_request(&message);
+    ogs_expect(request);
+
+end:
+
+    return request;
 }
 
 ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
@@ -178,7 +203,7 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
 
     memset(&smsRecordData, 0, sizeof(smsRecordData));
 
-    smsRecordData.sms_record_id = "1";
+    smsRecordData.sms_record_id = (char *)"1";
     if (!smsRecordData.sms_record_id) {
         ogs_error("No recordId");
         goto end;

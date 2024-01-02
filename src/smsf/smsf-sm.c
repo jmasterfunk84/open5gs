@@ -148,6 +148,12 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                     if (!smsf_ue) {
                         smsf_ue = smsf_ue_find_by_supi(
                                 message.h.resource.component[1]);
+                    }
+
+                    SWITCH(message.h.method)
+                    CASE(OGS_SBI_HTTP_METHOD_PUT)
+                        ogs_assert(OGS_FSM_STATE(&smsf_ue->sm));
+
                         if (!smsf_ue) {
                             smsf_ue = 
                                 smsf_ue_add(message.h.resource.component[1]);
@@ -161,11 +167,6 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                                 break;
                             }
                         }
-                    }
-
-                    SWITCH(message.h.method)
-                    CASE(OGS_SBI_HTTP_METHOD_PUT)
-                        ogs_assert(OGS_FSM_STATE(&smsf_ue->sm));
 
                         e->smsf_ue = smsf_ue;
                         e->h.sbi.message = &message;
@@ -177,6 +178,15 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                         break;
 
                     CASE(OGS_SBI_HTTP_METHOD_DELETE)
+                        if (!smsf_ue) {
+                            ogs_error("Not found [%s]", message.h.method);
+                            ogs_assert(true ==
+                                ogs_sbi_server_send_error(stream,
+                                    OGS_SBI_HTTP_STATUS_NOT_FOUND,
+                                    &message, "Unable find UE Context",
+                                    message.h.method));
+                        }
+
                         rv = smsf_nsmsf_sm_service_handle_deactivate(
                                 smsf_ue, stream, &message);
                         if (rv != OGS_OK) {
@@ -186,6 +196,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                                     &message,
                                     "No DeactivateData", NULL));
                         }
+
                         break;
 
                     DEFAULT

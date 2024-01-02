@@ -86,10 +86,10 @@ bool smsf_nsmsf_sm_service_handle_activate(
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);
 
-    return OGS_OK;
+    return true;
 }
 
-bool smsf_nsmsf_sm_service_handle_deactivate(
+int smsf_nsmsf_sm_service_handle_deactivate(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message)
 {
@@ -97,6 +97,27 @@ bool smsf_nsmsf_sm_service_handle_deactivate(
     ogs_assert(message);
 
     ogs_info("Deactivate");
+
+    // This might be too soon.
+    smsf_ue_remove(smsf_ue);
+
+    ogs_sbi_message_t sendmsg;
+    ogs_sbi_header_t header;
+    ogs_sbi_response_t *response = NULL;
+
+    memset(&header, 0, sizeof(header));
+    header.service.name =
+        (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
+    header.api.version = (char *)OGS_SBI_API_V2;
+    header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
+    header.resource.component[1] = smsf_ue->supi;
+
+    memset(&sendmsg, 0, sizeof(sendmsg));
+
+    response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
     return OGS_OK;
 }
 

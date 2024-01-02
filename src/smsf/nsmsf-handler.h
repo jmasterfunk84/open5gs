@@ -30,7 +30,7 @@ bool smsf_nsmsf_sm_service_handle_activate(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message);
 
-bool smsf_nsmsf_sm_service_handle_deactivate(
+int smsf_nsmsf_sm_service_handle_deactivate(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message);
 
