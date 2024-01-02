@@ -138,7 +138,7 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
 
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
-    ogs_sbi_server_t *server = NULL;
+    // ogs_sbi_server_t *server = NULL;
 
     OpenAPI_sms_record_data_t smsRecordData;
     OpenAPI_user_location_t ueLocation;
@@ -155,10 +155,30 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
     message.h.resource.component[1] = amf_ue->supi;
     message.h.resource.component[2] = (char *)OGS_SBI_RESOURCE_NAME_SEND_SMS;
 
-    //memset(&ueLocation, 0, sizeof(ueLocation));
+    memset(&ueLocation, 0, sizeof(ueLocation));
+    ueLocation.nr_location = ogs_sbi_build_nr_location(
+            &amf_ue->nr_tai, &amf_ue->nr_cgi);
+    if (!ueLocation.nr_location) {
+        ogs_error("No ueLocation.nr_location");
+        goto end;
+    }
+    ueLocation.nr_location->ue_location_timestamp =
+        ogs_sbi_gmtime_string(amf_ue->ue_location_timestamp);
+    if (!ueLocation.nr_location->ue_location_timestamp) {
+        ogs_error("No ueLocation.nr_location->ue_location_timestamp");
+        goto end;
+    }
+    smsRecordData.ue_location = &ueLocation;
+
+    smsRecordData.ue_time_zone = ogs_sbi_timezone_string(ogs_timezone());
+    if (!smsRecordData.ue_time_zone) {
+        ogs_error("No time_zone");
+        goto end;
+    }
+
     memset(&smsRecordData, 0, sizeof(smsRecordData));
 
-    smsRecordData.sms_record_id = "1");
+    smsRecordData.sms_record_id = "1";
     if (!smsRecordData.sms_record_id) {
         ogs_error("No recordId");
         goto end;
@@ -173,21 +193,22 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
         (char *)OGS_SBI_CONTENT_SMS_TYPE;
     message.num_of_part++;
 
-    message.SmsRecordData = &SmsRecordData;
+    message.SmsRecordData = &smsRecordData;
 
     request = ogs_sbi_build_request(&message);
     ogs_expect(request);
 
 end:
-    if (SmsRecordData.smsPayload)
-        ogs_free(SmsRecordData.sms_payload);
+    if (smsRecordData.sms_payload)
+        ogs_free(smsRecordData.sms_payload);
 
-    // if (ueLocation.nr_location) {
-    //     if (ueLocation.nr_location->ue_location_timestamp)
-    //         ogs_free(ueLocation.nr_location->ue_location_timestamp);
-    //     ogs_sbi_free_nr_location(ueLocation.nr_location);
-    // }
+    if (ueLocation.nr_location) {
+        if (ueLocation.nr_location->ue_location_timestamp)
+            ogs_free(ueLocation.nr_location->ue_location_timestamp);
+        ogs_sbi_free_nr_location(ueLocation.nr_location);
+    }
+    if (smsRecordData.ue_time_zone)
+        ogs_free(smsRecordData.ue_time_zone);
 
     return request;
-*/
 }
