@@ -21,6 +21,7 @@
 #include "nnrf-handler.h"
 #include "nsmsf-handler.h"
 #include "nudm-build.h"
+#include "namf-build.h"
 
 bool smsf_nsmsf_sm_service_handle_activate(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
@@ -138,6 +139,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     /* I think it should split CP data, and RP data.  RP data would normally go to SMSC
      * but, here we have to rip the userdata from the rp-data to get the destination address.
      */
+    /* Check MO subscription if allowed (send 403) */
+    /* check MT subscription if allowed */
     /* queue event for MT smsf_ue */
     /* if UE found, then say so.  If ue not found, respond with error. */
     /* form the SmsRecordDeliveryData */
@@ -168,6 +171,20 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
     ogs_assert(response);
     ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+
+    /* Send CP-Ack to MO UE */
+    int r;
+    smsf_n1_n2_message_transfer_param_t param;
+
+    memset(&param, 0, sizeof(param));
+    param.n1smbuf = (char*)"\x89\x04" //gsm_build_pdu_session_establishment_accept(sess); -> gsm_build_cp_ack(id);
+    ogs_assert(param.n1smbuf);
+
+    r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NAMF_COMM, NULL,
+            smsf_namf_comm_build_n1_n2_message_transfer, smsf_ue, stream, param);
+    ogs_expect(r == OGS_OK);
+    ogs_assert(r != OGS_ERROR);
 
     return OGS_OK;
 }

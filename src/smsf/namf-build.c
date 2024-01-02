@@ -38,17 +38,12 @@ ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
     OpenAPI_n1_message_container_t n1MessageContainer;
     OpenAPI_ref_to_binary_data_t n1MessageContent;
 
-    OpenAPI_n2_info_container_t n2InfoContainer;
-    OpenAPI_n2_sm_information_t smInfo;
-    OpenAPI_n2_info_content_t n2InfoContent;
-    OpenAPI_ref_to_binary_data_t ngapData;
 
     ogs_assert(smsf_ue);
     ogs_assert(smsf_ue->supi);
 
     ogs_assert(param);
-    ogs_assert(param->state);
-    ogs_assert(param->n1smbuf || param->n2smbuf);
+    ogs_assert(param->n1smbuf);
 
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
@@ -68,59 +63,17 @@ ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
         N1N2MessageTransferReqData.n1_message_container = &n1MessageContainer;
 
         memset(&n1MessageContainer, 0, sizeof(n1MessageContainer));
-        n1MessageContainer.n1_message_class = OpenAPI_n1_message_class_SM;
+        n1MessageContainer.n1_message_class = OpenAPI_n1_message_class_SMS;
         n1MessageContainer.n1_message_content = &n1MessageContent;
 
         memset(&n1MessageContent, 0, sizeof(n1MessageContent));
-        n1MessageContent.content_id = (char *)OGS_SBI_CONTENT_5GNAS_SM_ID;
+        n1MessageContent.content_id = (char *)OGS_SBI_CONTENT_SMS_SM_ID;
 
         message.part[message.num_of_part].pkbuf = param->n1smbuf;
         message.part[message.num_of_part].content_id =
-            (char *)OGS_SBI_CONTENT_5GNAS_SM_ID;
+            (char *)OGS_SBI_CONTENT_SMS_SM_ID;
         message.part[message.num_of_part].content_type =
-            (char *)OGS_SBI_CONTENT_5GNAS_TYPE;
-        message.num_of_part++;
-    }
-
-    if (param->n2smbuf) {
-        N1N2MessageTransferReqData.n2_info_container = &n2InfoContainer;
-
-        memset(&n2InfoContainer, 0, sizeof(n2InfoContainer));
-        n2InfoContainer.n2_information_class = OpenAPI_n2_information_class_SM;
-        n2InfoContainer.sm_info = &smInfo;
-
-        memset(&smInfo, 0, sizeof(smInfo));
-        smInfo.pdu_session_id = sess->psi;
-        smInfo.n2_info_content = &n2InfoContent;
-
-        memset(&n2InfoContent, 0, sizeof(n2InfoContent));
-        switch (param->state) {
-        case SMSF_UE_REQUESTED_PDU_SESSION_ESTABLISHMENT:
-        case SMSF_NETWORK_TRIGGERED_SERVICE_REQUEST:
-            n2InfoContent.ngap_ie_type = OpenAPI_ngap_ie_type_PDU_RES_SETUP_REQ;
-            break;
-        case SMSF_NETWORK_REQUESTED_PDU_SESSION_MODIFICATION:
-        case SMSF_NETWORK_REQUESTED_QOS_FLOW_MODIFICATION:
-            n2InfoContent.ngap_ie_type = OpenAPI_ngap_ie_type_PDU_RES_MOD_REQ;
-            break;
-        case SMSF_NETWORK_REQUESTED_PDU_SESSION_RELEASE:
-        case SMSF_ERROR_INDICATON_RECEIVED_FROM_5G_AN:
-            n2InfoContent.ngap_ie_type = OpenAPI_ngap_ie_type_PDU_RES_REL_CMD;
-            break;
-        default:
-            ogs_fatal("Unexpected state [%d]", param->state);
-            ogs_assert_if_reached();
-        }
-        n2InfoContent.ngap_data = &ngapData;
-
-        memset(&ngapData, 0, sizeof(ngapData));
-        ngapData.content_id = (char *)OGS_SBI_CONTENT_NGAP_SM_ID;
-
-        message.part[message.num_of_part].pkbuf = param->n2smbuf;
-        message.part[message.num_of_part].content_id =
-            (char *)OGS_SBI_CONTENT_NGAP_SM_ID;
-        message.part[message.num_of_part].content_type =
-            (char *)OGS_SBI_CONTENT_NGAP_TYPE;
+            (char *)OGS_SBI_CONTENT_SMS_TYPE;
         message.num_of_part++;
     }
 

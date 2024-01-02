@@ -367,6 +367,7 @@ extern "C" {
 #define OGS_SBI_CONTENT_ID                          "Content-Id"
 #define OGS_SBI_CONTENT_5GNAS_SM_ID                 "5gnas-sm"
 #define OGS_SBI_CONTENT_NGAP_SM_ID                  "ngap-sm"
+#define OGS_SBI_CONTENT_SMS_SM_ID                   "sms-sm"
 
 #define OGS_SBI_CALLBACK_NSMF_PDUSESSION_UPDATE \
     "Nsmf_PDUSession_Update"
