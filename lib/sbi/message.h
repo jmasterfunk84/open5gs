@@ -557,6 +557,7 @@ typedef struct ogs_sbi_message_s {
     OpenAPI_sms_subscription_data_t *SmsSubscriptionData;
     OpenAPI_ue_context_in_smsf_data_t *UeContextInSmsfData;
     OpenAPI_sms_record_data_t *SmsRecordData;
+    OpenAPI_sms_record_delivery_data_t *SmsRecordDeliveryData;
 
     ogs_sbi_links_t *links;
 

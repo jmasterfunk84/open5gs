@@ -151,7 +151,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     memset(&SmsRecordDeliveryData, 0, sizeof(SmsRecordDeliveryData));
 
     SmsRecordDeliveryData.sms_record_id = SmsRecordData->sms_record_id;
-    SmsRecordDeliveryData.delivery_status = "SMS_DELIVERY_SMSF_ACCEPTED";
+    SmsRecordDeliveryData.delivery_status = 
+            OpenAPI_sms_delivery_status_SMS_DELIVERY_SMSF_ACCEPTED;
 
     memset(&header, 0, sizeof(header));
     header.service.name =
@@ -162,7 +163,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     header.resource.component[2] = (char *)OGS_SBI_RESOURCE_NAME_SEND_SMS;
 
     memset(&sendmsg, 0, sizeof(sendmsg));
-    sendmsg.UeSmsContextData = &UeSmsContextData;
+    sendmsg.SmsRecordDeliveryData = &SmsRecordDeliveryData;
 
     response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
     ogs_assert(response);

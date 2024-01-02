@@ -200,9 +200,9 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
     if (message->UeContextInSmsfData)
         OpenAPI_ue_context_in_smsf_data_free(message->UeContextInSmsfData);
     if (message->SmsRecordData)
-        OpenAPI_sms_record_data_free(message->SmsRecordDeliveryData);
+        OpenAPI_sms_record_data_free(message->SmsRecordData);
     if (message->SmsRecordDeliveryData)
-        OpenAPI_sms_record_data_free(message->SmsRecordDeliveryData);
+        OpenAPI_sms_record_delivery_data_free(message->SmsRecordDeliveryData);
 
     /* HTTP Part */
     for (i = 0; i < message->num_of_part; i++) {
@@ -1378,7 +1378,7 @@ static char *build_json(ogs_sbi_message_t *message)
             message->SmsRecordData);
         ogs_assert(item);
     } else if (message->SmsRecordDeliveryData) {
-        item = OpenAPI_sms_record_data_convertToJSON(
+        item = OpenAPI_sms_record_delivery_data_convertToJSON(
             message->SmsRecordDeliveryData);
         ogs_assert(item);
     }
@@ -2586,16 +2586,16 @@ static int parse_json(ogs_sbi_message_t *message,
                 SWITCH(message->h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SEND_SMS)
                     if (message->res_status == 0) {
-                        message->SmsRecordDeliveryData =
-                            OpenAPI_sms_record_delivery_data_parseFromJSON(item);
-                        if (!message->SmsRecordDeliveryData) {
+                        message->SmsRecordData =
+                            OpenAPI_sms_record_data_parseFromJSON(item);
+                        if (!message->SmsRecordData) {
                             rv = OGS_ERROR;
                             ogs_error("JSON parse error");
                         }
                     } else if (message->res_status == OGS_SBI_HTTP_STATUS_OK) {
-                        message->SmsRecordData =
-                            OpenAPI_sms_record_data_parseFromJSON(item);
-                        if (!message->SmsRecordData) {
+                        message->SmsRecordDeliveryData =
+                            OpenAPI_sms_record_delivery_data_parseFromJSON(item);
+                        if (!message->SmsRecordDeliveryData) {
                             rv = OGS_ERROR;
                             ogs_error("JSON parse error");
                         }
