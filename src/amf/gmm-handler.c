@@ -1406,7 +1406,7 @@ int gmm_handle_ul_nas_transport(amf_ue_t *amf_ue,
                 r = amf_ue_sbi_discover_and_send(
                 OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
                 amf_nsmsf_sm_service_build_uplink_sms,
-                amf_ue, AMF_UPDATE_SM_CONTEXT_MODIFIED, &payload_container);
+                amf_ue, 0, &payload_container);
         ogs_expect(r == OGS_OK);
         ogs_assert(r != OGS_ERROR);
         break;
