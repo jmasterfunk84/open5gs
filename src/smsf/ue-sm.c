@@ -19,6 +19,7 @@
 
 #include "sbi-path.h"
 #include "nsmsf-handler.h"
+#include "namf-handler.h"
 #include "nudm-handler.h"
 #include "nudm-build.h"
 
@@ -222,11 +223,25 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                 /* Ending here */
                 break;
 
-
-
             DEFAULT
                 ogs_error("Invalid resource name [%s]",
                         message->h.resource.component[1]);
+                ogs_assert_if_reached();
+            END
+            break;
+
+        CASE(OGS_SBI_SERVICE_NAME_NAMF_COMM)
+            SWITCH(message.h.resource.component[1])
+            CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
+                smsf_namf_comm_handle_n1_n2_message_transfer(
+                        smsf_ue, NULL, message);
+                /* We might need to use state above to determine 
+                 * if we're returning CP ack, submit report, or MT SMS Body.
+                 */
+
+            DEFAULT
+                ogs_error("Invalid resource name  [%s]", 
+                        message.h.resource.component[1]);
                 ogs_assert_if_reached();
             END
             break;

@@ -20,7 +20,7 @@
 #include "namf-build.h"
 
 ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
-        smsf_ue_t *smsf_ue, void *data)
+        smsf_ue_t *smsf_ue, smsf_n1_n2_message_transfer_param_t *param)
 {
     int i;
 
@@ -38,10 +38,6 @@ ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
 
     ogs_assert(smsf_ue);
     ogs_assert(smsf_ue->supi);
-
-    smsf_n1_n2_message_transfer_param_t *param;
-
-//    param=(smsf_n1_n2_message_transfer_param_t)data;
 
     ogs_assert(param);
     ogs_assert(param->n1smbuf);
@@ -66,13 +62,13 @@ ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
         n1MessageContainer.n1_message_content = &n1MessageContent;
 
         memset(&n1MessageContent, 0, sizeof(n1MessageContent));
-        n1MessageContent.content_id = (char *)OGS_SBI_CONTENT_SMS_SM_ID;
+        n1MessageContent.content_id = (char *)OGS_SBI_CONTENT_SMS_ID;
 
         message.part[message.num_of_part].pkbuf = param->n1smbuf;
         message.part[message.num_of_part].content_id =
-            (char *)OGS_SBI_CONTENT_SMS_SM_ID;
+            (char *)OGS_SBI_CONTENT_SMS_ID;
         message.part[message.num_of_part].content_type =
-            (char *)OGS_SBI_CONTENT_SMS_TYPE;
+            (char *)OGS_SBI_CONTENT_5GNAS_TYPE;
         message.num_of_part++;
     }
 

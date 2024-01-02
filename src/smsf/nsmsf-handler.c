@@ -139,7 +139,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     /* I think it should split CP data, and RP data.  RP data would normally go to SMSC
      * but, here we have to rip the userdata from the rp-data to get the destination address.
      */
-    /* Check MO subscription if allowed (send 403) */
+    /* Check MO subscription if allowed (send 403) (after CP-ACK is sent) */
     /* check MT subscription if allowed */
     /* queue event for MT smsf_ue */
     /* if UE found, then say so.  If ue not found, respond with error. */
@@ -174,11 +174,15 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
 
     /* Send CP-Ack to MO UE */
-    int r;
+    //int r;
     smsf_n1_n2_message_transfer_param_t param;
 
     memset(&param, 0, sizeof(param));
-    //param.n1smbuf = (char*)"\x89\x04"; //gsm_build_pdu_session_establishment_accept(sess); -> gsm_build_cp_ack(id);
+
+    param.n1smbuf = ogs_pkbuf_alloc(NULL,2);
+    ogs_pkbuf_put_u8(param.n1smbuf,137);        // SMS messages/TIO/TIF1
+    ogs_pkbuf_put_u8(param.n1smbuf,4);          // CP-ACK
+
     ogs_assert(param.n1smbuf);
 
     smsf_namf_comm_send_n1_n2_message_transfer(smsf_ue, &param);
