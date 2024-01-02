@@ -41,7 +41,7 @@ ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
 
     smsf_n1_n2_message_transfer_param_t *param;
 
-    param=(smsf_n1_n2_message_transfer_param_t)data;
+//    param=(smsf_n1_n2_message_transfer_param_t)data;
 
     ogs_assert(param);
     ogs_assert(param->n1smbuf);
