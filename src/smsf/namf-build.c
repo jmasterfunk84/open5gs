@@ -18,14 +18,11 @@
  */
 
 #include "namf-build.h"
-//#include "gsm-build.h"
-#include "ngap-build.h"
 
 ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
         smsf_ue_t *smsf_ue, void *data)
 {
     int i;
-    smsf_ue_t *smsf_ue = NULL;
 
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
@@ -42,10 +39,9 @@ ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
     ogs_assert(smsf_ue);
     ogs_assert(smsf_ue->supi);
 
-
     smsf_n1_n2_message_transfer_param_t *param;
 
-    
+    param=(smsf_n1_n2_message_transfer_param_t)data;
 
     ogs_assert(param);
     ogs_assert(param->n1smbuf);
@@ -61,8 +57,6 @@ ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
     message.N1N2MessageTransferReqData = &N1N2MessageTransferReqData;
 
     memset(&N1N2MessageTransferReqData, 0, sizeof(N1N2MessageTransferReqData));
-    N1N2MessageTransferReqData.is_pdu_session_id = true;
-    N1N2MessageTransferReqData.pdu_session_id = sess->psi;
 
     if (param->n1smbuf) {
         N1N2MessageTransferReqData.n1_message_container = &n1MessageContainer;

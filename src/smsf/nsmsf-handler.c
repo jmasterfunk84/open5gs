@@ -178,10 +178,10 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     smsf_n1_n2_message_transfer_param_t param;
 
     memset(&param, 0, sizeof(param));
-    param.n1smbuf = (char*)"\x89\x04"; //gsm_build_pdu_session_establishment_accept(sess); -> gsm_build_cp_ack(id);
+    //param.n1smbuf = (char*)"\x89\x04"; //gsm_build_pdu_session_establishment_accept(sess); -> gsm_build_cp_ack(id);
     ogs_assert(param.n1smbuf);
 
-    smf_namf_comm_send_n1_n2_message_transfer(smsf_ue, &param);
+    smsf_namf_comm_send_n1_n2_message_transfer(smsf_ue, &param);
 
     return OGS_OK;
 }

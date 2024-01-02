@@ -107,12 +107,17 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                 SWITCH(message.h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SEND_SMS)
                     if (!smsf_ue) {
+                        smsf_ue = smsf_ue_find_by_supi(
+                                message.h.resource.component[1]);
+                    }
+                    if (!smsf_ue) {
                         ogs_error("No UE context [%s]",
                             message.h.resource.component[1]);
                         ogs_assert(true ==
                             ogs_sbi_server_send_error(stream,
                                 OGS_SBI_HTTP_STATUS_NOT_FOUND,
-                                &message, "Not found", message.h.method));
+                                &message, "Unable to find UE context",
+                                message.h.method));
                         break;
                     }
 
@@ -144,27 +149,20 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                         smsf_ue = smsf_ue_find_by_supi(
                                 message.h.resource.component[1]);
                         if (!smsf_ue) {
-                            smsf_ue = smsf_ue_add(message.h.resource.component[1]);
+                            smsf_ue = 
+                                smsf_ue_add(message.h.resource.component[1]);
                             if (!smsf_ue) {
-                                ogs_error("Invalid Request [%s]",
-                                        message.h.resource.component[1]);
+                                ogs_error("Not found [%s]", message.h.method);
                                 ogs_assert(true ==
                                     ogs_sbi_server_send_error(stream,
-                                        OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                                        &message, NULL, NULL));
+                                        OGS_SBI_HTTP_STATUS_FORBIDDEN,
+                                        &message, "Unable to create UE Context",
+                                        message.h.method));
                                 break;
                             }
                         }
                     }
 
-                    if (!smsf_ue) {
-                        ogs_error("Not found [%s]", message.h.method);
-                        ogs_assert(true ==
-                            ogs_sbi_server_send_error(stream,
-                                OGS_SBI_HTTP_STATUS_NOT_FOUND,
-                                &message, "Not found", message.h.method));
-                        break;
-                    }
                     SWITCH(message.h.method)
                     CASE(OGS_SBI_HTTP_METHOD_PUT)
                         ogs_assert(OGS_FSM_STATE(&smsf_ue->sm));

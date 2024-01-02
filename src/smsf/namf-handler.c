@@ -18,32 +18,16 @@
  */
 
 #include "sbi-path.h"
-#include "ngap-path.h"
-#include "binding.h"
 #include "namf-handler.h"
 
 bool smsf_namf_comm_handle_n1_n2_message_transfer(
         smsf_ue_t *smsf_ue, int state, ogs_sbi_message_t *recvmsg)
 {
-    smsf_ue_t *smsf_ue = NULL;
     OpenAPI_n1_n2_message_transfer_rsp_data_t *N1N2MessageTransferRspData;
 
     ogs_assert(smsf_ue);
-    ogs_assert(state);
     ogs_assert(recvmsg);
 
-    switch (state) {
-    case SMSF_UE_REQUESTED_PDU_SESSION_ESTABLISHMENT:
-        if (recvmsg->res_status == OGS_SBI_HTTP_STATUS_OK) {
-            smsf_qos_flow_binding(sess);
-        } else {
-            ogs_error("[%s:%d] HTTP response error [%d]",
-                smsf_ue->supi, sess->psi, recvmsg->res_status);
-        }
-        break;
-
-    case SMSF_NETWORK_TRIGGERED_SERVICE_REQUEST:
-    case SMSF_NETWORK_REQUESTED_QOS_FLOW_MODIFICATION:
         N1N2MessageTransferRspData = recvmsg->N1N2MessageTransferRspData;
         if (!N1N2MessageTransferRspData) {
             ogs_error("No N1N2MessageTransferRspData [status:%d]",
@@ -51,130 +35,23 @@ bool smsf_namf_comm_handle_n1_n2_message_transfer(
             break;
         }
 
-        if (recvmsg->res_status == OGS_SBI_HTTP_STATUS_OK) {
-            if (N1N2MessageTransferRspData->cause ==
-                OpenAPI_n1_n2_message_transfer_cause_N1_N2_TRANSFER_INITIATED) {
-                /* Nothing */
-            } else {
-                ogs_error("Not implemented [cause:%d]",
-                        N1N2MessageTransferRspData->cause);
-                ogs_assert_if_reached();
-            }
-        } else if (recvmsg->res_status == OGS_SBI_HTTP_STATUS_ACCEPTED) {
-            if (N1N2MessageTransferRspData->cause ==
-                OpenAPI_n1_n2_message_transfer_cause_ATTEMPTING_TO_REACH_UE) {
-                if (recvmsg->http.location)
-                    smsf_sess_set_paging_n1n2message_location(
-                            sess, recvmsg->http.location);
-                else
-                    ogs_error("No HTTP Location");
-            } else {
-                ogs_error("Not implemented [cause:%d]",
-                        N1N2MessageTransferRspData->cause);
-                ogs_assert_if_reached();
-            }
+    if (recvmsg->res_status == OGS_SBI_HTTP_STATUS_OK) {
+        if (N1N2MessageTransferRspData->cause ==
+            OpenAPI_n1_n2_message_transfer_cause_N1_MSG_NOT_TRANSFERRED) {
+            smsf_n1_n2_message_transfer_param_t param;
+
+        } else if (N1N2MessageTransferRspData->cause ==
+            OpenAPI_n1_n2_message_transfer_cause_N1_N2_TRANSFER_INITIATED) {
+            /* Nothing */
         } else {
-
-    /*
-     * TODO:
-     *
-     * TS23.502 4.2.3.3 Network Triggered Service Request
-     *
-     * 3c. [Conditional] SMSF responds to the UPF
-     *
-     * If the SMSF receives an indication from the AMF that the UE is
-     * unreachable or reachable only for regulatory prioritized service
-     * and the SMSF determines that Extended Buffering does not apply,
-     * the SMSF may, based on network policies, either:
-     *
-     * - indicate to the UPF to stop sending Data Notifications;
-     * - indicate to the UPF to stop buffering DL data and
-     *   discard the buffered data;
-     * - indicate to the UPF to stop sending Data Notifications and
-     *   stop buffering DL data and discard the buffered data; or
-     * - refrains from sending further Namf_Communication_N1N2MessageTransfer
-     *   message for DL data to the AMF while the UE is unreachable.
-     */
-
-            ogs_error("[%s:%d] HTTP response error [status:%d cause:%d]",
-                smsf_ue->supi, sess->psi, recvmsg->res_status,
-                N1N2MessageTransferRspData->cause);
+            ogs_error("Not implemented [cause:%d]",
+                    N1N2MessageTransferRspData->cause);
+            ogs_assert_if_reached();
         }
-        break;
-
-    case SMSF_NETWORK_REQUESTED_PDU_SESSION_RELEASE:
-    case SMSF_ERROR_INDICATON_RECEIVED_FROM_5G_AN:
-
-        N1N2MessageTransferRspData = recvmsg->N1N2MessageTransferRspData;
-        if (!N1N2MessageTransferRspData) {
-            ogs_error("No N1N2MessageTransferRspData [status:%d]",
-                    recvmsg->res_status);
-            break;
-        }
-
-        if (recvmsg->res_status == OGS_SBI_HTTP_STATUS_ACCEPTED) {
-    /*
-     * OpenAPI_n1_n2_message_transfer_cause_ATTEMPTING_TO_REACH_UE and
-     * HTTP_STATUS_ACCEPTED should be handled here when removing PDU session
-     * due to the change of PDU Session Anchor.
-     *
-     * TS23.502
-     * 4.3.4 PDU Session Release
-     * 4.3.4.2 UE or network requested PDU Session Release for Non-Roaming
-     * and Roaming with Local Breakout
-     *
-     * 3b. ...
-     *
-     * The "skip indicator" tells the AMF whether it may skip sending
-     * the N1 SM container to the UE (e.g. when the UE is in CM-IDLE state).
-     * SMSF includes the "skip indicator"
-     * in the Namf_Communication_N1N2MessageTransfer
-     * except when the procedure is triggered to change PDU Session Anchor
-     * of a PDU Session with SSC mode 2.
-     *
-     * Related Issue #2396
-     */
-            if (N1N2MessageTransferRspData->cause ==
-                OpenAPI_n1_n2_message_transfer_cause_ATTEMPTING_TO_REACH_UE) {
-                /* Nothing */
-            } else {
-                ogs_error("Not implemented [cause:%d]",
-                        N1N2MessageTransferRspData->cause);
-                ogs_assert_if_reached();
-            }
-        } else if (recvmsg->res_status == OGS_SBI_HTTP_STATUS_OK) {
-            if (N1N2MessageTransferRspData->cause ==
-                OpenAPI_n1_n2_message_transfer_cause_N1_MSG_NOT_TRANSFERRED) {
-                smsf_n1_n2_message_transfer_param_t param;
-
-                memset(&param, 0, sizeof(param));
-                param.state = SMSF_NETWORK_TRIGGERED_SERVICE_REQUEST;
-                param.n2smbuf =
-                    ngap_build_pdu_session_resource_setup_request_transfer(
-                            sess);
-                ogs_assert(param.n2smbuf);
-
-                param.n1n2_failure_txf_notif_uri = true;
-
-                smsf_namf_comm_send_n1_n2_message_transfer(sess, &param);
-            } else if (N1N2MessageTransferRspData->cause ==
-                OpenAPI_n1_n2_message_transfer_cause_N1_N2_TRANSFER_INITIATED) {
-                /* Nothing */
-            } else {
-                ogs_error("Not implemented [cause:%d]",
-                        N1N2MessageTransferRspData->cause);
-                ogs_assert_if_reached();
-            }
-        } else {
-            ogs_error("[%s:%d] HTTP response error [status:%d cause:%d]",
-                smsf_ue->supi, sess->psi, recvmsg->res_status,
-                N1N2MessageTransferRspData->cause);
-        }
-        break;
-
-    default:
-        ogs_fatal("Unexpected state [%d]", state);
-        ogs_assert_if_reached();
+    } else {
+        ogs_error("[%s:%d] HTTP response error [status:%d cause:%d]",
+            smsf_ue->supi, sess->psi, recvmsg->res_status,
+            N1N2MessageTransferRspData->cause);
     }
 
     return true;
