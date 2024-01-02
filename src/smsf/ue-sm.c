@@ -231,7 +231,7 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
             break;
 
         CASE(OGS_SBI_SERVICE_NAME_NAMF_COMM)
-            SWITCH(message.h.resource.component[1])
+            SWITCH(message->h.resource.component[1])
             CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
                 smsf_namf_comm_handle_n1_n2_message_transfer(
                         smsf_ue, NULL, message);
@@ -241,7 +241,7 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
             DEFAULT
                 ogs_error("Invalid resource name  [%s]", 
-                        message.h.resource.component[1]);
+                        message->h.resource.component[1]);
                 ogs_assert_if_reached();
             END
             break;
