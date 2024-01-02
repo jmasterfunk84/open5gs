@@ -49,6 +49,7 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
     OpenAPI_n1_n2_message_transfer_rsp_data_t N1N2MessageTransferRspData;
     OpenAPI_n1_message_container_t *n1MessageContainer = NULL;
     OpenAPI_ref_to_binary_data_t *n1MessageContent = NULL;
+    OpenAPI_n1_message_class_e n1MessageClass;
     OpenAPI_n2_info_container_t *n2InfoContainer = NULL;
     OpenAPI_n2_sm_information_t *smInfo = NULL;
     OpenAPI_n2_info_content_t *n2InfoContent = NULL;
@@ -65,12 +66,6 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
         return OGS_ERROR;
     }
 
-    if (N1N2MessageTransferReqData->is_pdu_session_id == false) {
-        ogs_error("No PDU Session Identity");
-        return OGS_ERROR;
-    }
-    pdu_session_id = N1N2MessageTransferReqData->pdu_session_id;
-
     supi = recvmsg->h.resource.component[1];
     if (!supi) {
         ogs_error("No SUPI");
@@ -80,13 +75,6 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
     amf_ue = amf_ue_find_by_supi(supi);
     if (!amf_ue) {
         ogs_error("No UE context [%s]", supi);
-        return OGS_ERROR;
-    }
-
-    sess = amf_sess_find_by_psi(amf_ue, pdu_session_id);
-    if (!sess) {
-        ogs_error("[%s] No PDU Session Context [%d]",
-                amf_ue->supi, pdu_session_id);
         return OGS_ERROR;
     }
 
@@ -111,6 +99,32 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
          */
         n1buf = ogs_pkbuf_copy(n1buf);
         ogs_assert(n1buf);
+    }
+
+    n1MessageClass = n1MessageContainer->n1_message_class;
+    switch (n1MessageClass) {
+    case OpenAPI_n1_message_class_SM:
+        ogs_info("This is SM");
+        break;
+    case OpenAPI_n1_message_class_SMS:
+        ogs_info("This is SMS");
+        break;
+    default:
+        ogs_error("Not implemented n1MessageClass[%d]", n1MessageClass);
+        ogs_assert_if_reached();
+    }
+
+    if (N1N2MessageTransferReqData->is_pdu_session_id == false) {
+        ogs_error("No PDU Session Identity");
+        return OGS_ERROR;
+    }
+    pdu_session_id = N1N2MessageTransferReqData->pdu_session_id;
+    
+    sess = amf_sess_find_by_psi(amf_ue, pdu_session_id);
+    if (!sess) {
+        ogs_error("[%s] No PDU Session Context [%d]",
+                amf_ue->supi, pdu_session_id);
+        return OGS_ERROR;
     }
 
     n2InfoContainer = N1N2MessageTransferReqData->n2_info_container;
