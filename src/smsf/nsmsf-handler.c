@@ -142,6 +142,31 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     /* if UE found, then say so.  If ue not found, respond with error. */
     /* form the SmsRecordDeliveryData */
 
+    ogs_sbi_message_t sendmsg;
+    ogs_sbi_header_t header;
+    ogs_sbi_response_t *response = NULL;
+
+    OpenAPI_sms_record_delivery_data_t SmsRecordDeliveryData;
+
+    memset(&SmsRecordDeliveryData, 0, sizeof(SmsRecordDeliveryData));
+
+    SmsRecordDeliveryData.sms_record_id = SmsRecordData->sms_record_id;
+    SmsRecordDeliveryData.delivery_status = "SMS_DELIVERY_SMSF_ACCEPTED";
+
+    memset(&header, 0, sizeof(header));
+    header.service.name =
+        (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
+    header.api.version = (char *)OGS_SBI_API_V2;
+    header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
+    header.resource.component[1] = smsf_ue->supi;
+    header.resource.component[2] = (char *)OGS_SBI_RESOURCE_NAME_SEND_SMS;
+
+    memset(&sendmsg, 0, sizeof(sendmsg));
+    sendmsg.UeSmsContextData = &UeSmsContextData;
+
+    response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
     return OGS_OK;
 }
