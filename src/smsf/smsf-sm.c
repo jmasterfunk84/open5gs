@@ -104,35 +104,18 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
             SWITCH(message.h.resource.component[0])
             CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
-                if (!smsf_ue) {
-                    smsf_ue = smsf_ue_find_by_supi(
-                            message.h.resource.component[1]);
-                    if (!smsf_ue) {
-                        smsf_ue = smsf_ue_add(message.h.resource.component[1]);
-                        if (!smsf_ue) {
-                            ogs_error("Invalid Request [%s]",
-                                    message.h.resource.component[1]);
-                            ogs_assert(true ==
-                                ogs_sbi_server_send_error(stream,
-                                    OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                                    &message, NULL, NULL));
-                            break;
-                        }
-                    }
-                }
-
-                if (!smsf_ue) {
-                    ogs_error("Not found [%s]", message.h.method);
-                    ogs_assert(true ==
-                        ogs_sbi_server_send_error(stream,
-                            OGS_SBI_HTTP_STATUS_NOT_FOUND,
-                            &message, "Not found", message.h.method));
-                    break;
-                }
-
                 SWITCH(message.h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SEND_SMS)
-                    /* Should we move to the ue-sm? */
+                    if (!smsf_ue) {
+                        ogs_error("No UE context [%s]",
+                            message.h.resource.component[1]);
+                        ogs_assert(true ==
+                            ogs_sbi_server_send_error(stream,
+                                OGS_SBI_HTTP_STATUS_NOT_FOUND,
+                                &message, "Not found", message.h.method));
+                        break;
+                    }
+
                     SWITCH(message.h.method)
                     CASE(OGS_SBI_HTTP_METHOD_POST)
                         rv = smsf_nsmsf_sm_service_handle_uplink_sms(
@@ -157,6 +140,31 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                     break;
 
                 DEFAULT
+                    if (!smsf_ue) {
+                        smsf_ue = smsf_ue_find_by_supi(
+                                message.h.resource.component[1]);
+                        if (!smsf_ue) {
+                            smsf_ue = smsf_ue_add(message.h.resource.component[1]);
+                            if (!smsf_ue) {
+                                ogs_error("Invalid Request [%s]",
+                                        message.h.resource.component[1]);
+                                ogs_assert(true ==
+                                    ogs_sbi_server_send_error(stream,
+                                        OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                                        &message, NULL, NULL));
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!smsf_ue) {
+                        ogs_error("Not found [%s]", message.h.method);
+                        ogs_assert(true ==
+                            ogs_sbi_server_send_error(stream,
+                                OGS_SBI_HTTP_STATUS_NOT_FOUND,
+                                &message, "Not found", message.h.method));
+                        break;
+                    }
                     SWITCH(message.h.method)
                     CASE(OGS_SBI_HTTP_METHOD_PUT)
                         ogs_assert(OGS_FSM_STATE(&smsf_ue->sm));
@@ -190,6 +198,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                                 &message, "Invalid HTTP method", message.h.method));
                 END
                 break;
+
                 DEFAULT
                     ogs_error("Invalid HTTP method [%s]", message.h.method);
                     ogs_assert(true ==
