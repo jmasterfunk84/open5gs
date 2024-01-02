@@ -152,8 +152,6 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
 
                     SWITCH(message.h.method)
                     CASE(OGS_SBI_HTTP_METHOD_PUT)
-                        ogs_assert(OGS_FSM_STATE(&smsf_ue->sm));
-
                         if (!smsf_ue) {
                             smsf_ue = 
                                 smsf_ue_add(message.h.resource.component[1]);
@@ -167,6 +165,8 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                                 break;
                             }
                         }
+
+                        ogs_assert(OGS_FSM_STATE(&smsf_ue->sm));
 
                         e->smsf_ue = smsf_ue;
                         e->h.sbi.message = &message;
