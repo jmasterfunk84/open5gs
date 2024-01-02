@@ -112,8 +112,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
     SmsRecordData = message->SmsRecordData;
     if (!SmsRecordData) {
-        ogs_error("[%s] No SmsRecordData", smsf_ue->s
-        upi);
+        ogs_error("[%s] No SmsRecordData", smsf_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
                 message, "No SmsRecordData", smsf_ue->supi));
