@@ -131,3 +131,39 @@ int smsf_ue_sbi_discover_and_send(
 
     return OGS_OK;
 }
+
+void smsf_namf_comm_send_n1_n2_message_transfer(
+        smsf_ue_t *smsf_ue, smsf_n1_n2_message_transfer_param_t *param)
+{
+    ogs_sbi_xact_t *xact = NULL;
+    ogs_sbi_discovery_option_t *discovery_option = NULL;
+    int r;
+
+    ogs_assert(smsf_ue);
+
+    ogs_assert(param);
+    ogs_assert(param->n1smbuf);
+
+    discovery_option = ogs_sbi_discovery_option_new();
+    ogs_assert(discovery_option);
+    ogs_sbi_discovery_option_set_target_nf_instance_id(
+            discovery_option, smsf_ue->amf_instance_id);
+
+    xact = ogs_sbi_xact_add(
+            &smsf_ue->sbi, OGS_SBI_SERVICE_TYPE_NAMF_COMM, discovery_option,
+            (ogs_sbi_build_f)smsf_namf_comm_build_n1_n2_message_transfer,
+            smsf_ue, param);
+    if (!xact) {
+        ogs_error("smsf_namf_comm_send_n1_n2_message_transfer() failed");
+        return;
+    }
+
+//    xact->state = param->state;
+
+    r = ogs_sbi_discover_and_send(xact);
+    if (r != OGS_OK) {
+        ogs_error("smsf_namf_comm_send_n1_n2_message_transfer() failed");
+        ogs_sbi_xact_remove(xact);
+        ogs_assert(r != OGS_ERROR);
+    }
+}

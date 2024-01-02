@@ -22,7 +22,7 @@
 #include "ngap-build.h"
 
 ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
-        smsf_ue_t *smsf_ue, smsf_n1_n2_message_transfer_param_t *param)
+        smsf_ue_t *smsf_ue, void *data)
 {
     int i;
     smsf_ue_t *smsf_ue = NULL;
@@ -41,6 +41,11 @@ ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
 
     ogs_assert(smsf_ue);
     ogs_assert(smsf_ue->supi);
+
+
+    smsf_n1_n2_message_transfer_param_t *param;
+
+    
 
     ogs_assert(param);
     ogs_assert(param->n1smbuf);

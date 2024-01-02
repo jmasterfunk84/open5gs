@@ -44,7 +44,7 @@ typedef struct smsf_n1_n2_message_transfer_param_s {
 } smsf_n1_n2_message_transfer_param_t;
 
 ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
-        smsf_ue_t *smsf_ue, smsf_n1_n2_message_transfer_param_t *param);
+        smsf_ue_t *smsf_ue, void *data);
 
 #ifdef __cplusplus
 }

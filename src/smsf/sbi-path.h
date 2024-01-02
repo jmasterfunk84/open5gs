@@ -37,6 +37,9 @@ int smsf_ue_sbi_discover_and_send(
         ogs_sbi_request_t *(*build)(smsf_ue_t *smsf_ue, void *data),
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, void *data);
 
+void smsf_namf_comm_send_n1_n2_message_transfer(
+        smsf_ue_t *smsf_ue, smf_n1_n2_message_transfer_param_t *param);
+
 #ifdef __cplusplus
 }
 #endif
