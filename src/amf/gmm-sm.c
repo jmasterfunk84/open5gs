@@ -2191,9 +2191,17 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
             CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
                 if (sbi_message->res_status != OGS_SBI_HTTP_STATUS_CREATED &&
                 sbi_message->res_status != OGS_SBI_HTTP_STATUS_NO_CONTENT) {
-                ogs_error("[%s] HTTP response error [%d]",
-                        amf_ue->supi, sbi_message->res_status);
-                break;
+                    ogs_error("[%s] HTTP response error [%d]",
+                            amf_ue->supi, sbi_message->res_status);
+
+                    /* Continue without registering SMS over NAS */
+                    ogs_assert(amf_ue->nas.message_type ==
+                            OGS_NAS_5GS_REGISTRATION_REQUEST);
+                    CLEAR_AMF_UE_TIMER(amf_ue->t3550);
+                    r = nas_5gs_send_registration_accept(amf_ue);
+                    ogs_expect(r == OGS_OK);
+                    ogs_assert(r != OGS_ERROR);
+                    break;
                 }
 
                 rv = amf_nsmsf_sm_service_handle_activate(
