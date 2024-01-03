@@ -527,7 +527,7 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
         }
 
         r = nas_5gs_send_to_downlink_nas_transport(amf_ue, gmmbuf);
-        ogs_expect(rv == OGS_OK);
+        ogs_expect(r == OGS_OK);
 
         break;
 
