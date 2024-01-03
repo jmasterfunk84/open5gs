@@ -61,6 +61,7 @@ ogs_sbi_request_t *smsf_namf_comm_build_n1_n2_message_transfer(
         n1MessageContainer.n1_message_class = OpenAPI_n1_message_class_SMS;
         n1MessageContainer.n1_message_content = &n1MessageContent;
 
+        // Double check if this content_id should be sms or 5gnas
         memset(&n1MessageContent, 0, sizeof(n1MessageContent));
         n1MessageContent.content_id = (char *)OGS_SBI_CONTENT_SMS_ID;
 

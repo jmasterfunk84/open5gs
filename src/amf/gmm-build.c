@@ -700,9 +700,6 @@ ogs_pkbuf_t *gmm_build_sms_dl_nas_transport(amf_ue_t *amf_ue,
     ogs_nas_5gs_dl_nas_transport_t *dl_nas_transport =
         &message.gmm.dl_nas_transport;
 
-    ogs_nas_5gmm_cause_t *gmm_cause = NULL;
-    ogs_nas_gprs_timer_3_t *back_off_timer_value = NULL;
-
     ogs_assert(amf_ue);
     ogs_assert(payload_container_type);
     ogs_assert(payload_container);
