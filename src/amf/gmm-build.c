@@ -694,7 +694,6 @@ ogs_pkbuf_t *gmm_build_dl_nas_transport(amf_sess_t *sess,
 ogs_pkbuf_t *gmm_build_sms_dl_nas_transport(amf_ue_t *amf_ue,
         uint8_t payload_container_type, ogs_pkbuf_t *payload_container)
 {
-    amf_ue_t *amf_ue = NULL;
     ogs_pkbuf_t *gmmbuf = NULL;
 
     ogs_nas_5gs_message_t message;
