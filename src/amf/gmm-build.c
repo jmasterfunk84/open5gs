@@ -691,6 +691,43 @@ ogs_pkbuf_t *gmm_build_dl_nas_transport(amf_sess_t *sess,
     return gmmbuf;
 }
 
+ogs_pkbuf_t *gmm_build_sms_dl_nas_transport(amf_ue_t *amf_ue,
+        uint8_t payload_container_type, ogs_pkbuf_t *payload_container)
+{
+    amf_ue_t *amf_ue = NULL;
+    ogs_pkbuf_t *gmmbuf = NULL;
+
+    ogs_nas_5gs_message_t message;
+    ogs_nas_5gs_dl_nas_transport_t *dl_nas_transport =
+        &message.gmm.dl_nas_transport;
+
+    ogs_nas_5gmm_cause_t *gmm_cause = NULL;
+    ogs_nas_gprs_timer_3_t *back_off_timer_value = NULL;
+
+    ogs_assert(amf_ue);
+    ogs_assert(payload_container_type);
+    ogs_assert(payload_container);
+
+    memset(&message, 0, sizeof(message));
+    message.h.security_header_type =
+        OGS_NAS_SECURITY_HEADER_INTEGRITY_PROTECTED_AND_CIPHERED;
+    message.h.extended_protocol_discriminator =
+        OGS_NAS_EXTENDED_PROTOCOL_DISCRIMINATOR_5GMM;
+
+    message.gmm.h.extended_protocol_discriminator =
+        OGS_NAS_EXTENDED_PROTOCOL_DISCRIMINATOR_5GMM;
+    message.gmm.h.message_type = OGS_NAS_5GS_DL_NAS_TRANSPORT;
+
+    dl_nas_transport->payload_container_type.value = payload_container_type;
+    dl_nas_transport->payload_container.length = payload_container->len;
+    dl_nas_transport->payload_container.buffer = payload_container->data;
+
+    gmmbuf = nas_5gs_security_encode(amf_ue, &message);
+    ogs_pkbuf_free(payload_container);
+
+    return gmmbuf;
+}
+
 ogs_pkbuf_t *gmm_build_status(amf_ue_t *amf_ue, ogs_nas_5gmm_cause_t cause)
 {
     ogs_nas_5gs_message_t message;

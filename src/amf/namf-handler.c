@@ -516,20 +516,19 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
         sendmsg.N1N2MessageTransferRspData = &N1N2MessageTransferRspData;
 
         if (n1buf) {
-            gmmbuf = gmm_build_dl_nas_transport(sess,
-                    OGS_NAS_PAYLOAD_CONTAINER_SMS, 
-                    n1buf, 0, 0);
+            gmmbuf = gmm_build_sms_dl_nas_transport(amf_ue,
+                    OGS_NAS_PAYLOAD_CONTAINER_SMS, n1buf);
             ogs_assert(gmmbuf);
         }
 
-        ran_ue = ran_ue_cycle(amf_ue->ran_ue);
-        ngapbuf = ngap_build_downlink_nas_transport(
-                ran_ue, gmmbuf, false, false);
-        ogs_assert(ngapbuf);
+        if (!gmmbuf) {
+            ogs_error("gmm_build_status() failed");
+            return OGS_ERROR;
+        }
 
-        r = nas_5gs_send_to_gnb(amf_ue, ngapbuf);
-        ogs_expect(r == OGS_OK);
-        ogs_assert(r != OGS_ERROR);
+        r = nas_5gs_send_to_downlink_nas_transport(amf_ue, gmmbuf);
+        ogs_expect(rv == OGS_OK);
+
         break;
 
     default:
