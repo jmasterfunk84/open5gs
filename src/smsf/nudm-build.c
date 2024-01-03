@@ -102,8 +102,6 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_smsf_registration_delete(
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
 
-    OpenAPI_smsf_registration_t SmsfRegistration;
-
     ogs_assert(smsf_ue);
     ogs_assert(smsf_ue->supi);
 
@@ -115,13 +113,7 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_smsf_registration_delete(
     message.h.resource.component[1] =
             (char *)OGS_SBI_RESOURCE_NAME_REGISTRATIONS;
     message.h.resource.component[2] =
-            (char *)OGS_SBI_RESOURCE_NAME_AMF_3GPP_ACCESS;
-
-    memset(&SmsfRegistration, 0,
-            sizeof(SmsfRegistration));
-
-    message.SmsfRegistration =
-            &SmsfRegistration;
+            (char *)OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS;
 
     request = ogs_sbi_build_request(&message);
     ogs_expect(request);
@@ -236,7 +228,8 @@ ogs_sbi_request_t *smsf_nudm_sdm_build_subscription_delete(
 
     ogs_assert(smsf_ue);
     ogs_assert(smsf_ue->supi);
-
+    ogs_assert(smsf_ue->data_change_subscription_id);
+    
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_DELETE;
     message.h.service.name = (char *)OGS_SBI_SERVICE_NAME_NUDM_SDM;
@@ -244,6 +237,7 @@ ogs_sbi_request_t *smsf_nudm_sdm_build_subscription_delete(
     message.h.resource.component[0] = smsf_ue->supi;
     message.h.resource.component[1] =
             (char *)OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS;
+    message.h.resource.component[2] = smsf_ue->data_change_subscription_id;
 
     request = ogs_sbi_build_request(&message);
     ogs_expect(request);

@@ -193,6 +193,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     ogs_assert(response);
     ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
+    /* need xact and related stream, because your stream disappears) */
+
 
     /* Send CP-Ack to MO UE */
     //int r;

@@ -60,6 +60,48 @@ int smsf_nudm_sdm_handle_provisioned_data(
     return OGS_OK;
 }
 
+int smsf_nudm_sdm_handle_subscription(
+    smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
+{
+    ogs_sbi_message_t sendmsg;
+    ogs_sbi_header_t header;
+    ogs_sbi_response_t *response = NULL;
+    ogs_sbi_server_t *server = NULL;
+
+    server = ogs_sbi_server_from_stream(stream);
+    ogs_assert(server);
+
+    OpenAPI_ue_sms_context_data_t UeSmsContextData;
+
+    memset(&UeSmsContextData, 0, sizeof(UeSmsContextData));
+
+    /* check these exist */
+    UeSmsContextData.supi = smsf_ue->supi;
+    UeSmsContextData.amf_id = smsf_ue->amf_instance_id;
+    UeSmsContextData.access_type = smsf_ue->access_type;
+
+    memset(&header, 0, sizeof(header));
+    header.service.name =
+        (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
+    header.api.version = (char *)OGS_SBI_API_V2;
+    header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
+    header.resource.component[1] = smsf_ue->supi;
+
+    memset(&sendmsg, 0, sizeof(sendmsg));
+    sendmsg.UeSmsContextData = &UeSmsContextData;
+    sendmsg.http.location = ogs_sbi_server_uri(server, &header);
+
+    response = ogs_sbi_build_response(&sendmsg,
+        OGS_SBI_HTTP_STATUS_CREATED);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+    if (sendmsg.http.location)
+        ogs_free(sendmsg.http.location);
+
+    return OGS_OK;
+}
+
 bool smsf_nudm_uecm_handle_smsf_registration(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
