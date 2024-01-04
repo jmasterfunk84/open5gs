@@ -32,6 +32,7 @@ extern "C" {
 /* shorten to DA and OA? */
 
 typedef struct smsf_sms_address_s {
+        uint8_t length;
         struct {
         ED3(uint8_t ext:1;,
             uint8_t ton:3;,
@@ -43,8 +44,7 @@ typedef struct smsf_sms_address_s {
 
 typedef struct smsf_sms_rpdu_s {
         uint8_t rp_message_reference;
-        uint8_t rp_originator_address_len;
-        uint8_t rp_destination_address_len;
+        smsf_sms_address_t rp_originator_address;
         smsf_sms_address_t rp_destination_address;
         uint8_t rp_user_data[233];
 } __attribute__ ((packed)) smsf_sms_rpdu_t;

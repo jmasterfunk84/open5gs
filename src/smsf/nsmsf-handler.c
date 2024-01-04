@@ -202,22 +202,27 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         ogs_info("CP Data Len: %d", cpdata.cp_user_data_length);
         ogs_info("RPDU Type: %d", cpdata.rpdu_message_type.value);
 
+        uint8_t templen;
+
         switch(cpdata.rpdu_message_type.value) {
         case 0:
             ogs_info("RP-DATA (ms->n)");
             smsf_sms_rpdu_t rpdu;
             memcpy(&rpdu.rp_message_reference, sms_payload_buf->data, sizeof(rpdu.rp_message_reference));
             ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_message_reference));
-            memcpy(&rpdu.rp_originator_address_len, sms_payload_buf->data, sizeof(rpdu.rp_originator_address_len));
-            ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_originator_address_len));
-            /* check if 0 */
-            memcpy(&rpdu.rp_destination_address_len, sms_payload_buf->data, sizeof(rpdu.rp_destination_address_len));
-            ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_destination_address_len));
-            ogs_info("DA Len: [%d]", rpdu.rp_destination_address_len);
+            memcpy(&templen, sms_payload_buf->data, 1);
+            if (templen)
+                ogs_error("OA Length Invalid");
 
-            /* maybe a memset for these variable len ones to null them out. */
-            memcpy(&rpdu.rp_destination_address, sms_payload_buf->data, rpdu.rp_destination_address_len);
-            ogs_pkbuf_pull(sms_payload_buf, rpdu.rp_destination_address_len);
+            ogs_pkbuf_pull(sms_payload_buf, 1);
+            memcpy(&templen, sms_payload_buf->data, 1);
+            if (!templen)
+                ogs_error("DA Length Invalid");
+
+            memset(&rpdu.rp_destination_address, 0, sizeof(rpdu.rp_destination_address));
+            memcpy(&rpdu.rp_destination_address, sms_payload_buf->data, templen + 1);
+            ogs_pkbuf_pull(sms_payload_buf, templen + 1);
+            ogs_info("DA Len: [%d]", rpdu.rp_destination_address.length);
 
             smsf_sms_address_t rp_da;
             char outbuf[30] = {0};
@@ -236,6 +241,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             mt_smsf_ue = smsf_ue_find_by_gpsi(mt_gpsi);
             if (!mt_smsf_ue)
                 ogs_error("Can't find MT Sub");
+
+            /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
 
 
             /* should better specify length here. */
