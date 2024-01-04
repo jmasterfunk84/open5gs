@@ -232,7 +232,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             ogs_info("I am [%s]", smsf_ue->gpsi);
             smsf_ue_t mt_smsf_ue;
             mt_smsf_ue = smsf_ue_find_by_gpsi(outbuf);
-            if (!mt_sms_ue)
+            if (!mt_smsf_ue)
                 ogs_error("Can't find MT Sub");
 
 
