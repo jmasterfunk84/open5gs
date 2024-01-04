@@ -32,6 +32,7 @@ extern "C" {
 /* shorten to DA and OA? */
 
 typedef struct smsf_sms_address_s {
+        struct {
         ED3(uint8_t ext:1;,
             uint8_t ton:3;,
             uint8_t npi:4;)

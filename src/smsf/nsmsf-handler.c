@@ -220,15 +220,24 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             ogs_pkbuf_pull(sms_payload_buf, rpdu.rp_destination_address_len);
 
             smsf_sms_address_t rp_da;
-            char outbuf[15] = {0};
+            char outbuf[30] = {0};
             ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
 
             rp_da = rpdu.rp_destination_address;
 
-            ogs_buffer_to_bcd(rpda.rp_address, strlen(rpda.rp_address), outbuf);
+            ogs_buffer_to_bcd(rp_da.rp_address, (rpdu.rp_destination_address_len - 1), outbuf);
+
+            ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
+
+            ogs_info("I am [%s]", smsf_ue->gpsi);
+            smsf_ue_t mt_smsf_ue;
+            mt_sms_ue = smsf_ue_find_by_gpsi(outbuf);
+            if (!mt_sms_ue)
+                ogs_error("Can't find MT Sub");
+
 
             /* should better specify length here. */
-            memcpy(&rpdu.rp_user_data, sms_payload_buf->data, sizeof(sms_payload_buf.data));
+            memcpy(&rpdu.rp_user_data, sms_payload_buf->data, sizeof(sms_payload_buf->data));
             break;
 
         case 2:
