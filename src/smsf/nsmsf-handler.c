@@ -176,7 +176,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     }
 
     /* do like ogs_nas_eps_decode_eps_network_feature_support*/
-
+    uint8_t templen;
     smsf_sms_cp_hdr_t cpheader;
 
     int size = 0;
@@ -186,7 +186,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     /* could copy first byte of pkbuf into a variable to read that, then put whole thing in correct structure, then pull. */
 
     memcpy(&cpheader, sms_payload_buf->data, sizeof(smsf_sms_cp_hdr_t));
-    ogs_pkbuf_pull(sms_payload_buf, sizeof(cpheader));
+    ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_cp_hdr_t));
 
     ogs_info("MSGTYHPE: %d", cpheader.sm_service_message_type);
 
@@ -196,19 +196,23 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         ogs_info("CP-Data");
         /* up to 249 bytes of user data follows*/
         smsf_sms_cp_data_t cpdata;
-        memcpy(&cpdata, sms_payload_buf->data, sizeof(smsf_sms_cp_data_t));
-        ogs_pkbuf_pull(sms_payload_buf, sizeof(cpheader));
+        memcpy(&cpdata, cpheader, sizeof(smsf_sms_cp_hdr_t));
+        memcpy(&cpdata.cp_user_data_length, sms_payload_buf->data, 1);
+        ogs_pkbuf_pull(sms_payload_buf, 1);
+
+        smsf_sms_rpdu_message_type_t rpheader;
+        memcpy(&rpheader, sms_payload_buf->data, sizeof(smsf_sms_rpdu_message_type_t));
+        ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_rpdu_message_type_t));
 
         ogs_info("CP Data Len: %d", cpdata.cp_user_data_length);
-        ogs_info("RPDU Type: %d", cpdata.rpdu_message_type.value);
+        ogs_info("RPDU Type: %d", rpheader.value);
 
-        uint8_t templen;
-
-        switch(cpdata.rpdu_message_type.value) {
+        switch(rpheader.value) {
         case 0:
             ogs_info("RP-DATA (ms->n)");
             smsf_sms_rpdu_t rpdu;
-            memcpy(&rpdu.rp_message_reference, sms_payload_buf->data, sizeof(rpdu.rp_message_reference));
+            rpdu.rpdu_message_type = rpheader.value;
+            memcpy(&rpdu.rp_message_reference, sms_payload_buf->data, 1);
             ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_message_reference));
             memcpy(&templen, sms_payload_buf->data, 1);
             if (templen)
@@ -219,34 +223,77 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             if (!templen)
                 ogs_error("DA Length Invalid");
 
-            memset(&rpdu.rp_destination_address, 0, sizeof(rpdu.rp_destination_address));
+            memset(&rpdu.rp_destination_address, 0, sizeof(smsf_sms_address_t));
             memcpy(&rpdu.rp_destination_address, sms_payload_buf->data, templen + 1);
             ogs_pkbuf_pull(sms_payload_buf, templen + 1);
             ogs_info("DA Len: [%d]", rpdu.rp_destination_address.length);
 
-            smsf_sms_address_t rp_da;
-            char outbuf[30] = {0};
-            ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
+            /* RP Decoding complete.  Capture the TPDU now. */
+            smsf_sms_tpdu_hdr_t tpdu_hdr;
 
-            rp_da = rpdu.rp_destination_address;
+            memcpy(&tpdu_hdr, sms_payload_buf->data, sizeof(tpdu_hdr));
+            ogs_info("MTI: [%d]", tpdu_hdr.tpMTI)
+            switch(rpheader.value) {
+            case 0:
+                ogs_info("SMS-DELIVER Report (ms->n)");
+                smsf_sms_tpdu_submit_t tpdu_submit;
+                memcpy(&tpdu_submit->header, sms_payload_buf->data, 2);
+                ogs_pkbuf_pull(sms_payload_buf, 2);
+                memcpy(&templen, sms_payload_buf->data, 1);
+                memset(&tpdu_submit.tp_destination_address, 0, sizeof(smsf_sms_tp_address_t));
+                memcpy(&tpdu_submit.tp_destination_address, sms_payload_buf->data, ((templen + 1) / 2) + 1 + 3);
+                ogs_info("TP DA Len: [%d]", tpdu.tp_destination_address.length);
+                memcpy(&tpdu.tpUD, sms_payload_buf->data, tpdu.tpUDL);
 
-            ogs_buffer_to_bcd(rp_da.rp_address, (rpdu.rp_destination_address_len - 1), outbuf);
+                smsf_sms_tp_address_t tp_da;
+                char outbuf[30] = {0};
+                tp_da = tpdu_submit.tp_destination_address;
+                ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
+                ogs_buffer_to_bcd(tp_da.tp_address, (tp_da.addr_length + 1) /2, outbuf);
+                ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
 
-            ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
+                ogs_info("I am [%s]", smsf_ue->gpsi);
+                smsf_ue_t *mt_smsf_ue = NULL;
+                char *mt_gpsi = ogs_msprintf("msisdn-%s", outbuf);
+                ogs_info("Looking for [%s]", mt_gpsi);
+                mt_smsf_ue = smsf_ue_find_by_gpsi(mt_gpsi);
+                if (!mt_smsf_ue)
+                    ogs_error("Can't find MT Sub");
+                
+                /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
 
-            ogs_info("I am [%s]", smsf_ue->gpsi);
-            smsf_ue_t *mt_smsf_ue = NULL;
-            char *mt_gpsi = ogs_msprintf("msisdn-%s",outbuf);
-            ogs_info("Looking for [%s]", mt_gpsi);
-            mt_smsf_ue = smsf_ue_find_by_gpsi(mt_gpsi);
-            if (!mt_smsf_ue)
-                ogs_error("Can't find MT Sub");
+                break;
 
-            /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
+            case 1:
+                ogs_info("SMS-SUBMIT (ms->n)");
+                break;
+
+            case 2:
+                ogs_info("SMS-COMMAND (ms->n)");
+                break;
+
+            default:
+                ogs_info("Undefined TPDU Message Type for ms->n");
+                /* goto end, send nsmf error response */
+                return false;
+            }
+
+            // smsf_sms_address_t rp_da;
+            // char outbuf[30] = {0};
+            // ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
+
+            // /* that's just the smsc!*/
+            // rp_da = rpdu.rp_destination_address;
+
+            // ogs_buffer_to_bcd(rp_da.rp_address, (rpdu.rp_destination_address.length - 1), outbuf);
+
+            // ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
 
 
-            /* should better specify length here. */
-            memcpy(&rpdu.rp_user_data, sms_payload_buf->data, sizeof(sms_payload_buf->data));
+
+
+
+
             break;
 
         case 2:
@@ -262,7 +309,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             break;
 
         default:
-            ogs_info("Undefined RPDU Message Type");
+            ogs_info("Undefined RPDU Message Type for ms->n");
             /* goto end, send nsmf error response */
             return false;
         }
