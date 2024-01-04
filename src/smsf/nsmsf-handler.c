@@ -126,6 +126,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         ogs_sbi_message_t *message)
 {
     OpenAPI_sms_record_data_t *SmsRecordData = NULL;
+    OpenAPI_ref_to_binary_data_t *sms_payload = NULL;
+    ogs_pkbuf_t *sms_payload_buf = NULL;
 
     ogs_assert(stream);
     ogs_assert(message);
@@ -156,6 +158,121 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 message, "No smsPayload", smsf_ue->supi));
         return false;
     }
+
+    sms_payload = SmsRecordData->sms_payload;
+    if (!sms_payload || !sms_payload->content_id) {
+        ogs_error("[%s] No sms_payload and/or content_id", smsf_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "No smsPayload and/or content_id", smsf_ue->supi));
+        return false;
+    }
+
+    sms_payload_buf = ogs_sbi_find_part_by_content_id(
+            message, sms_payload->content_id);
+    if (!sms_payload_buf) {
+        ogs_error("[%s] No SMS Payload Content", smsf_ue->supi);
+        return false;
+    }
+
+    /* do like ogs_nas_eps_decode_eps_network_feature_support*/
+
+    smsf_sms_cp_hdr_t cpheader;
+
+    int size = 0;
+    size = sizeof(cpheader);
+    ogs_info("This big %d", size);
+
+    /* could copy first byte of pkbuf into a variable to read that, then put whole thing in correct structure, then pull. */
+
+    memcpy(&cpheader, sms_payload_buf->data, sizeof(smsf_sms_cp_hdr_t));
+    ogs_pkbuf_pull(sms_payload_buf, sizeof(cpheader));
+
+    ogs_info("MSGTYHPE: %d", cpheader.sm_service_message_type);
+
+    /* these brackets make SWITCH CASE easier */
+    switch(cpheader.sm_service_message_type) {
+    case 1:
+        ogs_info("CP-Data");
+        /* up to 249 bytes of user data follows*/
+        smsf_sms_cp_data_t cpdata;
+        memcpy(&cpdata, sms_payload_buf->data, sizeof(smsf_sms_cp_data_t));
+        ogs_pkbuf_pull(sms_payload_buf, sizeof(cpheader));
+
+        ogs_info("CP Data Len: %d", cpdata.cp_user_data_length);
+        ogs_info("RPDU Type: %d", cpdata.rpdu_message_type.value);
+
+        switch(cpdata.rpdu_message_type.value) {
+        case 0:
+            ogs_info("RP-DATA (ms->n)");
+            smsf_sms_rpdu_t rpdu;
+            memcpy(&rpdu.rp_message_reference, sms_payload_buf->data, sizeof(rpdu.rp_message_reference));
+            ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_message_reference));
+            memcpy(&rpdu.rp_originator_address_len, sms_payload_buf->data, sizeof(rpdu.rp_originator_address_len));
+            ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_originator_address_len));
+            /* check if 0 */
+            memcpy(&rpdu.rp_destination_address_len, sms_payload_buf->data, sizeof(rpdu.rp_destination_address_len));
+            ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_destination_address_len));
+            ogs_info("DA Len: [%d]", rpdu.rp_destination_address_len);
+
+            /* maybe a memset for these variable len ones to null them out. */
+            memcpy(&rpdu.rp_destination_address, sms_payload_buf->data, rpdu.rp_destination_address_len);
+            ogs_pkbuf_pull(sms_payload_buf, rpdu.rp_destination_address_len);
+
+            smsf_sms_address_t rp_da;
+            char outbuf[15] = {0};
+            ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
+
+            rp_da = rpdu.rp_destination_address;
+
+            ogs_buffer_to_bcd(rpda.rp_address, strlen(rpda.rp_address), outbuf);
+
+            /* should better specify length here. */
+            memcpy(&rpdu.rp_user_data, sms_payload_buf->data, sizeof(sms_payload_buf.data));
+            break;
+
+        case 2:
+            ogs_info("RP-ACK (ms->n)");
+            break;
+
+        case 4:
+            ogs_info("RP-ERROR (ms->n)");
+            break;
+
+        case 6:
+            ogs_info("RP-SMMA (ms->n)");
+            break;
+
+        default:
+            ogs_info("Undefined RPDU Message Type");
+            /* goto end, send nsmf error response */
+            return false;
+        }
+
+        break;
+    case 4:
+        ogs_info("CP-ACK");
+        /* no bytes follow */
+        break;
+    case 16:
+        ogs_info("CP-Error");
+        /* 1 byte cp-cause follows */
+        break;
+
+    default:
+        ogs_info("Undefined CP Message Type");
+        /* goto end, send nsmf error response */
+        return false;
+    }
+
+    /* i think pull removes bytes from the start of the buffer? */
+    if (ogs_pkbuf_pull(sms_payload_buf, size) == NULL) {
+       ogs_error("ogs_pkbuf_pull() failed [size:%d]", (int)size);
+       return -1;
+    }
+
+
+
 
     /* I think it should split CP data, and RP data.  RP data would normally go to SMSC
      * but, here we have to rip the userdata from the rp-data to get the destination address.
