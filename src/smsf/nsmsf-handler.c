@@ -196,7 +196,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         ogs_info("CP-Data");
         /* up to 249 bytes of user data follows*/
         smsf_sms_cp_data_t cpdata;
-        memcpy(&cpdata, cpheader, sizeof(smsf_sms_cp_hdr_t));
+        memcpy(&cpdata, &cpheader, sizeof(smsf_sms_cp_hdr_t));
         memcpy(&cpdata.cp_user_data_length, sms_payload_buf->data, 1);
         ogs_pkbuf_pull(sms_payload_buf, 1);
 
@@ -211,7 +211,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         case 0:
             ogs_info("RP-DATA (ms->n)");
             smsf_sms_rpdu_t rpdu;
-            rpdu.rpdu_message_type = rpheader.value;
+            rpdu.rpdu_message_type.value = rpheader.value;
             memcpy(&rpdu.rp_message_reference, sms_payload_buf->data, 1);
             ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_message_reference));
             memcpy(&templen, sms_payload_buf->data, 1);
@@ -228,22 +228,31 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             ogs_pkbuf_pull(sms_payload_buf, templen + 1);
             ogs_info("DA Len: [%d]", rpdu.rp_destination_address.length);
 
+            memcpy(&rpdu.rp_user_data_length, sms_payload_buf->data, 1);
+            ogs_pkbuf_pull(sms_payload_buf, 1);
+
             /* RP Decoding complete.  Capture the TPDU now. */
             smsf_sms_tpdu_hdr_t tpdu_hdr;
 
             memcpy(&tpdu_hdr, sms_payload_buf->data, sizeof(tpdu_hdr));
-            ogs_info("MTI: [%d]", tpdu_hdr.tpMTI)
-            switch(rpheader.value) {
+            ogs_info("MTI: [%d]", tpdu_hdr.tpMTI);
+
+            switch(tpdu_hdr.tpMTI) {
             case 0:
                 ogs_info("SMS-DELIVER Report (ms->n)");
+                break;
+
+            case 1:
+                ogs_info("SMS-SUBMIT (ms->n)");
+                
                 smsf_sms_tpdu_submit_t tpdu_submit;
-                memcpy(&tpdu_submit->header, sms_payload_buf->data, 2);
+                memcpy(&tpdu_submit.header, sms_payload_buf->data, 2);
                 ogs_pkbuf_pull(sms_payload_buf, 2);
                 memcpy(&templen, sms_payload_buf->data, 1);
                 memset(&tpdu_submit.tp_destination_address, 0, sizeof(smsf_sms_tp_address_t));
                 memcpy(&tpdu_submit.tp_destination_address, sms_payload_buf->data, ((templen + 1) / 2) + 1 + 3);
-                ogs_info("TP DA Len: [%d]", tpdu.tp_destination_address.length);
-                memcpy(&tpdu.tpUD, sms_payload_buf->data, tpdu.tpUDL);
+                ogs_info("TP DA Len: [%d]", tpdu_submit.tp_destination_address.addr_length);
+                memcpy(&tpdu_submit.tpUD, sms_payload_buf->data, tpdu_submit.tpUDL);
 
                 smsf_sms_tp_address_t tp_da;
                 char outbuf[30] = {0};
@@ -262,10 +271,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 
                 /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
 
-                break;
-
-            case 1:
-                ogs_info("SMS-SUBMIT (ms->n)");
                 break;
 
             case 2:

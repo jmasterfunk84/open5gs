@@ -61,6 +61,7 @@ typedef struct smsf_sms_rpdata_s {
         uint8_t rp_message_reference;
         smsf_sms_address_t rp_originator_address;
         smsf_sms_address_t rp_destination_address;
+        uint8_t rp_user_data_length;
 } __attribute__ ((packed)) smsf_sms_rpdu_t;
 
 typedef struct smsf_sms_cp_hdr_s {
@@ -84,7 +85,7 @@ typedef struct smsf_sms_tpdu_hdr_s {
 
 typedef struct smsf_sms_tpdu_submit_s {
         struct {
-        ED8(uint8_t tpRP:1;,
+        ED6(uint8_t tpRP:1;,
             uint8_t tpUDHI:1;,
             uint8_t tpSRR:1;,
             uint8_t tpVPF:2;,
@@ -92,7 +93,7 @@ typedef struct smsf_sms_tpdu_submit_s {
             uint8_t tpMTI:2;)
         } header;
         uint8_t tpMR;
-        smsf_sms_address_t tp_destination_address;
+        smsf_sms_tp_address_t tp_destination_address;
         uint8_t tpPID;
         uint8_t tpDCS;
         uint8_t tpUDL;
@@ -101,7 +102,7 @@ typedef struct smsf_sms_tpdu_submit_s {
 
 typedef struct smsf_sms_tpdu_deliver_s {
         struct {
-        ED8(uint8_t tpRP:1;,
+        ED6(uint8_t tpRP:1;,
             uint8_t tpUDHI:1;,
             uint8_t tpSRI:1;,
             uint8_t tpReserved:2;,
@@ -109,7 +110,7 @@ typedef struct smsf_sms_tpdu_deliver_s {
             uint8_t tpMTI:2;)
         } header;
         uint8_t tpMR;
-        smsf_sms_address_t tp_originator_address;
+        smsf_sms_tp_address_t tp_originator_address;
         uint8_t tpPID;
         uint8_t tpDCS;
         uint8_t tpSCTS[7];
