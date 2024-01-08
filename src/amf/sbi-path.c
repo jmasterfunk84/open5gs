@@ -599,8 +599,6 @@ void amf_smsf_sms_send_uplink_sms(amf_ue_t *amf_ue, void *data)
         return;
     }
 
-    xact->state = param->state;
-
     r = ogs_sbi_discover_and_send(xact);
     if (r != OGS_OK) {
         ogs_error("amf_smsf_sms_send_uplink_sms() failed");
