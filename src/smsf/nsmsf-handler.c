@@ -22,6 +22,7 @@
 #include "nsmsf-handler.h"
 #include "nudm-build.h"
 #include "namf-build.h"
+#include "sms.h"
 
 bool smsf_nsmsf_sm_service_handle_activate(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
@@ -389,9 +390,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
     memset(&param, 0, sizeof(param));
 
-    param.n1smbuf = ogs_pkbuf_alloc(NULL,2);
-    ogs_pkbuf_put_u8(param.n1smbuf,137);        // SMS messages/TIO/TIF1
-    ogs_pkbuf_put_u8(param.n1smbuf,4);          // CP-ACK
+    param.n1smbuf = smsf_sms_encode_cp_ack(true, 4);
 
     ogs_assert(param.n1smbuf);
 
