@@ -1115,6 +1115,32 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
             END
             break;
 
+        CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
+            SWITCH(sbi_message->h.resource.component[0])
+            CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
+                if (sbi_message->res_status != OGS_SBI_HTTP_STATUS_CREATED &&
+                sbi_message->res_status != OGS_SBI_HTTP_STATUS_NO_CONTENT) {
+                    ogs_error("[%s] HTTP response error [%d]",
+                            amf_ue->supi, sbi_message->res_status);
+                    break;
+                }
+
+                rv = amf_nsmsf_sm_service_handle_uplink_sms(
+                        amf_ue, state, sbi_message);
+                if (rv != OGS_OK) {
+                    ogs_error("[%s] amf_nsmsf_sm_service_handle_uplink_sms(%s) failed",
+                            amf_ue->supi, sbi_message->h.resource.component[1]);
+                    break;
+                }
+                break;
+
+            DEFAULT
+                ogs_error("Invalid resource name [%s]",
+                        sbi_message->h.resource.component[0]);
+                ogs_assert_if_reached();
+            END
+            break;
+
         DEFAULT
             ogs_error("Invalid service name [%s]", sbi_message->h.service.name);
             ogs_assert_if_reached();
@@ -2201,6 +2227,13 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
                     r = nas_5gs_send_registration_accept(amf_ue);
                     ogs_expect(r == OGS_OK);
                     ogs_assert(r != OGS_ERROR);
+
+                    AMF_UE_CLEAR_N2_TRANSFER(
+                            amf_ue, pdu_session_resource_setup_request);
+
+                    if (!amf_ue->next.m_tmsi)
+                        OGS_FSM_TRAN(s, &gmm_state_registered);
+
                     break;
                 }
 
