@@ -37,7 +37,7 @@ ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o)
         return NULL;
     }
 
-    ogs_pkbuf_put_u8(pkbuf,cp_data_header.octet);
+    ogs_pkbuf_put_u8(pkbuf,cp_data_header.flags.octet);
     ogs_pkbuf_put_u8(pkbuf,cp_data_header.sm_service_message_type);
 
     return pkbuf;
