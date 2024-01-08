@@ -211,6 +211,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         case 0:
             ogs_info("RP-DATA (ms->n)");
             smsf_sms_rpdu_t rpdu;
+            memset(&rpdu, 0, sizeof(smsf_sms_rpdu_t));
+
             rpdu.rpdu_message_type.value = rpheader.value;
             memcpy(&rpdu.rp_message_reference, sms_payload_buf->data, 1);
             ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_message_reference));
@@ -223,7 +225,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             if (!templen)
                 ogs_error("DA Length Invalid");
 
-            memset(&rpdu.rp_destination_address, 0, sizeof(smsf_sms_address_t));
             memcpy(&rpdu.rp_destination_address, sms_payload_buf->data, templen + 1);
             ogs_pkbuf_pull(sms_payload_buf, templen + 1);
             ogs_info("DA Len: [%d]", rpdu.rp_destination_address.length);
@@ -246,24 +247,29 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 ogs_info("SMS-SUBMIT (ms->n)");
 
                 smsf_sms_tpdu_submit_t tpdu_submit;
+                memset(&tpdu_submit, 0, sizeof(smsf_sms_tpdu_submit_t));
                 memcpy(&tpdu_submit, sms_payload_buf->data, 2);
                 ogs_pkbuf_pull(sms_payload_buf, 2);
                 memcpy(&templen, sms_payload_buf->data, 1);
-                memset(&tpdu_submit.tp_destination_address, 0, sizeof(smsf_sms_tp_address_t));
                 memcpy(&tpdu_submit.tp_destination_address, sms_payload_buf->data, ((templen + 1) / 2) + 1 + 3);
+                ogs_pkbuf_pull(sms_payload_buf, ((templen + 1) / 2) + 1 + 3);
                 ogs_info("TP DA Len: [%d]", tpdu_submit.tp_destination_address.addr_length);
-                memcpy(&tpdu_submit.tpUD, sms_payload_buf->data, tpdu_submit.tpUDL);
+
+                //memcpy(&templen, sms_payload_buf->data, 1);
+
+                // memcpy(&tpdu_submit.tpUD, sms_payload_buf->data, tpdu_submit.tpUDL);
+                // ogs_info("TP UD Len: [%d]", tpdu_submit.tpUDL);
 
                 smsf_sms_tp_address_t tp_da;
-                char outbuf[30] = {0};
+                memset(&tp_da, 0, sizeof(smsf_sms_tp_address_t));
+                char *output_bcd;
+                output_bcd = ogs_calloc(1, 22+1);
                 tp_da = tpdu_submit.tp_destination_address;
-                ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
-                ogs_buffer_to_bcd(tp_da.tp_address, (tp_da.addr_length + 1) /2, outbuf);
-                ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
+                ogs_buffer_to_bcd(tp_da.tp_address, (tp_da.addr_length + 1) /2, output_bcd);
 
                 ogs_info("I am [%s]", smsf_ue->gpsi);
                 smsf_ue_t *mt_smsf_ue = NULL;
-                char *mt_gpsi = ogs_msprintf("msisdn-%s", outbuf);
+                char *mt_gpsi = ogs_msprintf("msisdn-%s", output_bcd);
                 ogs_info("Looking for [%s]", mt_gpsi);
                 mt_smsf_ue = smsf_ue_find_by_gpsi(mt_gpsi);
                 if (!mt_smsf_ue)
@@ -336,13 +342,10 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     }
 
     /* i think pull removes bytes from the start of the buffer? */
-    if (ogs_pkbuf_pull(sms_payload_buf, size) == NULL) {
-       ogs_error("ogs_pkbuf_pull() failed [size:%d]", (int)size);
-       return -1;
-    }
-
-
-
+    // if (ogs_pkbuf_pull(sms_payload_buf, size) == NULL) {
+    //    ogs_error("ogs_pkbuf_pull() failed [size:%d]", (int)size);
+    //    return -1;
+    // }
 
     /* I think it should split CP data, and RP data.  RP data would normally go to SMSC
      * but, here we have to rip the userdata from the rp-data to get the destination address.
@@ -353,35 +356,32 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     /* if UE found, then say so.  If ue not found, respond with error. */
     /* form the SmsRecordDeliveryData */
 
-    // ogs_sbi_message_t sendmsg;
-    // ogs_sbi_header_t header;
-    // ogs_sbi_response_t *response = NULL;
+    ogs_sbi_message_t sendmsg;
+    ogs_sbi_header_t header;
+    ogs_sbi_response_t *response = NULL;
 
-    // OpenAPI_sms_record_delivery_data_t SmsRecordDeliveryData;
+    OpenAPI_sms_record_delivery_data_t SmsRecordDeliveryData;
 
-    // memset(&SmsRecordDeliveryData, 0, sizeof(SmsRecordDeliveryData));
+    memset(&SmsRecordDeliveryData, 0, sizeof(SmsRecordDeliveryData));
 
-    // SmsRecordDeliveryData.sms_record_id = SmsRecordData->sms_record_id;
-    // SmsRecordDeliveryData.delivery_status = 
-    //         OpenAPI_sms_delivery_status_SMS_DELIVERY_SMSF_ACCEPTED;
+    SmsRecordDeliveryData.sms_record_id = SmsRecordData->sms_record_id;
+    SmsRecordDeliveryData.delivery_status = 
+            OpenAPI_sms_delivery_status_SMS_DELIVERY_SMSF_ACCEPTED;
 
-    // memset(&header, 0, sizeof(header));
-    // header.service.name =
-    //     (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
-    // header.api.version = (char *)OGS_SBI_API_V2;
-    // header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
-    // header.resource.component[1] = smsf_ue->supi;
-    // header.resource.component[2] = (char *)OGS_SBI_RESOURCE_NAME_SEND_SMS;
+    memset(&header, 0, sizeof(header));
+    header.service.name =
+        (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
+    header.api.version = (char *)OGS_SBI_API_V2;
+    header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
+    header.resource.component[1] = smsf_ue->supi;
+    header.resource.component[2] = (char *)OGS_SBI_RESOURCE_NAME_SEND_SMS;
 
-    // memset(&sendmsg, 0, sizeof(sendmsg));
-    // sendmsg.SmsRecordDeliveryData = &SmsRecordDeliveryData;
+    memset(&sendmsg, 0, sizeof(sendmsg));
+    sendmsg.SmsRecordDeliveryData = &SmsRecordDeliveryData;
 
-    // response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
-    // ogs_assert(response);
-    // ogs_assert(true == ogs_sbi_server_send_response(stream, response));
-
-    /* need xact and related stream, because your stream disappears) */
-
+    response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
     /* Send CP-Ack to MO UE */
     //int r;
@@ -395,7 +395,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
     ogs_assert(param.n1smbuf);
 
-    smsf_namf_comm_send_n1_n2_message_transfer(smsf_ue, &param);
+    smsf_namf_comm_send_n1_n2_message_transfer(smsf_ue, stream, &param);
 
     return OGS_OK;
 }

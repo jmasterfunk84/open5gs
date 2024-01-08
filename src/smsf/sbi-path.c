@@ -133,7 +133,8 @@ int smsf_ue_sbi_discover_and_send(
 }
 
 void smsf_namf_comm_send_n1_n2_message_transfer(
-        smsf_ue_t *smsf_ue, smsf_n1_n2_message_transfer_param_t *param)
+        smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+        smsf_n1_n2_message_transfer_param_t *param)
 {
     ogs_sbi_xact_t *xact = NULL;
     ogs_sbi_discovery_option_t *discovery_option = NULL;
@@ -158,6 +159,7 @@ void smsf_namf_comm_send_n1_n2_message_transfer(
         return;
     }
 
+    xact->assoc_stream = stream;
 //    xact->state = param->state;
 
     r = ogs_sbi_discover_and_send(xact);
