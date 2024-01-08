@@ -275,6 +275,11 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 mt_smsf_ue = smsf_ue_find_by_gpsi(mt_gpsi);
                 if (!mt_smsf_ue)
                     ogs_error("Can't find MT Sub");
+
+                if (mt_gpsi)
+                    ogs_free(mt_gpsi);
+                if (output_bcd)
+                    ogs_free(output_bcd);
                 
                 /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
 
