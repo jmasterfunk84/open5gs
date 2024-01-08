@@ -20,9 +20,98 @@
 #ifndef SMSF_SMS_H
 #define SMSF_SMS_H
 
+#include "ogs-core.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct smsf_sms_address_s {
+        uint8_t length;
+        struct {
+        ED3(uint8_t ext:1;,
+            uint8_t ton:3;,
+            uint8_t npi:4;)
+        } header;
+        uint8_t rp_address[11];
+} __attribute__ ((packed)) smsf_sms_address_t;
+
+typedef struct smsf_sms_tp_address_s {
+        uint8_t addr_length;
+        struct {
+        ED3(uint8_t ext:1;,
+            uint8_t ton:3;,
+            uint8_t npi:4;)
+        } header;
+        uint8_t tp_address[10];
+} __attribute__ ((packed)) smsf_sms_tp_address_t;
+
+typedef struct smsf_sms_rpdu_message_type_s {
+        ED2(uint8_t reserved:5;,
+            uint8_t value:3;)
+} __attribute__ ((packed)) smsf_sms_rpdu_message_type_t;
+
+typedef struct smsf_sms_rpdata_s {
+        smsf_sms_rpdu_message_type_t rpdu_message_type;
+        uint8_t rp_message_reference;
+        smsf_sms_address_t rp_originator_address;
+        smsf_sms_address_t rp_destination_address;
+        uint8_t rp_user_data_length;
+} __attribute__ ((packed)) smsf_sms_rpdu_t;
+
+typedef struct smsf_sms_cp_hdr_s {
+        struct {
+        ED3(uint8_t pd:4;,
+            uint8_t tio:3;,
+            uint8_t tif:1;)
+        } cpdata;
+        uint8_t sm_service_message_type;
+} __attribute__ ((packed)) smsf_sms_cp_hdr_t;
+
+typedef struct smsf_sms_cp_data_s {
+        smsf_sms_cp_hdr_t header;
+        uint8_t cp_user_data_length;
+} __attribute__ ((packed)) smsf_sms_cp_data_t;
+
+typedef struct smsf_sms_tpdu_hdr_s {
+        ED2(uint8_t spare:6;,
+            uint8_t tpMTI:2;)
+} __attribute__ ((packed)) smsf_sms_tpdu_hdr_t;
+
+typedef struct smsf_sms_tpdu_submit_s {
+        struct {
+        ED6(uint8_t tpRP:1;,
+            uint8_t tpUDHI:1;,
+            uint8_t tpSRR:1;,
+            uint8_t tpVPF:2;,
+            uint8_t tpRD:1;,
+            uint8_t tpMTI:2;)
+        } header;
+        uint8_t tpMR;
+        smsf_sms_tp_address_t tp_destination_address;
+        uint8_t tpPID;
+        uint8_t tpDCS;
+        uint8_t tpUDL;
+        uint8_t tpUD[140];
+} __attribute__ ((packed)) smsf_sms_tpdu_submit_t;
+
+typedef struct smsf_sms_tpdu_deliver_s {
+        struct {
+        ED6(uint8_t tpRP:1;,
+            uint8_t tpUDHI:1;,
+            uint8_t tpSRI:1;,
+            uint8_t tpReserved:2;,
+            uint8_t tpMMS:1;,
+            uint8_t tpMTI:2;)
+        } header;
+        uint8_t tpMR;
+        smsf_sms_tp_address_t tp_originator_address;
+        uint8_t tpPID;
+        uint8_t tpDCS;
+        uint8_t tpSCTS[7];
+        uint8_t tpUDL;
+        uint8_t tpUD[140];
+} __attribute__ ((packed)) smsf_sms_tpdu_deliver_t;
 
 #define SMSF_SERVICE_MESSAGE_TYPE_CP_ACK            4
 
