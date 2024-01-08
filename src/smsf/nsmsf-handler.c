@@ -403,13 +403,13 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
     /* Send CP-DATA to MT UE */
 
-    memset(&param, 0, sizeof(param));
+    // memset(&param, 0, sizeof(param));
 
-    param.n1smbuf = smsf_sms_encode_cp_data(true, 4);
+    // param.n1smbuf = smsf_sms_encode_cp_data(true, 4, NULL, NULL;
 
-    ogs_assert(param.n1smbuf);
+    // ogs_assert(param.n1smbuf);
 
-    smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue, stream, &param);
+    // smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue, stream, &param);
 
     return OGS_OK;
 }
