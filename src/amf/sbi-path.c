@@ -577,7 +577,6 @@ bool amf_sess_have_session_release_pending(amf_sess_t *sess)
 
 void amf_smsf_sms_send_uplink_sms(amf_ue_t *amf_ue, void *data)
 {
-    amf_ue_t *amf_ue = NULL;
     ogs_sbi_xact_t *xact = NULL;
     ogs_sbi_discovery_option_t *discovery_option = NULL;
     int r;
@@ -592,7 +591,7 @@ void amf_smsf_sms_send_uplink_sms(amf_ue_t *amf_ue, void *data)
             discovery_option, amf_ue->smsf_instance_id);
 
     xact = ogs_sbi_xact_add(
-            &sess->sbi, OGS_SBI_SERVICE_TYPE_NSMSF_SMS, discovery_option,
+            &amf_ue->sbi, OGS_SBI_SERVICE_TYPE_NSMSF_SMS, discovery_option,
             (ogs_sbi_build_f)amf_nsmsf_sm_service_build_uplink_sms,
             amf_ue, data);
     if (!xact) {
