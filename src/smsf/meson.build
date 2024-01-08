@@ -21,6 +21,8 @@ libsmsf_sources = files('''
 
     nsmsf-handler.c
 
+    nnrf-handler.c
+
     namf-handler.c
     namf-build.c
 

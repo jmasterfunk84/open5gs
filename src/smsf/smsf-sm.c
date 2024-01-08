@@ -20,6 +20,7 @@
 #include "sbi-path.h"
 #include "nnrf-handler.h"
 #include "nsmsf-handler.h"
+#include "nnrf-handler.h"
 
 void smsf_state_initial(ogs_fsm_t *s, smsf_event_t *e)
 {
@@ -468,6 +469,34 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
             DEFAULT
                 ogs_error("Invalid resource name  [%s]", 
                         message.h.resource.component[0]);
+                ogs_assert_if_reached();
+            END
+            break;
+
+        CASE(OGS_SBI_SERVICE_NAME_NNRF_DISC)
+            SWITCH(sbi_message.h.resource.component[0])
+            CASE(OGS_SBI_RESOURCE_NAME_NF_INSTANCES)
+                sbi_xact = e->h.sbi.data;
+                ogs_assert(sbi_xact);
+
+                SWITCH(sbi_message.h.method)
+                CASE(OGS_SBI_HTTP_METHOD_GET)
+                    if (sbi_message.res_status == OGS_SBI_HTTP_STATUS_OK)
+                        smsf_nnrf_handle_nf_discover(sbi_xact, &sbi_message);
+                    else
+                        ogs_error("HTTP response error [%d]",
+                                sbi_message.res_status);
+                    break;
+
+                DEFAULT
+                    ogs_error("Invalid HTTP method [%s]", sbi_message.h.method);
+                    ogs_assert_if_reached();
+                END
+                break;
+
+            DEFAULT
+                ogs_error("Invalid resource name [%s]",
+                        sbi_message.h.resource.component[0]);
                 ogs_assert_if_reached();
             END
             break;

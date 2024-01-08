@@ -65,7 +65,6 @@ void smsf_sbi_close(void)
     ogs_sbi_server_stop_all();
 }
 
-/* check if used? */
 bool smsf_sbi_send_request(
         ogs_sbi_nf_instance_t *nf_instance, ogs_sbi_xact_t *xact)
 {
