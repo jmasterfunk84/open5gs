@@ -1125,9 +1125,9 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
                     break;
                 }
 
-                rv = amf_nsmsf_sm_service_handle_uplink_sms(
-                        amf_ue, state, sbi_message);
-                if (rv != OGS_OK) {
+                r = amf_nsmsf_sm_service_handle_uplink_sms(
+                        amf_ue, sbi_message);
+                if (r != OGS_OK) {
                     ogs_error("[%s] amf_nsmsf_sm_service_handle_uplink_sms(%s) failed",
                             amf_ue->supi, sbi_message->h.resource.component[1]);
                     break;

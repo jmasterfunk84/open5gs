@@ -83,5 +83,6 @@ int amf_nsmsf_sm_service_handle_deactivate(
 int amf_nsmsf_sm_service_handle_uplink_sms(
         amf_ue_t *amf_ue, ogs_sbi_message_t *recvmsg)
 {
+    ogs_info("Uplink SMS was submitted.");
     return OGS_OK;
 }
