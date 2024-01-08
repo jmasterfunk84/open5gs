@@ -60,11 +60,14 @@ typedef struct smsf_sms_rpdata_s {
 } __attribute__ ((packed)) smsf_sms_rpdu_t;
 
 typedef struct smsf_sms_cp_hdr_s {
+        union {
         struct {
         ED3(uint8_t tif:1;,
             uint8_t tio:3;,
             uint8_t pd:4;)
-        } cpdata;
+        };
+        uint8_t octet;
+        } flags;
         uint8_t sm_service_message_type;
 } __attribute__ ((packed)) smsf_sms_cp_hdr_t;
 

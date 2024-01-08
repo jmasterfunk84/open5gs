@@ -26,9 +26,9 @@ ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o)
 
     memset(&cp_data_header, 0, sizeof(smsf_sms_cp_hdr_t));
 
-    cp_data_header.cpdata.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
-    cp_data_header.cpdata.tio = ti_o;
-    cp_data_header.cpdata.tif = ti_flag;
+    cp_data_header.flags.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
+    cp_data_header.flags.tio = ti_o;
+    cp_data_header.flags.tif = ti_flag;
     cp_data_header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_ACK;
 
     pkbuf = ogs_pkbuf_alloc(NULL, 2);
@@ -37,7 +37,8 @@ ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o)
         return NULL;
     }
 
-    memcpy(pkbuf->data, &cp_data_header, sizeof(smsf_sms_cp_hdr_t));
+    ogs_pkbuf_put_u8(pkbuf,cp_data_header.octet);
+    ogs_pkbuf_put_u8(pkbuf,cp_data_header.sm_service_message_type);
 
     return pkbuf;
 }
