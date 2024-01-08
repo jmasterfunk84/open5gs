@@ -281,6 +281,19 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     ogs_free(mt_gpsi);
                 if (output_bcd)
                     ogs_free(output_bcd);
+
+                /* Send CP-Ack to MO UE */
+                //int r;
+                smsf_n1_n2_message_transfer_param_t param;
+
+                memset(&param, 0, sizeof(param));
+
+                param.n1smbuf = smsf_sms_encode_cp_ack(true, cpheader.flags.tio);
+
+                ogs_assert(param.n1smbuf);
+
+                smsf_namf_comm_send_n1_n2_message_transfer(
+                        smsf_ue, stream, &param);
                 
                 /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
 
@@ -389,18 +402,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
     ogs_assert(response);
     ogs_assert(true == ogs_sbi_server_send_response(stream, response));
-
-    /* Send CP-Ack to MO UE */
-    //int r;
-    smsf_n1_n2_message_transfer_param_t param;
-
-    memset(&param, 0, sizeof(param));
-
-    param.n1smbuf = smsf_sms_encode_cp_ack(true, 4);
-
-    ogs_assert(param.n1smbuf);
-
-    smsf_namf_comm_send_n1_n2_message_transfer(smsf_ue, stream, &param);
 
     /* Send CP-DATA to MT UE */
 
