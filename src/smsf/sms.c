@@ -27,7 +27,7 @@ ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o)
     memset(&cp_data_header, 0, sizeof(smsf_sms_cp_hdr_t));
 
     cp_data_header.cpdata.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
-    cp_data_header.cpdata.tio = ti_flag;
+    cp_data_header.cpdata.tio = ti_o;
     cp_data_header.cpdata.tif = ti_flag;
     cp_data_header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_ACK;
 
