@@ -159,13 +159,14 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
         amf_ue_t *amf_ue, void *data)
 {
     ogs_info("temp: uplinksms");
-    return OGS_OK;
 
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
     // ogs_sbi_server_t *server = NULL;
 
     OpenAPI_sms_record_data_t smsRecordData;
+    OpenAPI_ref_to_binary_data_t smsPayload;
+
     OpenAPI_user_location_t ueLocation;
 
     ogs_assert(amf_ue);
@@ -209,9 +210,14 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
         goto end;
     }
 
-    smsRecordData.sms_payload->content_id = (char *)OGS_SBI_CONTENT_SMS_ID;
+    ogs_pkbuf_t *smsbuf = NULL;
+    smsbuf = data;
 
-    message.part[message.num_of_part].pkbuf = data;
+    memset(&smsPayload, 0, sizeof(smsPayload));
+    smsPayload.content_id = (char *)OGS_SBI_CONTENT_SMS_ID;
+    smsRecordData.sms_payload = &smsPayload;
+
+    message.part[message.num_of_part].pkbuf = smsbuf;
     message.part[message.num_of_part].content_id =
         (char *)OGS_SBI_CONTENT_SMS_ID;
     message.part[message.num_of_part].content_type =
@@ -224,9 +230,6 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
     ogs_expect(request);
 
 end:
-    if (smsRecordData.sms_payload)
-        ogs_free(smsRecordData.sms_payload);
-
     if (ueLocation.nr_location) {
         if (ueLocation.nr_location->ue_location_timestamp)
             ogs_free(ueLocation.nr_location->ue_location_timestamp);

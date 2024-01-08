@@ -185,6 +185,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     ogs_info("This big %d", size);
 
     /* could copy first byte of pkbuf into a variable to read that, then put whole thing in correct structure, then pull. */
+    /* cast the buffer onto a header struct gsm_header = (ogs_nas_5gsm_header_t *)payload_container->buffer; */
 
     memcpy(&cpheader, sms_payload_buf->data, sizeof(smsf_sms_cp_hdr_t));
     ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_cp_hdr_t));

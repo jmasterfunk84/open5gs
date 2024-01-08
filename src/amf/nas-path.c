@@ -933,6 +933,9 @@ int nas_5gs_send_gmm_reject(
         rv = nas_5gs_send_service_reject(amf_ue, gmm_cause);
         ogs_expect(rv == OGS_OK);
         break;
+    case OGS_NAS_5GS_UL_NAS_TRANSPORT:
+        ogs_error("inbound sms failure");
+        break;
     default:
         ogs_error("Unknown message type [%d]", amf_ue->nas.message_type);
         rv = OGS_ERROR;

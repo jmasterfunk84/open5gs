@@ -574,3 +574,38 @@ bool amf_sess_have_session_release_pending(amf_sess_t *sess)
 
     return false;
 }
+
+void amf_smsf_sms_send_uplink_sms(amf_ue_t *amf_ue, void *data)
+{
+    amf_ue_t *amf_ue = NULL;
+    ogs_sbi_xact_t *xact = NULL;
+    ogs_sbi_discovery_option_t *discovery_option = NULL;
+    int r;
+
+    ogs_assert(amf_ue);
+
+    ogs_assert(data);
+
+    discovery_option = ogs_sbi_discovery_option_new();
+    ogs_assert(discovery_option);
+    ogs_sbi_discovery_option_set_target_nf_instance_id(
+            discovery_option, amf_ue->smsf_instance_id);
+
+    xact = ogs_sbi_xact_add(
+            &sess->sbi, OGS_SBI_SERVICE_TYPE_NSMSF_SMS, discovery_option,
+            (ogs_sbi_build_f)amf_nsmsf_sm_service_build_uplink_sms,
+            amf_ue, data);
+    if (!xact) {
+        ogs_error("amf_smsf_sms_send_uplink_sms() failed");
+        return;
+    }
+
+    xact->state = param->state;
+
+    r = ogs_sbi_discover_and_send(xact);
+    if (r != OGS_OK) {
+        ogs_error("amf_smsf_sms_send_uplink_sms() failed");
+        ogs_sbi_xact_remove(xact);
+        ogs_assert(r != OGS_ERROR);
+    }
+}

@@ -1402,13 +1402,21 @@ int gmm_handle_ul_nas_transport(amf_ue_t *amf_ue,
         break;
 
     case OGS_NAS_PAYLOAD_CONTAINER_SMS:
-        ogs_info("Got an SMS");
-                r = amf_ue_sbi_discover_and_send(
+        amf_ue->nas.message_type = OGS_NAS_5GS_UL_NAS_TRANSPORT;
+
+        ogs_pkbuf_t *smsbuf = NULL;
+        smsbuf = ogs_pkbuf_alloc(NULL, payload_container->length);
+        ogs_pkbuf_put_data(smsbuf,
+            payload_container->buffer, payload_container->length);
+
+        /* not a discover and send.  we should send to smsf in ue context. */
+        ogs_info("^^^ Got an SMS [%d]", payload_container->length);
+        r = amf_ue_sbi_discover_and_send(
                 OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
                 amf_nsmsf_sm_service_build_uplink_sms,
-                amf_ue, 0, &payload_container);
-        ogs_expect(r == OGS_OK);
-        ogs_assert(r != OGS_ERROR);
+                amf_ue, 0, smsbuf);
+        if (!r)
+            ogs_error("Bad with SMS");
         break;
 
     default:

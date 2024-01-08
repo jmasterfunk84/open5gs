@@ -238,6 +238,7 @@ smsf_ue_t *smsf_ue_find_by_gpsi(char *gpsi)
 
     smsf_ue_t *smsf_ue = NULL, *next = NULL;
 
+    /* This might crash if there's no UEs.  like if a MSISDNless IMSI tries to register and then send? */
     ogs_list_for_each_safe(&self.smsf_ue_list, next, smsf_ue) {
         if (!strcmp(smsf_ue->gpsi, gpsi)) {
             return smsf_ue;
