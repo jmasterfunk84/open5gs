@@ -299,6 +299,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 ogs_bcd_to_buffer(
                     msisdn,
                     msisdn_bcd, &msisdn_bcd_len);
+                if (msisdn)
+                    ogs_free(msisdn);
 
                 smsf_ue_t *mt_smsf_ue = NULL;
                 char *mt_gpsi = ogs_msprintf("msisdn-%s", output_bcd);
@@ -360,6 +362,9 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     ogs_assert(param.n1smbuf);
 
                     smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue, stream, &param);
+
+                    if (msisdn)
+                        ogs_free(msisdn);
                 }
                 /* Send RP-ACK to MO UE */
                 //int r;
