@@ -295,6 +295,23 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 
                 /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
 
+                /* Send CP-DATA to MT UE */
+
+                memset(&param, 0, sizeof(param));
+
+                smsf_sms_tpdu_deliver_t tpduDeliver;
+                memset(&tpduDeliver, 0, sizeof(smsf_sms_tpdu_deliver_t));
+                tpduDeliver.header.tpMMS = 1;
+                tpduDeliver.tpPID = tpdu_submit.tpPID;
+                tpduDeliver.tpDCS = tpdu_submit.tpDCS;
+                tpduDeliver.tpUDL = tpdu_submit.tpUDL;
+
+                param.n1smbuf = smsf_sms_encode_rp_data(false, 0, 69, tpduDeliver);
+
+                ogs_assert(param.n1smbuf);
+
+                smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue, stream, &param);
+
                 /* Send RP-ACK to MO UE */
                 //int r;
 
@@ -411,16 +428,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
     ogs_assert(response);
     ogs_assert(true == ogs_sbi_server_send_response(stream, response));
-
-    /* Send CP-DATA to MT UE */
-
-    // memset(&param, 0, sizeof(param));
-
-    // param.n1smbuf = smsf_sms_encode_cp_data(true, 4, NULL, NULL;
-
-    // ogs_assert(param.n1smbuf);
-
-    // smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue, stream, &param);
 
     return OGS_OK;
 }
