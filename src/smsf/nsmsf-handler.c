@@ -341,7 +341,11 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     if (mt_smsf_ue->mt_message_reference == 0)
                         mt_smsf_ue->mt_message_reference = 1;
 
-                    param.n1smbuf = smsf_sms_encode_rp_data(false, 0, mt_smsf_ue->mt_message_reference, &tpduDeliver);
+                    mt_smsf_ue->mt_tio += 1;
+                    if (mt_smsf_ue->mt_tio > 7)
+                        mt_smsf_ue->mt_tio = 0;
+
+                    param.n1smbuf = smsf_sms_encode_rp_data(false, mt_smsf_ue->mt_tio, mt_smsf_ue->mt_message_reference, &tpduDeliver);
 
                     ogs_assert(param.n1smbuf);
 

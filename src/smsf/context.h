@@ -60,6 +60,7 @@ struct smsf_ue_s {
     char *gpsi;
 
     uint8_t mt_message_reference;
+    uint8_t mt_tio;
 };
 
 void smsf_context_init(void);
