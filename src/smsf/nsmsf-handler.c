@@ -322,7 +322,9 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     tpduDeliver.tp_originator_address.header.ton = 1;
                     tpduDeliver.tp_originator_address.header.npi = 1;
 
-                    param.n1smbuf = smsf_sms_encode_rp_data(false, 0, 69, &tpduDeliver);
+                    mt_smsf_ue.mt_message_reference += 1;
+
+                    param.n1smbuf = smsf_sms_encode_rp_data(false, 0, mt_smsf_ue->mt_message_reference, &tpduDeliver);
 
                     ogs_assert(param.n1smbuf);
 

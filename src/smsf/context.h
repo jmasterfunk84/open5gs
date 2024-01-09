@@ -58,6 +58,8 @@ struct smsf_ue_s {
     char *amf_instance_id;
     OpenAPI_access_type_e access_type;
     char *gpsi;
+
+    uint8_t mt_message_reference;
 };
 
 void smsf_context_init(void);
