@@ -107,7 +107,6 @@ typedef struct smsf_sms_tpdu_deliver_s {
             uint8_t tpMMS:1;,
             uint8_t tpMTI:2;)
         } header;
-        uint8_t tpMR;
         smsf_sms_tp_address_t tp_originator_address;
         uint8_t tpPID;
         uint8_t tpDCS;
