@@ -71,7 +71,7 @@ ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o,
 ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o, int rp_message_reference)
 {
     ogs_pkbuf_t *pkbuf = NULL;
-    smsf_sms_cp_hdr_t cp_data;
+    smsf_sms_cp_data_t cp_data;
 
     memset(&cp_data, 0, sizeof(smsf_sms_cp_data_t));
 
