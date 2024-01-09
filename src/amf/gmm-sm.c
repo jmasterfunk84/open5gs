@@ -1061,6 +1061,7 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
                      *    PDU session release command
                      * 6. PDUSessionResourceReleaseResponse
                      * 7. AM_Policy_Association_Termination
+                     * 8. SM_Service_Deactivation
                      *
                      * - AMF_NETWORK_INITIATED_EXPLICIT_DE_REGISTERED
                      * 1. UDM_UECM_DeregistrationNotification
@@ -1072,28 +1073,49 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
                      *    PDU session release command
                      * 7. PDUSessionResourceReleaseResponse
                      * 8. AM_Policy_Association_Termination
-                     * 9. Deregistration accept
-                     * 10.Signalling Connecion Release
+                     * 9. SM_Service_Deactivation
+                     * 10.Deregistration accept
+                     * 11.Signalling Connecion Release
                      */
                     if (state == AMF_NETWORK_INITIATED_IMPLICIT_DE_REGISTERED) {
-                        ogs_warn("[%s] Implicit De-registered", amf_ue->supi);
-                        OGS_FSM_TRAN(&amf_ue->sm,
-                                &gmm_state_ue_context_will_remove);
+                        if (amf_ue.sm_service_activated) {
+                            r = amf_ue_sbi_discover_and_send(
+                                    OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                                    amf_nsmsf_sm_service_build_deactivate,
+                                    amf_ue, state, NULL);
+                            ogs_expect(r == OGS_OK);
+                            ogs_assert(r != OGS_ERROR);
+                        } else {
+                            ogs_warn("[%s] Implicit De-registered",
+                                    amf_ue->supi);
+                            OGS_FSM_TRAN(&amf_ue->sm,
+                                    &gmm_state_ue_context_will_remove);
+                        }
 
                     } else if (state ==
                             AMF_NETWORK_INITIATED_EXPLICIT_DE_REGISTERED) {
-                        ogs_warn("[%s] Explicit De-registered", amf_ue->supi);
-
-                        amf_ue->explict_de_registered.sbi_done = true;
-
-                        if (amf_ue->explict_de_registered.n1_done == true) {
-                            r = ngap_send_ran_ue_context_release_command(
-                                    amf_ue->ran_ue,
-                                    NGAP_Cause_PR_misc,
-                                    NGAP_CauseMisc_om_intervention,
-                                    NGAP_UE_CTX_REL_UE_CONTEXT_REMOVE, 0);
+                        if (amf_ue.sm_service_activated) {
+                            r = amf_ue_sbi_discover_and_send(
+                                    OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                                    amf_nsmsf_sm_service_build_deactivate,
+                                    amf_ue, state, NULL);
                             ogs_expect(r == OGS_OK);
                             ogs_assert(r != OGS_ERROR);
+                        } else {
+                            ogs_warn("[%s] Explicit De-registered", 
+                                    amf_ue->supi);
+
+                            amf_ue->explict_de_registered.sbi_done = true;
+
+                            if (amf_ue->explict_de_registered.n1_done == true) {
+                                r = ngap_send_ran_ue_context_release_command(
+                                        amf_ue->ran_ue,
+                                        NGAP_Cause_PR_misc,
+                                        NGAP_CauseMisc_om_intervention,
+                                        NGAP_UE_CTX_REL_UE_CONTEXT_REMOVE, 0);
+                                ogs_expect(r == OGS_OK);
+                                ogs_assert(r != OGS_ERROR);
+                            }
                         }
 
                     } else {
