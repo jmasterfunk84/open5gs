@@ -73,13 +73,13 @@ ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o, int rp_message_refer
     ogs_pkbuf_t *pkbuf = NULL;
     smsf_sms_cp_hdr_t cp_data;
 
-    memset(&cp_data_header, 0, sizeof(smsf_sms_cp_data_t));
+    memset(&cp_data, 0, sizeof(smsf_sms_cp_data_t));
 
     cp_data.header.flags.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
     cp_data.header.flags.tio = ti_o;
     cp_data.header.flags.tif = ti_flag;
     cp_data.header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_DATA;
-    cp_data.cp_user_data_length = 4
+    cp_data.cp_user_data_length = 4;
 
     pkbuf = ogs_pkbuf_alloc(NULL, 7);
     if (!pkbuf) {
