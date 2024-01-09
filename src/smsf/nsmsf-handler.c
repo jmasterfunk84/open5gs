@@ -302,6 +302,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 if (msisdn)
                     ogs_free(msisdn);
 
+                /* Look for the MT MSISDN */
+
                 smsf_ue_t *mt_smsf_ue = NULL;
                 char *mt_gpsi = ogs_msprintf("msisdn-%s", output_bcd);
                 ogs_info("Looking for [%s]", mt_gpsi);
@@ -363,8 +365,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                     smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue, stream, &param);
 
-                    if (msisdn)
-                        ogs_free(msisdn);
+                    if (msisdn_bcd)
+                        ogs_free(msisdn_bcd);
                 }
                 /* Send RP-ACK to MO UE */
                 //int r;
