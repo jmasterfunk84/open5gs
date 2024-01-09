@@ -125,7 +125,7 @@ typedef struct smsf_sms_tpdu_deliver_s {
 ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o);
 
 ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
-                smsf_sms_rpdata_t rpdu, smsf_sms_tpdu_deliver_t tpdu);
+                int rp_message_reference, smsf_sms_tpdu_deliver_t *tpdu);
 
 ogs_pkbuf_t *smsf_sms_encode_rp_ack(
         bool ti_flag, int ti_o, int rp_message_reference);

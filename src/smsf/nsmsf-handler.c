@@ -243,6 +243,15 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             switch(tpdu_hdr.tpMTI) {
             case 0:
                 ogs_info("SMS-DELIVER Report (ms->n)");
+                ogs_info("Sending CP-Ack");
+                smsf_n1_n2_message_transfer_param_t param;
+
+                memset(&param, 0, sizeof(param));
+                param.n1smbuf = smsf_sms_encode_cp_ack(true, cpheader.flags.tio);
+                ogs_assert(param.n1smbuf);
+
+                smsf_namf_comm_send_n1_n2_message_transfer(
+                        smsf_ue, stream, &param);
                 break;
 
             case 1:
@@ -284,6 +293,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                 /* Send CP-Ack to MO UE */
                 //int r;
+                ogs_info("Sending CP-Ack");
                 smsf_n1_n2_message_transfer_param_t param;
 
                 memset(&param, 0, sizeof(param));
@@ -296,6 +306,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
 
                 /* Send CP-DATA to MT UE */
+                ogs_info("Sending CP-DATA");
 
                 memset(&param, 0, sizeof(param));
 
@@ -306,7 +317,12 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 tpduDeliver.tpDCS = tpdu_submit.tpDCS;
                 tpduDeliver.tpUDL = tpdu_submit.tpUDL;
 
-                param.n1smbuf = smsf_sms_encode_rp_data(false, 0, 69, tpduDeliver);
+                tpduDeliver.tp_originator_address.addr_length = 11;
+                tpduDeliver.tp_originator_address.header.ext = 1;
+                tpduDeliver.tp_originator_address.header.ton = 1;
+                tpduDeliver.tp_originator_address.header.npi = 1;
+
+                param.n1smbuf = smsf_sms_encode_rp_data(false, 0, 69, &tpduDeliver);
 
                 ogs_assert(param.n1smbuf);
 
@@ -314,6 +330,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                 /* Send RP-ACK to MO UE */
                 //int r;
+                ogs_info("Sending RP-Ack");
 
                 memset(&param, 0, sizeof(param));
                 param.n1smbuf = smsf_sms_encode_rp_ack(
