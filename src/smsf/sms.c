@@ -80,7 +80,7 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_put_u8(pkbuf,0); // rp-da
     ogs_pkbuf_put_u8(pkbuf,tpdurealbytes+19); // rpud len
 
-    ogs_pkbuf_put_data(pkbuf,tpdu,11 + tpdurealbytes);
+    ogs_pkbuf_put_data(pkbuf,tpdu, 17 + tpdurealbytes);
     ogs_pkbuf_put_u8(pkbuf,tpdurealbytes);
     ogs_pkbuf_put_data(pkbuf,&tpdu->tpUD,tpdurealbytes);
 
