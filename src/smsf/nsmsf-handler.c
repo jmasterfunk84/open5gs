@@ -333,6 +333,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     tpduDeliver.tp_originator_address.header.ton = 1;
                     tpduDeliver.tp_originator_address.header.npi = 1;
 
+                    memcpy(&tpduDeliver.tp_originator_address.tp_address, (char *)"\x31\x60\x99\x09\x00\xf3", 6);
+
                     memcpy(&tpduDeliver.tpUD, &tpdu_submit.tpUD, tpdurealbytes);
 
                     mt_smsf_ue->mt_message_reference += 1;
