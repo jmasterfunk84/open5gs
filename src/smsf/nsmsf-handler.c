@@ -304,29 +304,30 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 
                 /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
 
-                /* Send CP-DATA to MT UE */
-                ogs_info("Sending CP-DATA");
+                if (mt_smsf_ue) {
+                    /* Send CP-DATA to MT UE */
+                    ogs_info("Sending CP-DATA");
 
-                memset(&param, 0, sizeof(param));
+                    memset(&param, 0, sizeof(param));
 
-                smsf_sms_tpdu_deliver_t tpduDeliver;
-                memset(&tpduDeliver, 0, sizeof(smsf_sms_tpdu_deliver_t));
-                tpduDeliver.header.tpMMS = 1;
-                tpduDeliver.tpPID = tpdu_submit.tpPID;
-                tpduDeliver.tpDCS = tpdu_submit.tpDCS;
-                tpduDeliver.tpUDL = tpdu_submit.tpUDL;
+                    smsf_sms_tpdu_deliver_t tpduDeliver;
+                    memset(&tpduDeliver, 0, sizeof(smsf_sms_tpdu_deliver_t));
+                    tpduDeliver.header.tpMMS = 1;
+                    tpduDeliver.tpPID = tpdu_submit.tpPID;
+                    tpduDeliver.tpDCS = tpdu_submit.tpDCS;
+                    tpduDeliver.tpUDL = tpdu_submit.tpUDL;
 
-                tpduDeliver.tp_originator_address.addr_length = 11;
-                tpduDeliver.tp_originator_address.header.ext = 1;
-                tpduDeliver.tp_originator_address.header.ton = 1;
-                tpduDeliver.tp_originator_address.header.npi = 1;
+                    tpduDeliver.tp_originator_address.addr_length = 11;
+                    tpduDeliver.tp_originator_address.header.ext = 1;
+                    tpduDeliver.tp_originator_address.header.ton = 1;
+                    tpduDeliver.tp_originator_address.header.npi = 1;
 
-                param.n1smbuf = smsf_sms_encode_rp_data(false, 0, 69, &tpduDeliver);
+                    param.n1smbuf = smsf_sms_encode_rp_data(false, 0, 69, &tpduDeliver);
 
-                ogs_assert(param.n1smbuf);
+                    ogs_assert(param.n1smbuf);
 
-                smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue, stream, &param);
-
+                    smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue, stream, &param);
+                }
                 /* Send RP-ACK to MO UE */
                 //int r;
                 ogs_info("Sending RP-Ack");
