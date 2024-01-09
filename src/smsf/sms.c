@@ -81,8 +81,8 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_put_u8(pkbuf,tpdurealbytes+18); // rpud len
 
     ogs_pkbuf_put_data(pkbuf,tpdu,18);
-    ogs_pkbuf_put_u8(pkbuf,tpdu->UDL);
-    ogs_pkbuf_put_data(pkbuf,tpdu->UD,tpdu->UDL);
+    ogs_pkbuf_put_u8(pkbuf,tpdu->tpUDL);
+    ogs_pkbuf_put_data(pkbuf,tpdu->tpUD,tpdu->tpUDL);
 
     return pkbuf;
 }
