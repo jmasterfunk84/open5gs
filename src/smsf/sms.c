@@ -78,10 +78,10 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_put_u8(pkbuf, rp_message_reference); // rp_message_reference
     ogs_pkbuf_put_data(pkbuf, (char *)"\x07\x91\x31\x60\x26\x00\x50\xf1", 8); // rp-oa
     ogs_pkbuf_put_u8(pkbuf,0); // rp-da
-    ogs_pkbuf_put_u8(pkbuf,tpdurealbytes+19); // rpud len
+    ogs_pkbuf_put_u8(pkbuf,tpdurealbytes + 19); // rpud len
 
-    ogs_pkbuf_put_data(pkbuf,tpdu, 17 + tpdurealbytes);
-    ogs_pkbuf_put_u8(pkbuf,tpdurealbytes);
+    ogs_pkbuf_put_data(pkbuf,tpdu, 11 + tpdurealbytes);
+    ogs_pkbuf_put_u8(pkbuf,tpdurealbytes+6);
     ogs_pkbuf_put_data(pkbuf,&tpdu->tpUD,tpdurealbytes);
 
     return pkbuf;
