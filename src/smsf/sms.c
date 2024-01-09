@@ -66,7 +66,7 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     cp_data.header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_DATA;
     cp_data.cp_user_data_length = 31 + tpdurealbytes;
 
-    pkbuf = ogs_pkbuf_alloc(NULL, 64);
+    pkbuf = ogs_pkbuf_alloc(NULL, 240);
     if (!pkbuf) {
         ogs_error("ogs_pkbuf_alloc() failed");
         return NULL;
