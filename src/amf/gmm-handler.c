@@ -810,6 +810,14 @@ int gmm_handle_deregistration_request(amf_ue_t *amf_ue,
                     amf_ue, state, NULL);
             ogs_expect(r == OGS_OK);
             ogs_assert(r != OGS_ERROR);
+        } else if (SMSF_SERVICE_ACTIVATED(amf_ue)) {
+            ogs_info("SMS is last one out!");
+            r = amf_ue_sbi_discover_and_send(
+                    OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                    amf_nsmsf_sm_service_build_deactivate,
+                    amf_ue, state, NULL);
+            ogs_expect(r == OGS_OK);
+            ogs_assert(r != OGS_ERROR);
         } else {
             r = nas_5gs_send_de_registration_accept(amf_ue);
             ogs_expect(r == OGS_OK);

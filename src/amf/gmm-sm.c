@@ -288,6 +288,14 @@ void gmm_state_de_registered(ogs_fsm_t *s, amf_event_t *e)
                                     amf_ue, state, NULL);
                             ogs_expect(r == OGS_OK);
                             ogs_assert(r != OGS_ERROR);
+                        } else if (SMSF_SERVICE_ACTIVATED(amf_ue)) {
+                            ogs_info("SMS deactivating!");
+                            r = amf_ue_sbi_discover_and_send(
+                                    OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                                    amf_nsmsf_sm_service_build_deactivate,
+                                    amf_ue, state, NULL);
+                            ogs_expect(r == OGS_OK);
+                            ogs_assert(r != OGS_ERROR);
                         } else {
                             r = nas_5gs_send_de_registration_accept(amf_ue);
                             ogs_expect(r == OGS_OK);
@@ -462,6 +470,14 @@ void gmm_state_de_registered(ogs_fsm_t *s, amf_event_t *e)
                                         amf_ue, state, NULL);
                                 ogs_expect(r == OGS_OK);
                                 ogs_assert(r != OGS_ERROR);
+                            } else if (SMSF_SERVICE_ACTIVATED(amf_ue)) {
+                                ogs_info("SMS deactivating!");
+                                r = amf_ue_sbi_discover_and_send(
+                                        OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                                        amf_nsmsf_sm_service_build_deactivate,
+                                        amf_ue, state, NULL);
+                                ogs_expect(r == OGS_OK);
+                                ogs_assert(r != OGS_ERROR);
                             } else {
                                 r = nas_5gs_send_de_registration_accept(amf_ue);
                                 ogs_expect(r == OGS_OK);
@@ -523,9 +539,19 @@ void gmm_state_de_registered(ogs_fsm_t *s, amf_event_t *e)
                      */
                     if (state == AMF_RELEASE_SM_CONTEXT_NO_STATE ||
                         state == AMF_UE_INITIATED_DE_REGISTERED) {
-                        r = nas_5gs_send_de_registration_accept(amf_ue);
-                        ogs_expect(r == OGS_OK);
-                        ogs_assert(r != OGS_ERROR);
+                        if (SMSF_SERVICE_ACTIVATED(amf_ue)) {
+                            ogs_info("SMS deactivating!");
+                            r = amf_ue_sbi_discover_and_send(
+                                    OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                                    amf_nsmsf_sm_service_build_deactivate,
+                                    amf_ue, state, NULL);
+                            ogs_expect(r == OGS_OK);
+                            ogs_assert(r != OGS_ERROR);
+                        } else {
+                            r = nas_5gs_send_de_registration_accept(amf_ue);
+                            ogs_expect(r == OGS_OK);
+                            ogs_assert(r != OGS_ERROR);
+                        }
 
                         PCF_AM_POLICY_CLEAR(amf_ue);
                     } else {
@@ -815,6 +841,14 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
                                     OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL,
                                     NULL,
                                     amf_npcf_am_policy_control_build_delete,
+                                    amf_ue, state, NULL);
+                            ogs_expect(r == OGS_OK);
+                            ogs_assert(r != OGS_ERROR);
+                        } else if (SMSF_SERVICE_ACTIVATED(amf_ue)) {
+                            ogs_info("SMS deactivating!");
+                            r = amf_ue_sbi_discover_and_send(
+                                    OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                                    amf_nsmsf_sm_service_build_deactivate,
                                     amf_ue, state, NULL);
                             ogs_expect(r == OGS_OK);
                             ogs_assert(r != OGS_ERROR);
