@@ -179,6 +179,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     /* do like ogs_nas_eps_decode_eps_network_feature_support*/
     uint8_t templen;
     smsf_sms_cp_hdr_t cpheader;
+    smsf_n1_n2_message_transfer_param_t param;
 
     int size = 0;
     size = sizeof(cpheader);
@@ -244,7 +245,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             case 0:
                 ogs_info("SMS-DELIVER Report (ms->n)");
                 ogs_info("Sending CP-Ack");
-                smsf_n1_n2_message_transfer_param_t param;
 
                 memset(&param, 0, sizeof(param));
                 param.n1smbuf = smsf_sms_encode_cp_ack(true, cpheader.flags.tio);
@@ -294,7 +294,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 /* Send CP-Ack to MO UE */
                 //int r;
                 ogs_info("Sending CP-Ack");
-                smsf_n1_n2_message_transfer_param_t param;
 
                 memset(&param, 0, sizeof(param));
                 param.n1smbuf = smsf_sms_encode_cp_ack(true, cpheader.flags.tio);
