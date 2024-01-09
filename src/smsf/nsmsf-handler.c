@@ -262,14 +262,25 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 memcpy(&tpdu_submit, sms_payload_buf->data, 2);
                 ogs_pkbuf_pull(sms_payload_buf, 2);
                 memcpy(&templen, sms_payload_buf->data, 1);
-                memcpy(&tpdu_submit.tp_destination_address, sms_payload_buf->data, ((templen + 1) / 2) + 1 + 3);
-                ogs_pkbuf_pull(sms_payload_buf, ((templen + 1) / 2) + 1 + 3);
+                memcpy(&tpdu_submit.tp_destination_address, sms_payload_buf->data, 2 + ((templen + 1) / 2));
+                ogs_pkbuf_pull(sms_payload_buf, 2 + ((templen + 1) / 2));   // Address length, Address type, address itself
+                memcpy(&tpdu_submit.tpPID, sms_payload_buf->data, 3);       // PID, DCS, UDL
+                ogs_pkbuf_pull(sms_payload_buf, 3);
+
                 ogs_info("TP DA Len: [%d]", tpdu_submit.tp_destination_address.addr_length);
 
-                //memcpy(&templen, sms_payload_buf->data, 1);
+                int tpdurealbytes;
+                if (!tpdu_submit.tpDCS) {
+                    tpdurealbytes = ((tpdu_submit.tpUDL+1)*7/8);
+                } else {
+                    tpdurealbytes = tpdu_submit.tpUDL;
+                }
 
-                // memcpy(&tpdu_submit.tpUD, sms_payload_buf->data, tpdu_submit.tpUDL);
-                // ogs_info("TP UD Len: [%d]", tpdu_submit.tpUDL);
+                ogs_info("TP UD Len [size/real]: [%d/%d]", tpdu_submit.tpUDL, tpdurealbytes);
+
+                memcpy(&tpdu_submit.tpUD, sms_payload_buf->data, tpdurealbytes);
+
+                /* Begin looking for our TPDU destination smsf_ue */
 
                 smsf_sms_tp_address_t tp_da;
                 memset(&tp_da, 0, sizeof(smsf_sms_tp_address_t));
@@ -322,7 +333,11 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     tpduDeliver.tp_originator_address.header.ton = 1;
                     tpduDeliver.tp_originator_address.header.npi = 1;
 
+                    memcpy(&tpduDeliver.tpUD, tpdu_submit->tpUD, tpdurealbytes);
+
                     mt_smsf_ue->mt_message_reference += 1;
+                    if (mt_smsf_ue->mt_message_reference == 0)
+                        mt_smsf_ue->mt_message_reference = 1;
 
                     param.n1smbuf = smsf_sms_encode_rp_data(false, 0, mt_smsf_ue->mt_message_reference, &tpduDeliver);
 

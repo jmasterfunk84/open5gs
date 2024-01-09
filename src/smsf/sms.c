@@ -63,6 +63,13 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
         return NULL;
     }
 
+    int tpdurealbytes;
+    if (!tpdu->tpDCS) {
+        tpdurealbytes = ((tpdu->tpUDL+1)*7/8);
+    } else {
+        tpdurealbytes = tpdu->tpUDL;
+    }
+
     ogs_pkbuf_put_u8(pkbuf,cp_data.header.flags.octet);
     ogs_pkbuf_put_u8(pkbuf,cp_data.header.sm_service_message_type);
     ogs_pkbuf_put_u8(pkbuf,cp_data.cp_user_data_length);
@@ -72,7 +79,7 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_put_data(pkbuf, (char *)"\x07\x91\x31\x60\x26\x00\x50\xf1", 8); // rp-oa
     ogs_pkbuf_put_u8(pkbuf,0); // rp-da
     ogs_pkbuf_put_u8(pkbuf,26); // rpud len
-    ogs_pkbuf_put_data(pkbuf,"\x04\x0b\x91\x31\x34\x74\x17\x72\xf3\x00\x00\x42\x10\x80\x91\x50\x92\x4a\x07\xc7\x37\x1d\x94\xa4\x87\x00",26);
+    ogs_pkbuf_put_data(pkbuf,tpdu,tpdurealbytes+20);
     //ogs_pkbuf_put_data(pkbuf,tpdu, 19);
 
     return pkbuf;
