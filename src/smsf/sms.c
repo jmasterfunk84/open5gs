@@ -58,11 +58,13 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
         tpdurealbytes = tpdu->tpUDL;
     }
     
+    ogs_info("Real Bytes: [%d]", tpdurealbytes);
+
     cp_data.header.flags.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
     cp_data.header.flags.tio = ti_o;
     cp_data.header.flags.tif = ti_flag;
     cp_data.header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_DATA;
-    cp_data.cp_user_data_length = 37 + tpdurealbytes;
+    cp_data.cp_user_data_length = 31 + tpdurealbytes;
 
     pkbuf = ogs_pkbuf_alloc(NULL, 64);
     if (!pkbuf) {
@@ -78,10 +80,10 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_put_u8(pkbuf, rp_message_reference); // rp_message_reference
     ogs_pkbuf_put_data(pkbuf, (char *)"\x07\x91\x31\x60\x26\x00\x50\xf1", 8); // rp-oa
     ogs_pkbuf_put_u8(pkbuf,0); // rp-da
-    ogs_pkbuf_put_u8(pkbuf,tpdurealbytes + 25); // rpud len
+    ogs_pkbuf_put_u8(pkbuf,tpdurealbytes + 19); // rpud len
 
-    ogs_pkbuf_put_data(pkbuf,tpdu, 11 + tpdurealbytes);
-    ogs_pkbuf_put_u8(pkbuf,tpdurealbytes+6);
+    ogs_pkbuf_put_data(pkbuf,tpdu, 18);  // first few bytes up to payload
+    ogs_pkbuf_put_u8(pkbuf,tpdu->tpUDL);
     ogs_pkbuf_put_data(pkbuf,&tpdu->tpUD,tpdurealbytes);
 
     return pkbuf;
