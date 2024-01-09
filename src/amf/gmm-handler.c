@@ -1415,8 +1415,8 @@ int gmm_handle_ul_nas_transport(amf_ue_t *amf_ue,
                 OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
                 amf_nsmsf_sm_service_build_uplink_sms,
                 amf_ue, 0, smsbuf);
-        if (!r)
-            ogs_error("Bad with SMS");
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
         break;
 
     default:

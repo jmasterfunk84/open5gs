@@ -212,8 +212,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         switch(rpheader.value) {
         case 0:
             ogs_info("RP-DATA (ms->n)");
-            smsf_sms_rpdu_t rpdu;
-            memset(&rpdu, 0, sizeof(smsf_sms_rpdu_t));
+            smsf_sms_rpdata_t rpdu;
+            memset(&rpdu, 0, sizeof(smsf_sms_rpdata_t));
 
             rpdu.rpdu_message_type.value = rpheader.value;
             memcpy(&rpdu.rp_message_reference, sms_payload_buf->data, 1);
@@ -287,15 +287,24 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 smsf_n1_n2_message_transfer_param_t param;
 
                 memset(&param, 0, sizeof(param));
-
                 param.n1smbuf = smsf_sms_encode_cp_ack(true, cpheader.flags.tio);
-
                 ogs_assert(param.n1smbuf);
 
                 smsf_namf_comm_send_n1_n2_message_transfer(
                         smsf_ue, stream, &param);
                 
                 /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
+
+                /* Send RP-ACK to MO UE */
+                //int r;
+
+                memset(&param, 0, sizeof(param));
+                param.n1smbuf = smsf_sms_encode_rp_ack(
+                    true, cpheader.flags.tio, rpdu.rp_message_reference);
+                ogs_assert(param.n1smbuf);
+
+                smsf_namf_comm_send_n1_n2_message_transfer(
+                        smsf_ue, stream, &param);
 
                 break;
 

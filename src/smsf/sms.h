@@ -57,7 +57,7 @@ typedef struct smsf_sms_rpdata_s {
         smsf_sms_address_t rp_originator_address;
         smsf_sms_address_t rp_destination_address;
         uint8_t rp_user_data_length;
-} __attribute__ ((packed)) smsf_sms_rpdu_t;
+} __attribute__ ((packed)) smsf_sms_rpdata_t;
 
 typedef struct smsf_sms_cp_hdr_s {
         union {
@@ -116,14 +116,19 @@ typedef struct smsf_sms_tpdu_deliver_s {
         uint8_t tpUD[140];
 } __attribute__ ((packed)) smsf_sms_tpdu_deliver_t;
 
-#define SMSF_SERVICE_MESSAGE_TYPE_CP_ACK            4
+/* ADD ms2net kinda prefixes here */
+#define SMSF_SERVICE_MESSAGE_TYPE_CP_DATA            1
+#define SMSF_SERVICE_MESSAGE_TYPE_CP_ACK             4
 
 #define SMSF_PROTOCOL_DISCRIMINATOR_SMS             0x9
 
 ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o);
 
-ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o, 
-                smsf_sms_rpdu_t rpdu, smsf_sms_tpdu_deliver_t tpdu);
+ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o,
+                smsf_sms_rpdata_t rpdu, smsf_sms_tpdu_deliver_t tpdu);
+
+ogs_pkbuf_t *smsf_sms_encode_rp_ack(
+        bool ti_flag, int ti_o, int rp_message_reference);
 
 #ifdef __cplusplus
 }
