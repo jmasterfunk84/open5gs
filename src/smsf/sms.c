@@ -93,7 +93,7 @@ ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o, int rp_message_refer
 
     ogs_pkbuf_put_u8(pkbuf,3); // Mesage Type = RP-ACK
     ogs_pkbuf_put_u8(pkbuf,rp_message_reference);
-    ogs_pkbuf_put_u8(pkbuf,64); // Element ID 0x41
+    ogs_pkbuf_put_u8(pkbuf,65); // Element ID 0x41
     ogs_pkbuf_put_u8(pkbuf,0); // Length: 0
 
 
