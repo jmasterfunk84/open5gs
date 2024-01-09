@@ -290,6 +290,16 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 ogs_buffer_to_bcd(tp_da.tp_address, (tp_da.addr_length + 1) /2, output_bcd);
 
                 ogs_info("I am [%s]", smsf_ue->gpsi);
+                char *msisdn;
+                msisdn = ogs_calloc(1, 15);
+                memcpy(msisdn, (smsf_ue->gpsi) + 7, strlen(smsf_ue->gpsi) - 7);
+                char *msisdn_bcd;
+                msisdn_bcd = ogs_calloc(1, 64);
+                int msisdn_bcd_len;
+                ogs_bcd_to_buffer(
+                    msisdn,
+                    msisdn_bcd, &msisdn_bcd_len);
+
                 smsf_ue_t *mt_smsf_ue = NULL;
                 char *mt_gpsi = ogs_msprintf("msisdn-%s", output_bcd);
                 ogs_info("Looking for [%s]", mt_gpsi);
@@ -333,7 +343,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     tpduDeliver.tp_originator_address.header.ton = 1;
                     tpduDeliver.tp_originator_address.header.npi = 1;
 
-                    memcpy(&tpduDeliver.tp_originator_address.tp_address, (char *)"\x31\x60\x99\x09\x00\xf3", 6);
+                    memcpy(&tpduDeliver.tp_originator_address.tp_address, msisdn_bcd, msisdn_bcd_len);
 
                     memcpy(&tpduDeliver.tpUD, &tpdu_submit.tpUD, tpdurealbytes);
 
