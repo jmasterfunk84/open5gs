@@ -118,7 +118,6 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_smsf_registration_delete(
     request = ogs_sbi_build_request(&message);
     ogs_expect(request);
 
-    ogs_info("Maybe Free something?  make end section");
     return request;
 }
 

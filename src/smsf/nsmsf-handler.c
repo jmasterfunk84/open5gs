@@ -28,11 +28,13 @@ bool smsf_nsmsf_sm_service_handle_activate(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message)
 {
+    int r;
     ogs_info("Activate");
-    OpenAPI_ue_sms_context_data_t *UeSmsContextData = NULL;
 
     ogs_assert(stream);
     ogs_assert(message);
+    
+    OpenAPI_ue_sms_context_data_t *UeSmsContextData = NULL;
 
     UeSmsContextData = message->UeSmsContextData;
     if (!UeSmsContextData) {
@@ -81,7 +83,6 @@ bool smsf_nsmsf_sm_service_handle_activate(
             smsf_ue->ue_sms_context_data,
             message->UeSmsContextData);
 
-    int r;
     r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
             smsf_nudm_uecm_build_smsf_registration, smsf_ue, stream, NULL);
     ogs_expect(r == OGS_OK);
@@ -94,10 +95,11 @@ int smsf_nsmsf_sm_service_handle_deactivate(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message)
 {
+    int r;
+    ogs_info("Deactivate");
+
     ogs_assert(stream);
     ogs_assert(message);
-
-    ogs_info("Deactivate");
 
     ogs_sbi_message_t sendmsg;
     ogs_sbi_header_t header;
@@ -116,7 +118,12 @@ int smsf_nsmsf_sm_service_handle_deactivate(
     ogs_assert(response);
     ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
-    // This might be too soon.  Maybe some state machine work to do, too.
+    r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
+            smsf_nudm_uecm_build_smsf_registration_delete, smsf_ue, stream, NULL);
+    ogs_expect(r == OGS_OK);
+    ogs_assert(r != OGS_ERROR);
+
+    // This might be too soon.  Maybe wait for NUDEM EUCM response..
     smsf_ue_remove(smsf_ue);
 
     return OGS_OK;
@@ -126,14 +133,14 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message)
 {
-    OpenAPI_sms_record_data_t *SmsRecordData = NULL;
-    OpenAPI_ref_to_binary_data_t *sms_payload = NULL;
-    ogs_pkbuf_t *sms_payload_buf = NULL;
+    ogs_info("SMS");
 
     ogs_assert(stream);
     ogs_assert(message);
 
-    ogs_info("SMS");
+    OpenAPI_sms_record_data_t *SmsRecordData = NULL;
+    OpenAPI_ref_to_binary_data_t *sms_payload = NULL;
+    ogs_pkbuf_t *sms_payload_buf = NULL;
 
     SmsRecordData = message->SmsRecordData;
     if (!SmsRecordData) {
