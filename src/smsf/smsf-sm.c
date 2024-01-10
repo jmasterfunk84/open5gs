@@ -184,8 +184,9 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                             ogs_assert(true ==
                                 ogs_sbi_server_send_error(stream,
                                     OGS_SBI_HTTP_STATUS_NOT_FOUND,
-                                    &message, "Unable find UE Context",
+                                    &message, "Unable to find UE Context",
                                     message.h.method));
+                            break;
                         }
 
                         rv = smsf_nsmsf_sm_service_handle_deactivate(
