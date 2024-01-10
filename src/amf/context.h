@@ -489,6 +489,10 @@ struct amf_ue_s {
 
 #define SMSF_SERVICE_ACTIVATED(__aMF) \
     ((__aMF) && ((__aMF)->sm_service_activated))
+#define CLEAR_SMSF_SERVICE_ACTIVATION(__aMF) \
+        ogs_assert((__aMF)); \
+        (__aMF)->sm_service_activated = false; \
+
 
     bool            sms_over_nas_supported;
     bool            sms_subscribed;

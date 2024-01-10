@@ -539,6 +539,7 @@ void gmm_state_de_registered(ogs_fsm_t *s, amf_event_t *e)
                      */
                     if (state == AMF_RELEASE_SM_CONTEXT_NO_STATE ||
                         state == AMF_UE_INITIATED_DE_REGISTERED) {
+                        /* This one actually fired once. */
                         if (SMSF_SERVICE_ACTIVATED(amf_ue)) {
                             ogs_info("SMS deactivating!");
                             r = amf_ue_sbi_discover_and_send(
@@ -554,6 +555,61 @@ void gmm_state_de_registered(ogs_fsm_t *s, amf_event_t *e)
                         }
 
                         PCF_AM_POLICY_CLEAR(amf_ue);
+                    } else {
+                        ogs_fatal("Invalid state [%d]", state);
+                        ogs_assert_if_reached();
+                    }
+                    break;
+
+                DEFAULT
+                    ogs_error("Unknown method [%s]", sbi_message->h.method);
+                    ogs_assert_if_reached();
+                END
+                break;
+
+            DEFAULT
+                ogs_error("Invalid resource name [%s]",
+                        sbi_message->h.resource.component[0]);
+                ogs_assert_if_reached();
+            END
+            break;
+
+        CASE(OGS_SBI_SERVICE_NAME_NSMSF_SMS)
+            SWITCH(sbi_message->h.resource.component[0])
+            CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
+                SWITCH(sbi_message->h.method)
+                CASE(OGS_SBI_HTTP_METHOD_POST)
+                    ogs_warn("[%s] Ignore SBI message", amf_ue->suci);
+                    break;
+
+                CASE(OGS_SBI_HTTP_METHOD_DELETE)
+                    /*
+                     * - AMF_UE_INITIATED_DE_REGISTERED
+                     * 1. PDU session establishment request
+                     * 2. PDUSessionResourceSetupRequest +
+                     *    PDU session establishment accept
+                     * 3. PDUSessionResourceSetupResponse
+                     * 4. Deregistration request
+                     * 5. UEContextReleaseCommand
+                     * 6. UEContextReleaseComplete
+                     *
+                     * - AMF_RELEASE_SM_CONTEXT_NO_STATE
+                     * 1. PDU session release request
+                     * 2. PDUSessionResourceReleaseCommand +
+                     *    PDU session release command
+                     * 3. PDUSessionResourceReleaseREsponse
+                     * 4. PDU session release complete
+                     * 5. Deregistration request
+                     * 6. UEContextReleaseCommand
+                     * 7. UEContextReleaseComplete
+                     */
+                    if (state == AMF_RELEASE_SM_CONTEXT_NO_STATE ||
+                        state == AMF_UE_INITIATED_DE_REGISTERED) {
+                        r = nas_5gs_send_de_registration_accept(amf_ue);
+                        ogs_expect(r == OGS_OK);
+                        ogs_assert(r != OGS_ERROR);
+
+                        CLEAR_SMSF_SERVICE_ACTIVATION(amf_ue);
                     } else {
                         ogs_fatal("Invalid state [%d]", state);
                         ogs_assert_if_reached();
