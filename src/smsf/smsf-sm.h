@@ -33,6 +33,7 @@ void smsf_state_operational(ogs_fsm_t *s, smsf_event_t *e);
 void smsf_ue_state_initial(ogs_fsm_t *s, smsf_event_t *e);
 void smsf_ue_state_final(ogs_fsm_t *s, smsf_event_t *e);
 void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e);
+void smsf_ue_context_will_remove(ogs_fsm_t *s, smsf_event_t *e);
 void smsf_ue_state_exception(ogs_fsm_t *s, smsf_event_t *e);
 
 #define smsf_sm_debug(__pe) \

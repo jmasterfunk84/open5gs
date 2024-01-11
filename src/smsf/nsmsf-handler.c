@@ -101,6 +101,7 @@ int smsf_nsmsf_sm_service_handle_deactivate(
     ogs_assert(stream);
     ogs_assert(message);
 
+    /* do we go to the nf we already subscribed to? */
     r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
             smsf_nudm_sdm_build_subscription_delete, smsf_ue, stream, NULL);
     ogs_expect(r == OGS_OK);

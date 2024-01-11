@@ -192,7 +192,8 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                     smsf_nudm_sdm_handle_subscription_delete(
                         smsf_ue, stream, message);
 
-                    smsf_ue_remove(smsf_ue);
+                    OGS_FSM_TRAN(&smsf_ue->sm,
+                            &smsf_ue_context_will_remove);
                     break;
 
                 DEFAULT
@@ -253,6 +254,31 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
     default:
         ogs_error("[%s] Unknown event %s", smsf_ue->supi, smsf_event_get_name(e));
         break;
+    }
+}
+
+void smsf_ue_context_will_remove(ogs_fsm_t *s, amf_event_t *e)
+{
+    smsf_ue_t *smsf_ue = NULL;
+
+    ogs_assert(s);
+    ogs_assert(e);
+
+    amf_sm_debug(e);
+
+    smsf_ue = e->smsf_ue;
+    ogs_assert(smsf_ue);
+
+    switch (e->h.id) {
+    case OGS_FSM_ENTRY_SIG:
+        smsf_ue_remove(smsf_ue);
+        break;
+
+    case OGS_FSM_EXIT_SIG:
+        break;
+
+    default:
+        ogs_error("Unknown event[%s]", smsf_event_get_name(e));
     }
 }
 
