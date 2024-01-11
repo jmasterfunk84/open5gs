@@ -718,6 +718,7 @@ bool udm_nudm_sdm_handle_subscription_create(
     }
 
     /* does this only keep track of a single subscription? Damn, we need a list now? */
+    /* maybe list sess_list in amf_ue */
     if (udm_ue->data_change_callback_uri)
         ogs_free(udm_ue->data_change_callback_uri);
     udm_ue->data_change_callback_uri =

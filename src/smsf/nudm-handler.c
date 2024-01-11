@@ -63,7 +63,7 @@ int smsf_nudm_sdm_handle_provisioned_data(
 int smsf_nudm_sdm_handle_subscription(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
-    int rv;
+    int rv, r;
     ogs_sbi_message_t message;
     ogs_sbi_message_t sendmsg;
     ogs_sbi_header_t header;
@@ -72,11 +72,10 @@ int smsf_nudm_sdm_handle_subscription(
 
     if (!recvmsg->http.location) {
         ogs_error("[%s] No http.location", smsf_ue->supi);
-        r = nas_5gs_send_gmm_reject_from_sbi(
-                smsf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
-        ogs_expect(r == OGS_OK);
-        ogs_assert(r != OGS_ERROR);
-        return OGS_ERROR;
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                recvmsg, "No http.location", smsf_ue->supi));
+        return false;
     }
 
     memset(&header, 0, sizeof(header));
@@ -86,22 +85,19 @@ int smsf_nudm_sdm_handle_subscription(
     if (rv != OGS_OK) {
         ogs_error("[%s] Cannot parse http.location [%s]",
             smsf_ue->supi, recvmsg->http.location);
-        r = nas_5gs_send_gmm_reject_from_sbi(
-                smsf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
-        ogs_expect(r == OGS_OK);
-        ogs_assert(r != OGS_ERROR);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                recvmsg, "Cannot parse http.location", smsf_ue->supi));
         return OGS_ERROR;
     }
 
     if (!message.h.resource.component[2]) {
         ogs_error("[%s] No Subscription ID [%s]",
             smsf_ue->supi, recvmsg->http.location);
-
-        ogs_sbi_header_free(&header);
-        r = nas_5gs_send_gmm_reject_from_sbi(
-                smsf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
-        ogs_expect(r == OGS_OK);
-        ogs_assert(r != OGS_ERROR);
+            smsf_ue->supi, recvmsg->http.location);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                recvmsg, "No Subscription ID", smsf_ue->supi));
         return OGS_ERROR;
     }
 
