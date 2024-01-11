@@ -63,7 +63,7 @@ int smsf_nudm_sdm_handle_provisioned_data(
 int smsf_nudm_sdm_handle_subscription(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
-    int rv, r;
+    int rv;
     ogs_sbi_message_t message;
     ogs_sbi_message_t sendmsg;
     ogs_sbi_header_t header;
@@ -159,6 +159,7 @@ int smsf_nudm_sdm_handle_subscription_delete(
     header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
     header.resource.component[1] = smsf_ue->supi;
 
+    /* is this needed  to send location?*/
     memset(&sendmsg, 0, sizeof(sendmsg));
     sendmsg.http.location = ogs_sbi_server_uri(server, &header);
 

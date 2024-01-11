@@ -101,24 +101,7 @@ int smsf_nsmsf_sm_service_handle_deactivate(
     ogs_assert(stream);
     ogs_assert(message);
 
-    ogs_sbi_message_t sendmsg;
-    ogs_sbi_header_t header;
-    ogs_sbi_response_t *response = NULL;
-
-    memset(&header, 0, sizeof(header));
-    header.service.name =
-        (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
-    header.api.version = (char *)OGS_SBI_API_V2;
-    header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
-    header.resource.component[1] = smsf_ue->supi;
-
-    memset(&sendmsg, 0, sizeof(sendmsg));
-
-    response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
-    ogs_assert(response);
-    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
-
-    r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
+    r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
             smsf_nudm_sdm_build_subscription_delete, smsf_ue, stream, NULL);
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);
