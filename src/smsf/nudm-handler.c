@@ -94,7 +94,6 @@ int smsf_nudm_sdm_handle_subscription(
     if (!message.h.resource.component[2]) {
         ogs_error("[%s] No Subscription ID [%s]",
             smsf_ue->supi, recvmsg->http.location);
-            smsf_ue->supi, recvmsg->http.location);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
                 recvmsg, "No Subscription ID", smsf_ue->supi));
