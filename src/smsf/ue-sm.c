@@ -264,7 +264,7 @@ void smsf_ue_context_will_remove(ogs_fsm_t *s, smsf_event_t *e)
     ogs_assert(s);
     ogs_assert(e);
 
-    amf_sm_debug(e);
+    smsf_sm_debug(e);
 
     smsf_ue = e->smsf_ue;
     ogs_assert(smsf_ue);
