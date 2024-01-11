@@ -43,7 +43,7 @@ bool udm_nudm_uecm_handle_smf_deregistration(
 
 bool udm_nudm_uecm_handle_smsf_registration(
     udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message);
-//bool udm_nudm_uecm_handle_smf_deregistration(
+//bool udm_nudm_uecm_handle_smsf_deregistration(
 //    udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message);
 
 bool udm_nudm_sdm_handle_subscription_provisioned(

@@ -182,9 +182,27 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                 break;
 
             CASE(OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS)
-                /* Could handle the subscription here */
-                smsf_nudm_sdm_handle_subscription(
-                    smsf_ue, stream, message);
+                SWITCH(message->h.method)
+                CASE(OGS_SBI_HTTP_METHOD_POST)
+                    smsf_nudm_sdm_handle_subscription(
+                        smsf_ue, stream, message);
+                    break;
+
+                CASE(OGS_SBI_HTTP_METHOD_DELETE)
+                    smsf_nudm_sdm_handle_subscription_delete(
+                        smsf_ue, stream, message);
+
+                    smsf_ue_remove(smsf_ue);
+                    break;
+
+                DEFAULT
+                    ogs_error("[%s] Invalid HTTP method [%s]",
+                            smsf_ue->supi, message->h.method);
+                    ogs_assert(true ==
+                        ogs_sbi_server_send_error(stream,
+                            OGS_SBI_HTTP_STATUS_FORBIDDEN, message,
+                            "Invalid HTTP method", message->h.method));
+                END
                 break;
 
             DEFAULT

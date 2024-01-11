@@ -119,12 +119,9 @@ int smsf_nsmsf_sm_service_handle_deactivate(
     ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
     r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
-            smsf_nudm_uecm_build_smsf_registration_delete, smsf_ue, stream, NULL);
+            smsf_nudm_sdm_build_subscription_delete, smsf_ue, stream, NULL);
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);
-
-    // This might be too soon.  Maybe wait for NUDEM EUCM response..
-    smsf_ue_remove(smsf_ue);
 
     return OGS_OK;
 }

@@ -63,10 +63,54 @@ int smsf_nudm_sdm_handle_provisioned_data(
 int smsf_nudm_sdm_handle_subscription(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
+    int rv;
+    ogs_sbi_message_t message;
     ogs_sbi_message_t sendmsg;
     ogs_sbi_header_t header;
     ogs_sbi_response_t *response = NULL;
     ogs_sbi_server_t *server = NULL;
+
+    if (!recvmsg->http.location) {
+        ogs_error("[%s] No http.location", smsf_ue->supi);
+        r = nas_5gs_send_gmm_reject_from_sbi(
+                smsf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
+        return OGS_ERROR;
+    }
+
+    memset(&header, 0, sizeof(header));
+    header.uri = recvmsg->http.location;
+
+    rv = ogs_sbi_parse_header(&message, &header);
+    if (rv != OGS_OK) {
+        ogs_error("[%s] Cannot parse http.location [%s]",
+            smsf_ue->supi, recvmsg->http.location);
+        r = nas_5gs_send_gmm_reject_from_sbi(
+                smsf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
+        return OGS_ERROR;
+    }
+
+    if (!message.h.resource.component[2]) {
+        ogs_error("[%s] No Subscription ID [%s]",
+            smsf_ue->supi, recvmsg->http.location);
+
+        ogs_sbi_header_free(&header);
+        r = nas_5gs_send_gmm_reject_from_sbi(
+                smsf_ue, OGS_SBI_HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
+        return OGS_ERROR;
+    }
+
+    if (smsf_ue->data_change_subscription_id)
+        ogs_free(smsf_ue->data_change_subscription_id);
+    smsf_ue->data_change_subscription_id =
+        ogs_strdup(message.h.resource.component[2]);
+
+    ogs_sbi_header_free(&header);
 
     server = ogs_sbi_server_from_stream(stream);
     ogs_assert(server);
@@ -93,6 +137,38 @@ int smsf_nudm_sdm_handle_subscription(
 
     response = ogs_sbi_build_response(&sendmsg,
         OGS_SBI_HTTP_STATUS_CREATED);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+    if (sendmsg.http.location)
+        ogs_free(sendmsg.http.location);
+
+    return OGS_OK;
+}
+
+int smsf_nudm_sdm_handle_subscription_delete(
+    smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
+{
+    ogs_sbi_message_t sendmsg;
+    ogs_sbi_header_t header;
+    ogs_sbi_response_t *response = NULL;
+    ogs_sbi_server_t *server = NULL;
+
+    server = ogs_sbi_server_from_stream(stream);
+    ogs_assert(server);
+
+    memset(&header, 0, sizeof(header));
+    header.service.name =
+        (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
+    header.api.version = (char *)OGS_SBI_API_V2;
+    header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
+    header.resource.component[1] = smsf_ue->supi;
+
+    memset(&sendmsg, 0, sizeof(sendmsg));
+    sendmsg.http.location = ogs_sbi_server_uri(server, &header);
+
+    response = ogs_sbi_build_response(&sendmsg,
+        OGS_SBI_HTTP_STATUS_NO_CONTENT);
     ogs_assert(response);
     ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 

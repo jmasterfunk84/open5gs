@@ -717,6 +717,7 @@ bool udm_nudm_sdm_handle_subscription_create(
         return false;
     }
 
+    /* does this only keep track of a single subscription? Damn, we need a list now? */
     if (udm_ue->data_change_callback_uri)
         ogs_free(udm_ue->data_change_callback_uri);
     udm_ue->data_change_callback_uri =
@@ -761,6 +762,9 @@ bool udm_nudm_sdm_handle_subscription_delete(
     ogs_assert(udm_ue);
     ogs_assert(stream);
     ogs_assert(recvmsg);
+
+    /* May need to figure out if that's an AMF or SMSF deleting a subscription.*/
+    /* literally no checking here, and would delete any subscription */
 
     if (udm_ue->data_change_callback_uri) {
         ogs_free(udm_ue->data_change_callback_uri);
