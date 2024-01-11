@@ -257,7 +257,7 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
     }
 }
 
-void smsf_ue_context_will_remove(ogs_fsm_t *s, amf_event_t *e)
+void smsf_ue_context_will_remove(ogs_fsm_t *s, smsf_event_t *e)
 {
     smsf_ue_t *smsf_ue = NULL;
 
