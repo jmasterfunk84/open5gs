@@ -38,10 +38,13 @@ typedef struct smsf_sms_address_s {
 
 typedef struct smsf_sms_tp_address_s {
         uint8_t addr_length;
+        union {
         struct {
         ED3(uint8_t ext:1;,
             uint8_t ton:3;,
             uint8_t npi:4;)
+        };
+        uint8_t octet;
         } header;
         uint8_t tp_address[10];
 } __attribute__ ((packed)) smsf_sms_tp_address_t;
@@ -81,6 +84,14 @@ typedef struct smsf_sms_tpdu_hdr_s {
             uint8_t tpMTI:2;)
 } __attribute__ ((packed)) smsf_sms_tpdu_hdr_t;
 
+typedef struct smsf_sms_tpdcs_s {
+        ED5(uint8_t tpCG:2;,
+            uint8_t tpText:1;,
+            uint8_t tpMC1:1;,
+            uint8_t tpCharSet:2;,
+            uint8_t tpMC2:2;,)
+} __attribute__ ((packed)) smsf_sms_tpdcs_t;
+
 typedef struct smsf_sms_tpdu_submit_s {
         struct {
         ED6(uint8_t tpRP:1;,
@@ -99,6 +110,7 @@ typedef struct smsf_sms_tpdu_submit_s {
 } __attribute__ ((packed)) smsf_sms_tpdu_submit_t;
 
 typedef struct smsf_sms_tpdu_deliver_s {
+        union {
         struct {
         ED6(uint8_t tpRP:1;,
             uint8_t tpUDHI:1;,
@@ -106,6 +118,8 @@ typedef struct smsf_sms_tpdu_deliver_s {
             uint8_t tpReserved:2;,
             uint8_t tpMMS:1;,
             uint8_t tpMTI:2;)
+        };
+        uint8_t octet;
         } header;
         smsf_sms_tp_address_t tp_originator_address;
         uint8_t tpPID;

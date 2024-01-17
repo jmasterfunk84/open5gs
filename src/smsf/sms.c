@@ -80,9 +80,15 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_put_u8(pkbuf, rp_message_reference); // rp_message_reference
     ogs_pkbuf_put_data(pkbuf, (char *)"\x07\x91\x31\x60\x26\x00\x50\xf1", 8); // rp-oa
     ogs_pkbuf_put_u8(pkbuf,0); // rp-da
-    ogs_pkbuf_put_u8(pkbuf,tpdurealbytes + 19); // rpud len
+    ogs_pkbuf_put_u8(pkbuf,tpdurealbytes + 19); // rpud len MUST CONSIDER OA LEN!!
 
-    ogs_pkbuf_put_data(pkbuf,tpdu, 18);  // first few bytes up to payload
+    ogs_pkbuf_put_u8(pkbuf,tpdu->header.octet);
+    ogs_pkbuf_put_u8(pkbuf,tpdu->tp_originator_address.addr_length);
+    ogs_pkbuf_put_u8(pkbuf,tpdu->tp_originator_address.header.octet);
+    ogs_pkbuf_put_data(pkbuf,tpdu->tp_originator_address.tp_address,(tpdu->tp_originator_address.addr_length + 1) /2);
+    ogs_pkbuf_put_u8(pkbuf,tpdu->tpPID);
+    ogs_pkbuf_put_u8(pkbuf,tpdu->tpDCS);
+    ogs_pkbuf_put_data(pkbuf,tpdu->tpSCTS, 7);
     ogs_pkbuf_put_u8(pkbuf,tpdu->tpUDL);
     ogs_pkbuf_put_data(pkbuf,&tpdu->tpUD,tpdurealbytes);
 
