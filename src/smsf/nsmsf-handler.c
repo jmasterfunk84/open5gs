@@ -409,7 +409,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
             smsf_namf_comm_send_n1_n2_message_transfer(
                     smsf_ue, stream, &param);
-                break;
             break;
 
         case 4:
