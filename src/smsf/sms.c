@@ -60,7 +60,7 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
         tpdurealbytes = tpdu->tpUDL;
     }
 
-    tpdu_oa_real_length = (tpdu->tp_originator_address.addr_length + 1) /2
+    tpdu_oa_real_length = ((tpdu->tp_originator_address.addr_length + 1) /2);
 
     ogs_info("Real Bytes: [%d]", tpdurealbytes);
 
@@ -94,7 +94,13 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
             tpdu_oa_real_length);
     ogs_pkbuf_put_u8(pkbuf, tpdu->tpPID);
     ogs_pkbuf_put_u8(pkbuf, tpdu->tpDCS);
-    ogs_pkbuf_put_data(pkbuf, tpdu->tpSCTS, sizeof(smsf_sms_tpscts_t));
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.year);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.month);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.day);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.hour);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.minute);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.second);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.timezone);
     ogs_pkbuf_put_u8(pkbuf, tpdu->tpUDL);
     ogs_pkbuf_put_data(pkbuf, &tpdu->tpUD,tpdurealbytes);
 
@@ -136,37 +142,25 @@ ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o, int rp_message_refer
 void smsf_sms_set_sc_timestamp(smsf_sms_tpscts_t *sc_timestamp)
 {
     struct timeval tv;
-    struct tm gmt, local;
+    struct tm local;
     int local_time_zone;
+
     ogs_gettimeofday(&tv);
-    ogs_gmtime(tv.tv_sec, &gmt);
     ogs_localtime(tv.tv_sec, &local);
 
-    ogs_info("    UTC [%04d-%02d-%02dT%02d:%02d:%02d] "
-            "Timezone[%d]/DST[%d]",
-        gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday,
-        gmt.tm_hour, gmt.tm_min, gmt.tm_sec,
-        (int)gmt.tm_gmtoff, gmt.tm_isdst);
-    ogs_info("    LOCAL [%04d-%02d-%02dT%02d:%02d:%02d] "
-            "Timezone[%d]/DST[%d]",
-        local.tm_year+1900, local.tm_mon+1, local.tm_mday,
-        local.tm_hour, local.tm_min, local.tm_sec,
-        (int)local.tm_gmtoff, local.tm_isdst);
-
     if (local.tm_gmtoff >= 0) {
-        local_time_zone = OGS_NAS_TIME_TO_BCD(local.tm_gmtoff / 900);
+        local_time_zone = OGS_SCTS_TIME_TO_BCD(local.tm_gmtoff / 900);
     } else {
-        local_time_zone = OGS_NAS_TIME_TO_BCD((-local.tm_gmtoff) / 900);
+        local_time_zone = OGS_SCTS_TIME_TO_BCD((-local.tm_gmtoff) / 900);
         local_time_zone |= 0x08;
     }
-    ogs_info("    Timezone:0x%x", local_time_zone);
 
-    sc_timestamp->year = OGS_NAS_TIME_TO_BCD(gmt.tm_year % 100);
-    sc_timestamp->month = OGS_NAS_TIME_TO_BCD(gmt.tm_mon+1);
-    sc_timestamp->day = OGS_NAS_TIME_TO_BCD(gmt.tm_mday);
-    sc_timestamp->hour = OGS_NAS_TIME_TO_BCD(gmt.tm_hour);
-    sc_timestamp->minute = OGS_NAS_TIME_TO_BCD(gmt.tm_min);
-    sc_timestamp->second = OGS_NAS_TIME_TO_BCD(gmt.tm_sec);
+    sc_timestamp->year = OGS_SCTS_TIME_TO_BCD(local.tm_year % 100);
+    sc_timestamp->month = OGS_SCTS_TIME_TO_BCD(local.tm_mon+1);
+    sc_timestamp->day = OGS_SCTS_TIME_TO_BCD(local.tm_mday);
+    sc_timestamp->hour = OGS_SCTS_TIME_TO_BCD(local.tm_hour);
+    sc_timestamp->minute = OGS_SCTS_TIME_TO_BCD(local.tm_min);
+    sc_timestamp->second = OGS_SCTS_TIME_TO_BCD(local.tm_sec);
     sc_timestamp->timezone = local_time_zone;
 
 }

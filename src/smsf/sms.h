@@ -21,6 +21,7 @@
 #define SMSF_SMS_H
 
 #include "ogs-core.h"
+#include "ogs-proto.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,6 +85,7 @@ typedef struct smsf_sms_tpdu_hdr_s {
             uint8_t tpMTI:2;)
 } __attribute__ ((packed)) smsf_sms_tpdu_hdr_t;
 
+#define OGS_SCTS_TIME_TO_BCD(x) OGS_TIME_TO_BCD(x)
 typedef struct smsf_sms_tpscts_s {
         uint8_t year;
         uint8_t month;
