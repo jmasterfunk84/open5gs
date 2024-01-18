@@ -84,15 +84,29 @@ typedef struct smsf_sms_tpdu_hdr_s {
             uint8_t tpMTI:2;)
 } __attribute__ ((packed)) smsf_sms_tpdu_hdr_t;
 
+typedef struct smsf_sms_tpscts_s {
+        uint8_t year;
+        uint8_t month;
+        uint8_t day;
+        uint8_t hour;
+        uint8_t minute;
+        uint8_t second;
+        uint8_t timezone;
+} __attribute__ ((packed)) smsf_sms_tpscts_t;
+
 typedef struct smsf_sms_tpdcs_s {
+        union {
         ED5(uint8_t tpCG:2;,
             uint8_t tpText:1;,
             uint8_t tpMC1:1;,
             uint8_t tpCharSet:2;,
-            uint8_t tpMC2:2;,)
+            uint8_t tpMC2:2;)
+        uint8_t octet;
+        };
 } __attribute__ ((packed)) smsf_sms_tpdcs_t;
 
 typedef struct smsf_sms_tpdu_submit_s {
+        union {
         struct {
         ED6(uint8_t tpRP:1;,
             uint8_t tpUDHI:1;,
@@ -100,6 +114,8 @@ typedef struct smsf_sms_tpdu_submit_s {
             uint8_t tpVPF:2;,
             uint8_t tpRD:1;,
             uint8_t tpMTI:2;)
+        };
+        uint8_t octet;
         } header;
         uint8_t tpMR;
         smsf_sms_tp_address_t tp_destination_address;
@@ -124,7 +140,7 @@ typedef struct smsf_sms_tpdu_deliver_s {
         smsf_sms_tp_address_t tp_originator_address;
         uint8_t tpPID;
         uint8_t tpDCS;
-        uint8_t tpSCTS[7];
+        smsf_sms_tpscts_t tpSCTS;
         uint8_t tpUDL;
         uint8_t tpUD[140];
 } __attribute__ ((packed)) smsf_sms_tpdu_deliver_t;
@@ -142,6 +158,8 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
 
 ogs_pkbuf_t *smsf_sms_encode_rp_ack(
         bool ti_flag, int ti_o, int rp_message_reference);
+
+void smsf_sms_set_sc_timestamp(smsf_sms_tpscts_t *timestamp);
 
 #ifdef __cplusplus
 }

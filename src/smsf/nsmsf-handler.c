@@ -325,6 +325,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                     smsf_sms_tpdu_deliver_t tpduDeliver;
                     memset(&tpduDeliver, 0, sizeof(smsf_sms_tpdu_deliver_t));
+                    tpduDeliver.header.tpUDHI = tpdu_submit.header.tpUDHI;
                     tpduDeliver.header.tpMMS = 1;
                     
                     tpduDeliver.tp_originator_address.addr_length = 11;
@@ -335,7 +336,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                     tpduDeliver.tpPID = tpdu_submit.tpPID;
                     tpduDeliver.tpDCS = tpdu_submit.tpDCS;
-                    /* Timestamp */
+                    smsf_sms_set_sc_timestamp(&tpduDeliver.tpSCTS);
                     tpduDeliver.tpUDL = tpdu_submit.tpUDL;
 
                     memcpy(&tpduDeliver.tpUD, &tpdu_submit.tpUD, tpdurealbytes);

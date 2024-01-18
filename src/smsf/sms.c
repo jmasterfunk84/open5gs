@@ -49,6 +49,8 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_t *pkbuf = NULL;
     smsf_sms_cp_data_t cp_data;
 
+    int tpdu_oa_real_length;
+
     memset(&cp_data, 0, sizeof(smsf_sms_cp_data_t));
 
     int tpdurealbytes;
@@ -57,14 +59,16 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     } else {
         tpdurealbytes = tpdu->tpUDL;
     }
-    
+
+    tpdu_oa_real_length = (tpdu->tp_originator_address.addr_length + 1) /2
+
     ogs_info("Real Bytes: [%d]", tpdurealbytes);
 
     cp_data.header.flags.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
     cp_data.header.flags.tio = ti_o;
     cp_data.header.flags.tif = ti_flag;
     cp_data.header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_DATA;
-    cp_data.cp_user_data_length = 31 + tpdurealbytes;
+    cp_data.cp_user_data_length = 25 + tpdurealbytes + tpdu_oa_real_length;
 
     pkbuf = ogs_pkbuf_alloc(NULL, 240);
     if (!pkbuf) {
@@ -72,25 +76,27 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
         return NULL;
     }
 
-    ogs_pkbuf_put_u8(pkbuf,cp_data.header.flags.octet);
-    ogs_pkbuf_put_u8(pkbuf,cp_data.header.sm_service_message_type);
-    ogs_pkbuf_put_u8(pkbuf,cp_data.cp_user_data_length);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.header.flags.octet);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.header.sm_service_message_type);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.cp_user_data_length);
 
-    ogs_pkbuf_put_u8(pkbuf,1); // Mesage Type = RP-Data N2MS
+    ogs_pkbuf_put_u8(pkbuf, 1); // Mesage Type = RP-Data N2MS
     ogs_pkbuf_put_u8(pkbuf, rp_message_reference); // rp_message_reference
     ogs_pkbuf_put_data(pkbuf, (char *)"\x07\x91\x31\x60\x26\x00\x50\xf1", 8); // rp-oa
-    ogs_pkbuf_put_u8(pkbuf,0); // rp-da
-    ogs_pkbuf_put_u8(pkbuf,tpdurealbytes + 19); // rpud len MUST CONSIDER OA LEN!!
+    ogs_pkbuf_put_u8(pkbuf, 0); // rp-da
+    // 13 is the size of the tpdu stuff.
+    ogs_pkbuf_put_u8(pkbuf, tpdurealbytes + tpdu_oa_real_length + 13);
 
-    ogs_pkbuf_put_u8(pkbuf,tpdu->header.octet);
-    ogs_pkbuf_put_u8(pkbuf,tpdu->tp_originator_address.addr_length);
-    ogs_pkbuf_put_u8(pkbuf,tpdu->tp_originator_address.header.octet);
-    ogs_pkbuf_put_data(pkbuf,tpdu->tp_originator_address.tp_address,(tpdu->tp_originator_address.addr_length + 1) /2);
-    ogs_pkbuf_put_u8(pkbuf,tpdu->tpPID);
-    ogs_pkbuf_put_u8(pkbuf,tpdu->tpDCS);
-    ogs_pkbuf_put_data(pkbuf,tpdu->tpSCTS, 7);
-    ogs_pkbuf_put_u8(pkbuf,tpdu->tpUDL);
-    ogs_pkbuf_put_data(pkbuf,&tpdu->tpUD,tpdurealbytes);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->header.octet);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tp_originator_address.addr_length);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tp_originator_address.header.octet);
+    ogs_pkbuf_put_data(pkbuf, tpdu->tp_originator_address.tp_address,
+            tpdu_oa_real_length);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpPID);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpDCS);
+    ogs_pkbuf_put_data(pkbuf, tpdu->tpSCTS, sizeof(smsf_sms_tpscts_t));
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpUDL);
+    ogs_pkbuf_put_data(pkbuf, &tpdu->tpUD,tpdurealbytes);
 
     return pkbuf;
 }
@@ -125,4 +131,42 @@ ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o, int rp_message_refer
 
 
     return pkbuf;
+}
+
+void smsf_sms_set_sc_timestamp(smsf_sms_tpscts_t *sc_timestamp)
+{
+    struct timeval tv;
+    struct tm gmt, local;
+    int local_time_zone;
+    ogs_gettimeofday(&tv);
+    ogs_gmtime(tv.tv_sec, &gmt);
+    ogs_localtime(tv.tv_sec, &local);
+
+    ogs_info("    UTC [%04d-%02d-%02dT%02d:%02d:%02d] "
+            "Timezone[%d]/DST[%d]",
+        gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday,
+        gmt.tm_hour, gmt.tm_min, gmt.tm_sec,
+        (int)gmt.tm_gmtoff, gmt.tm_isdst);
+    ogs_info("    LOCAL [%04d-%02d-%02dT%02d:%02d:%02d] "
+            "Timezone[%d]/DST[%d]",
+        local.tm_year+1900, local.tm_mon+1, local.tm_mday,
+        local.tm_hour, local.tm_min, local.tm_sec,
+        (int)local.tm_gmtoff, local.tm_isdst);
+
+    if (local.tm_gmtoff >= 0) {
+        local_time_zone = OGS_NAS_TIME_TO_BCD(local.tm_gmtoff / 900);
+    } else {
+        local_time_zone = OGS_NAS_TIME_TO_BCD((-local.tm_gmtoff) / 900);
+        local_time_zone |= 0x08;
+    }
+    ogs_info("    Timezone:0x%x", local_time_zone);
+
+    sc_timestamp->year = OGS_NAS_TIME_TO_BCD(gmt.tm_year % 100);
+    sc_timestamp->month = OGS_NAS_TIME_TO_BCD(gmt.tm_mon+1);
+    sc_timestamp->day = OGS_NAS_TIME_TO_BCD(gmt.tm_mday);
+    sc_timestamp->hour = OGS_NAS_TIME_TO_BCD(gmt.tm_hour);
+    sc_timestamp->minute = OGS_NAS_TIME_TO_BCD(gmt.tm_min);
+    sc_timestamp->second = OGS_NAS_TIME_TO_BCD(gmt.tm_sec);
+    sc_timestamp->timezone = local_time_zone;
+
 }
