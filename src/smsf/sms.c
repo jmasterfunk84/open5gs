@@ -162,5 +162,4 @@ void smsf_sms_set_sc_timestamp(smsf_sms_tpscts_t *sc_timestamp)
     sc_timestamp->minute = OGS_SCTS_TIME_TO_BCD(local.tm_min);
     sc_timestamp->second = OGS_SCTS_TIME_TO_BCD(local.tm_sec);
     sc_timestamp->timezone = local_time_zone;
-
 }

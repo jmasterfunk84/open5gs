@@ -402,6 +402,14 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
         case 2:
             ogs_info("RP-ACK (ms->n)");
+            // Sending CP-ACK //
+            memset(&param, 0, sizeof(param));
+            param.n1smbuf = smsf_sms_encode_cp_ack(false, cpheader.flags.tio);
+            ogs_assert(param.n1smbuf);
+
+            smsf_namf_comm_send_n1_n2_message_transfer(
+                    smsf_ue, stream, &param);
+                break;
             break;
 
         case 4:
