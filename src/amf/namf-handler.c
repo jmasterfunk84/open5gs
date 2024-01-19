@@ -51,6 +51,7 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
     OpenAPI_ref_to_binary_data_t *n1MessageContent = NULL;
     OpenAPI_n1_message_class_e n1MessageClass;
     OpenAPI_n2_info_container_t *n2InfoContainer = NULL;
+    OpenAPI_n2_information_class_e n2InformationClass;
     OpenAPI_n2_sm_information_t *smInfo = NULL;
     OpenAPI_n2_info_content_t *n2InfoContent = NULL;
     OpenAPI_ref_to_binary_data_t *ngapData = NULL;
@@ -86,6 +87,12 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
             return OGS_ERROR;
         }
 
+        n1MessageClass = n1MessageContainer->n1_message_class;
+        if (!n1MessageClass) {
+            ogs_error("No n1MessageClass");
+            return OGS_ERROR;
+        }
+
         n1buf = ogs_sbi_find_part_by_content_id(
                 recvmsg, n1MessageContent->content_id);
         if (!n1buf) {
@@ -101,24 +108,29 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
         ogs_assert(n1buf);
     }
 
-    n1MessageClass = n1MessageContainer->n1_message_class;
-    switch (n1MessageClass) {
-    case OpenAPI_n1_message_class_SM:
-        if (N1N2MessageTransferReqData->is_pdu_session_id == false) {
-            ogs_error("No PDU Session Identity");
-            return OGS_ERROR;
-        }
-        pdu_session_id = N1N2MessageTransferReqData->pdu_session_id;
-        
-        sess = amf_sess_find_by_psi(amf_ue, pdu_session_id);
-        if (!sess) {
-            ogs_error("[%s] No PDU Session Context [%d]",
-                    amf_ue->supi, pdu_session_id);
+    n2InfoContainer = N1N2MessageTransferReqData->n2_info_container;
+    if (n2InfoContainer) {
+        n2InformationClass = n2InfoContainer->n2_information_class;
+        if (!n2InformationClass)
+            ogs_error("No n2InformationClass");
             return OGS_ERROR;
         }
 
-        n2InfoContainer = N1N2MessageTransferReqData->n2_info_container;
-        if (n2InfoContainer) {
+        switch (n2InformationClass) {
+        case OpenAPI_n2_information_class_SM:
+            if (N1N2MessageTransferReqData->is_pdu_session_id == false) {
+                ogs_error("No PDU Session Identity");
+                return OGS_ERROR;
+            }
+            pdu_session_id = N1N2MessageTransferReqData->pdu_session_id;
+            
+            sess = amf_sess_find_by_psi(amf_ue, pdu_session_id);
+            if (!sess) {
+                ogs_error("[%s] No PDU Session Context [%d]",
+                        amf_ue->supi, pdu_session_id);
+                return OGS_ERROR;
+            }
+
             smInfo = n2InfoContainer->sm_info;
             if (!smInfo) {
                 ogs_error("No smInfo");
@@ -151,19 +163,27 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
              */
             n2buf = ogs_pkbuf_copy(n2buf);
             ogs_assert(n2buf);
+            break;
+
+        default:
+            ogs_error("Not Implemented n2InformationClass");
+            return OGS_ERROR;
         }
+    }
 
-        memset(&sendmsg, 0, sizeof(sendmsg));
+    memset(&sendmsg, 0, sizeof(sendmsg));
 
-        status = OGS_SBI_HTTP_STATUS_OK;
+    status = OGS_SBI_HTTP_STATUS_OK;
 
-        memset(&N1N2MessageTransferRspData, 0, 
-                sizeof(N1N2MessageTransferRspData));
-        N1N2MessageTransferRspData.cause =
-            OpenAPI_n1_n2_message_transfer_cause_N1_N2_TRANSFER_INITIATED;
+    memset(&N1N2MessageTransferRspData, 0, 
+            sizeof(N1N2MessageTransferRspData));
+    N1N2MessageTransferRspData.cause =
+        OpenAPI_n1_n2_message_transfer_cause_N1_N2_TRANSFER_INITIATED;
 
-        sendmsg.N1N2MessageTransferRspData = &N1N2MessageTransferRspData;
+    sendmsg.N1N2MessageTransferRspData = &N1N2MessageTransferRspData;
 
+    if (n1MessageClass == OpenAPI_n1_message_class_SM ||
+            n2InformationClass == OpenAPI_n2_information_class_SM) {
         switch (ngapIeType) {
         case OpenAPI_ngap_ie_type_PDU_RES_SETUP_REQ:
             if (!n2buf) {
@@ -501,38 +521,26 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
             ogs_error("Not implemented ngapIeType[%d]", ngapIeType);
             ogs_assert_if_reached();
         }
-        break;
 
-    case OpenAPI_n1_message_class_SMS:
-        memset(&sendmsg, 0, sizeof(sendmsg));
+    } else if (n1MessageClass == OpenAPI_n1_message_class_SMS) {
+            /* check if our friend idle or connected? */
+            if (n1buf) {
+                gmmbuf = gmm_build_sms_dl_nas_transport(amf_ue,
+                        OGS_NAS_PAYLOAD_CONTAINER_SMS, n1buf);
+                ogs_assert(gmmbuf);
+            }
 
-        status = OGS_SBI_HTTP_STATUS_OK;
+            if (!gmmbuf) {
+                ogs_error("gmm_build_status() failed");
+                return OGS_ERROR;
+            }
 
-        memset(&N1N2MessageTransferRspData, 0, 
-                sizeof(N1N2MessageTransferRspData));
-        N1N2MessageTransferRspData.cause =
-            OpenAPI_n1_n2_message_transfer_cause_N1_N2_TRANSFER_INITIATED;
+            r = nas_5gs_send_to_downlink_nas_transport(amf_ue, gmmbuf);
+            ogs_expect(r == OGS_OK);
 
-        sendmsg.N1N2MessageTransferRspData = &N1N2MessageTransferRspData;
-
-        if (n1buf) {
-            gmmbuf = gmm_build_sms_dl_nas_transport(amf_ue,
-                    OGS_NAS_PAYLOAD_CONTAINER_SMS, n1buf);
-            ogs_assert(gmmbuf);
-        }
-
-        if (!gmmbuf) {
-            ogs_error("gmm_build_status() failed");
-            return OGS_ERROR;
-        }
-
-        r = nas_5gs_send_to_downlink_nas_transport(amf_ue, gmmbuf);
-        ogs_expect(r == OGS_OK);
-
-        break;
-
-    default:
-        ogs_error("Not implemented n1MessageClass[%d]", n1MessageClass);
+    } else {
+        ogs_error("Not implemented n1MessageClass[%d] or n2InformationClass[%d]",
+                n1MessageClass, n2InformationClass);
         ogs_assert_if_reached();
     }
 

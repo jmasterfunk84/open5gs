@@ -277,21 +277,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 tp_da = tpdu_submit.tp_destination_address;
                 ogs_buffer_to_bcd(tp_da.tp_address, (tp_da.addr_length + 1) /2, output_bcd);
 
-                ogs_info("I am [%s]", smsf_ue->gpsi);
-                char *msisdn;
-                msisdn = ogs_calloc(1, 15);
-                memcpy(msisdn, (smsf_ue->gpsi) + 7, strlen(smsf_ue->gpsi) - 7);
-                char *msisdn_bcd;
-                msisdn_bcd = ogs_calloc(1, 64);
-                int msisdn_bcd_len;
-                ogs_bcd_to_buffer(
-                    msisdn,
-                    msisdn_bcd, &msisdn_bcd_len);
-                if (msisdn)
-                    ogs_free(msisdn);
-
                 /* Look for the MT MSISDN */
-
                 smsf_ue_t *mt_smsf_ue = NULL;
                 char *mt_gpsi = ogs_msprintf("msisdn-%s", output_bcd);
                 ogs_info("Looking for [%s]", mt_gpsi);
@@ -324,11 +310,23 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     memset(&param, 0, sizeof(param));
 
                     smsf_sms_tpdu_deliver_t tpduDeliver;
+                    //smsf_copy_submit_to_deliver(&tpduDeliver, const? &tpdu_submit, mt_smsf_ue, smsf_ue)
                     memset(&tpduDeliver, 0, sizeof(smsf_sms_tpdu_deliver_t));
                     tpduDeliver.header.tpUDHI = tpdu_submit.header.tpUDHI;
-                    tpduDeliver.header.tpMMS = 1;
-                    
-                    tpduDeliver.tp_originator_address.addr_length = 11;
+                    tpduDeliver.header.tpMMS = 1;  // Could eval DCS for concatenation
+
+                    /* Populate the Sender's MSISDN */
+                    ogs_info("I am [%s]", smsf_ue->gpsi);
+                    char *msisdn;
+                    msisdn = ogs_calloc(1, 15);
+                    memcpy(msisdn, (smsf_ue->gpsi) + 7, strlen(smsf_ue->gpsi) - 7);
+                    char *msisdn_bcd;
+                    msisdn_bcd = ogs_calloc(1, 64);
+                    int msisdn_bcd_len;
+                    ogs_bcd_to_buffer(msisdn, msisdn_bcd, &msisdn_bcd_len);
+                    if (msisdn)
+                        ogs_free(msisdn);
+                    tpduDeliver.tp_originator_address.addr_length = strlen(msisdn);
                     tpduDeliver.tp_originator_address.header.ext = 1;
                     tpduDeliver.tp_originator_address.header.ton = 1;
                     tpduDeliver.tp_originator_address.header.npi = 1;
