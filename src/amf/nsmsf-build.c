@@ -22,7 +22,6 @@
 ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
         amf_ue_t *amf_ue, void *data)
 {
-    ogs_info("temp: activate");
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
     ogs_sbi_server_t *server = NULL;
@@ -33,6 +32,8 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
     ogs_assert(amf_ue);
     ogs_assert(amf_ue->supi);
     ogs_assert(ran_ue_cycle(amf_ue->ran_ue));
+
+    ogs_debug("[%s] Activate SMService", amf_ue->supi);
 
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_PUT;
@@ -133,6 +134,8 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_deactivate(
     ogs_assert(amf_ue);
     ogs_assert(amf_ue->supi);
 
+    ogs_debug("[%s] Deactivate SMService", amf_ue->supi);
+
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_DELETE;
     message.h.service.name =
@@ -158,11 +161,8 @@ end:
 ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
         amf_ue_t *amf_ue, void *data)
 {
-    ogs_info("temp: uplinksms");
-
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
-    // ogs_sbi_server_t *server = NULL;
 
     OpenAPI_sms_record_data_t smsRecordData;
     OpenAPI_ref_to_binary_data_t smsPayload;
@@ -171,6 +171,8 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
 
     ogs_assert(amf_ue);
     ogs_assert(amf_ue->supi);
+
+    ogs_debug("[%s] Sending UplinkSMS", amf_ue->supi);
 
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_POST;

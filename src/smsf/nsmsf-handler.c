@@ -29,11 +29,13 @@ bool smsf_nsmsf_sm_service_handle_activate(
         ogs_sbi_message_t *message)
 {
     int r;
-    ogs_info("Activate");
 
+    ogs_assert(smsf_ue);
     ogs_assert(stream);
     ogs_assert(message);
     
+    ogs_debug("[%s] Activate SMService", smsf_ue->supi);
+
     OpenAPI_ue_sms_context_data_t *UeSmsContextData = NULL;
 
     UeSmsContextData = message->UeSmsContextData;
@@ -75,7 +77,7 @@ bool smsf_nsmsf_sm_service_handle_activate(
     if (UeSmsContextData->gpsi) {
         smsf_ue->gpsi = ogs_strdup(UeSmsContextData->gpsi);
     } else {
-        ogs_info("[%s] No gpsi.  MT SMS will not be possible.", smsf_ue->supi);
+        ogs_error("[%s] No gpsi.  MT SMS will not be possible.", smsf_ue->supi);
     }
 
     // Can remove if we store the elements seperately.
@@ -96,10 +98,12 @@ int smsf_nsmsf_sm_service_handle_deactivate(
         ogs_sbi_message_t *message)
 {
     int r;
-    ogs_info("Deactivate");
 
+    ogs_assert(smsf_ue);
     ogs_assert(stream);
     ogs_assert(message);
+
+    ogs_debug("[%s] Deactivate SMService", smsf_ue->supi);
 
     /* do we go to the nf we already subscribed to? */
     r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
@@ -114,10 +118,11 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message)
 {
-    ogs_info("SMS");
-
+    ogs_assert(smsf_ue);
     ogs_assert(stream);
     ogs_assert(message);
+
+    ogs_debug("[%s] UplinkSMS", smsf_ue->supi);
 
     OpenAPI_sms_record_data_t *SmsRecordData = NULL;
     OpenAPI_ref_to_binary_data_t *sms_payload = NULL;
@@ -171,7 +176,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
     int size = 0;
     size = sizeof(cpheader);
-    ogs_info("This big %d", size);
 
     /* could copy first byte of pkbuf into a variable to read that, then put whole thing in correct structure, then pull. */
     /* cast the buffer onto a header struct gsm_header = (ogs_nas_5gsm_header_t *)payload_container->buffer; */
@@ -179,12 +183,13 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     memcpy(&cpheader, sms_payload_buf->data, sizeof(smsf_sms_cp_hdr_t));
     ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_cp_hdr_t));
 
-    ogs_info("MSGTYHPE: %d", cpheader.sm_service_message_type);
+    ogs_debug("[%s] CP Header Message Type [%d]", smsf_ue->supi,
+            cpheader.sm_service_message_type);
 
     /* these brackets make SWITCH CASE easier */
     switch(cpheader.sm_service_message_type) {
     case 1:
-        ogs_info("CP-Data");
+        ogs_debug("[%s] CP-Data", smsf_ue->supi);
         /* up to 249 bytes of user data follows*/
         smsf_sms_cp_data_t cpdata;
         memcpy(&cpdata, &cpheader, sizeof(smsf_sms_cp_hdr_t));
@@ -192,15 +197,13 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         ogs_pkbuf_pull(sms_payload_buf, 1);
 
         smsf_sms_rpdu_message_type_t rpheader;
-        memcpy(&rpheader, sms_payload_buf->data, sizeof(smsf_sms_rpdu_message_type_t));
+        memcpy(&rpheader, sms_payload_buf->data,
+                sizeof(smsf_sms_rpdu_message_type_t));
         ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_rpdu_message_type_t));
-
-        ogs_info("CP Data Len: %d", cpdata.cp_user_data_length);
-        ogs_info("RPDU Type: %d", rpheader.value);
 
         switch(rpheader.value) {
         case 0:
-            ogs_info("RP-DATA (ms->n)");
+            ogs_debug("[%s] RP-DATA (ms->n)", smsf_ue->supi);
             smsf_sms_rpdata_t rpdu;
             memset(&rpdu, 0, sizeof(smsf_sms_rpdata_t));
 
@@ -216,9 +219,9 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             if (!templen)
                 ogs_error("DA Length Invalid");
 
-            memcpy(&rpdu.rp_destination_address, sms_payload_buf->data, templen + 1);
+            memcpy(&rpdu.rp_destination_address,
+                    sms_payload_buf->data, templen + 1);
             ogs_pkbuf_pull(sms_payload_buf, templen + 1);
-            ogs_info("DA Len: [%d]", rpdu.rp_destination_address.length);
 
             memcpy(&rpdu.rp_user_data_length, sms_payload_buf->data, 1);
             ogs_pkbuf_pull(sms_payload_buf, 1);
@@ -227,15 +230,14 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             smsf_sms_tpdu_hdr_t tpdu_hdr;
 
             memcpy(&tpdu_hdr, sms_payload_buf->data, sizeof(tpdu_hdr));
-            ogs_info("MTI: [%d]", tpdu_hdr.tpMTI);
 
             switch(tpdu_hdr.tpMTI) {
             case 0:
-                ogs_info("SMS-DELIVER Report (ms->n)");
-                ogs_info("Sending CP-Ack");
+                ogs_debug("[%s] SMS-DELIVER Report (ms->n)", smsf_ue->supi);
 
                 memset(&param, 0, sizeof(param));
-                param.n1smbuf = smsf_sms_encode_cp_ack(true, cpheader.flags.tio);
+                param.n1smbuf = smsf_sms_encode_cp_ack(true,
+                        cpheader.flags.tio);
                 ogs_assert(param.n1smbuf);
 
                 smsf_namf_comm_send_n1_n2_message_transfer(
@@ -243,19 +245,18 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 break;
 
             case 1:
-                ogs_info("SMS-SUBMIT (ms->n)");
+                ogs_debug("[%s] SMS-SUBMIT (ms->n)", smsf_ue->supi);
 
                 smsf_sms_tpdu_submit_t tpdu_submit;
                 memset(&tpdu_submit, 0, sizeof(smsf_sms_tpdu_submit_t));
                 memcpy(&tpdu_submit, sms_payload_buf->data, 2);
                 ogs_pkbuf_pull(sms_payload_buf, 2);
                 memcpy(&templen, sms_payload_buf->data, 1);
-                memcpy(&tpdu_submit.tp_destination_address, sms_payload_buf->data, 2 + ((templen + 1) / 2));
+                memcpy(&tpdu_submit.tp_destination_address,
+                        sms_payload_buf->data, 2 + ((templen + 1) / 2));
                 ogs_pkbuf_pull(sms_payload_buf, 2 + ((templen + 1) / 2));   // Address length, Address type, address itself
                 memcpy(&tpdu_submit.tpPID, sms_payload_buf->data, 3);       // PID, DCS, UDL
                 ogs_pkbuf_pull(sms_payload_buf, 3);
-
-                ogs_info("TP DA Len: [%d]", tpdu_submit.tp_destination_address.addr_length);
 
                 int tpdurealbytes;
                 if (!tpdu_submit.tpDCS) {
@@ -263,8 +264,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 } else {
                     tpdurealbytes = tpdu_submit.tpUDL;
                 }
-
-                ogs_info("TP UD Len [size/real]: [%d/%d]", tpdu_submit.tpUDL, tpdurealbytes);
 
                 memcpy(&tpdu_submit.tpUD, sms_payload_buf->data, tpdurealbytes);
 
@@ -275,12 +274,13 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 char *output_bcd;
                 output_bcd = ogs_calloc(1, 22+1);
                 tp_da = tpdu_submit.tp_destination_address;
-                ogs_buffer_to_bcd(tp_da.tp_address, (tp_da.addr_length + 1) /2, output_bcd);
+                ogs_buffer_to_bcd(tp_da.tp_address, (tp_da.addr_length + 1) /2,
+                        output_bcd);
 
                 /* Look for the MT MSISDN */
                 smsf_ue_t *mt_smsf_ue = NULL;
                 char *mt_gpsi = ogs_msprintf("msisdn-%s", output_bcd);
-                ogs_info("Looking for [%s]", mt_gpsi);
+                ogs_debug("[%s] Looking for [%s]", smsf_ue->supi, mt_gpsi);
                 mt_smsf_ue = smsf_ue_find_by_gpsi(mt_gpsi);
                 if (!mt_smsf_ue)
                     ogs_error("Can't find MT Sub");
@@ -292,10 +292,11 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                 /* Send CP-Ack to MO UE */
                 //int r;
-                ogs_info("Sending CP-Ack");
+                ogs_debug("[%s] SMS-SUBMIT (ms->n)", smsf_ue->supi);
 
                 memset(&param, 0, sizeof(param));
-                param.n1smbuf = smsf_sms_encode_cp_ack(true, cpheader.flags.tio);
+                param.n1smbuf = smsf_sms_encode_cp_ack(true,
+                        cpheader.flags.tio);
                 ogs_assert(param.n1smbuf);
 
                 smsf_namf_comm_send_n1_n2_message_transfer(
@@ -305,7 +306,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                 if (mt_smsf_ue) {
                     /* Send CP-DATA to MT UE */
-                    ogs_info("Sending CP-DATA");
+                    ogs_debug("[%s] Sending CP-DATA", mt_smsf_ue->supi);
 
                     memset(&param, 0, sizeof(param));
 
@@ -316,21 +317,23 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     tpduDeliver.header.tpMMS = 1;  // Could eval DCS for concatenation
 
                     /* Populate the Sender's MSISDN */
-                    ogs_info("I am [%s]", smsf_ue->gpsi);
                     char *msisdn;
                     msisdn = ogs_calloc(1, 15);
-                    memcpy(msisdn, (smsf_ue->gpsi) + 7, strlen(smsf_ue->gpsi) - 7);
+                    memcpy(msisdn, (smsf_ue->gpsi) + 7,
+                            strlen(smsf_ue->gpsi) - 7);
                     char *msisdn_bcd;
                     msisdn_bcd = ogs_calloc(1, 64);
                     int msisdn_bcd_len;
                     ogs_bcd_to_buffer(msisdn, msisdn_bcd, &msisdn_bcd_len);
                     if (msisdn)
                         ogs_free(msisdn);
-                    tpduDeliver.tp_originator_address.addr_length = strlen(msisdn);
+                    tpduDeliver.tp_originator_address.addr_length =
+                            strlen(msisdn);
                     tpduDeliver.tp_originator_address.header.ext = 1;
                     tpduDeliver.tp_originator_address.header.ton = 1;
                     tpduDeliver.tp_originator_address.header.npi = 1;
-                    memcpy(&tpduDeliver.tp_originator_address.tp_address, msisdn_bcd, msisdn_bcd_len);
+                    memcpy(&tpduDeliver.tp_originator_address.tp_address,
+                            msisdn_bcd, msisdn_bcd_len);
 
                     tpduDeliver.tpPID = tpdu_submit.tpPID;
                     tpduDeliver.tpDCS = tpdu_submit.tpDCS;
@@ -347,18 +350,22 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     if (mt_smsf_ue->mt_tio > 7)
                         mt_smsf_ue->mt_tio = 0;
 
-                    param.n1smbuf = smsf_sms_encode_rp_data(false, mt_smsf_ue->mt_tio, mt_smsf_ue->mt_message_reference, &tpduDeliver);
+                    param.n1smbuf = smsf_sms_encode_rp_data(false,
+                            mt_smsf_ue->mt_tio,
+                            mt_smsf_ue->mt_message_reference,
+                            &tpduDeliver);
 
                     ogs_assert(param.n1smbuf);
 
-                    smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue, stream, &param);
+                    smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue,
+                            stream, &param);
 
                     if (msisdn_bcd)
                         ogs_free(msisdn_bcd);
                 }
                 /* Send RP-ACK to MO UE */
                 //int r;
-                ogs_info("Sending RP-Ack");
+                ogs_debug("[%s] Sending RP-Ack", smsf_ue->supi);
 
                 memset(&param, 0, sizeof(param));
                 param.n1smbuf = smsf_sms_encode_rp_ack(
@@ -371,11 +378,13 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 break;
 
             case 2:
-                ogs_info("SMS-COMMAND (ms->n)");
+                ogs_debug("[%s] SMS-COMMAND (ms->n)", smsf_ue->supi);
                 break;
 
             default:
-                ogs_info("Undefined TPDU Message Type for ms->n");
+                ogs_error("[%s] Undefined TPDU Message Type for ms->n [%d]",
+                        smsf_ue->supi, tpdu_hdr.tpMTI);
+
                 /* goto end, send nsmf error response */
                 return false;
             }
@@ -391,15 +400,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
             // ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
 
-
-
-
-
-
-            break;
-
         case 2:
-            ogs_info("RP-ACK (ms->n)");
+            ogs_debug("[%s] RP-ACK (ms->n)", smsf_ue->supi);
             // Sending CP-ACK //
             memset(&param, 0, sizeof(param));
             param.n1smbuf = smsf_sms_encode_cp_ack(false, cpheader.flags.tio);
@@ -410,31 +412,33 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             break;
 
         case 4:
-            ogs_info("RP-ERROR (ms->n)");
+            ogs_debug("[%s] RP-ERROR (ms->n)", smsf_ue->supi);
             break;
 
         case 6:
-            ogs_info("RP-SMMA (ms->n)");
+            ogs_debug("[%s] RP-SMMA (ms->n)", smsf_ue->supi);
             break;
 
         default:
-            ogs_info("Undefined RPDU Message Type for ms->n");
+            ogs_error("[%s] Undefined RPDU Message Type for ms->n [%d]",
+                    smsf_ue->supi, rpheader.value);
             /* goto end, send nsmf error response */
             return false;
         }
 
         break;
     case 4:
-        ogs_info("CP-ACK");
+        ogs_debug("[%s] CP-ACK", smsf_ue->supi);
         /* no bytes follow */
         break;
     case 16:
-        ogs_info("CP-Error");
+        ogs_debug("[%s] CP-ERROR", smsf_ue->supi);
         /* 1 byte cp-cause follows */
         break;
 
     default:
-        ogs_info("Undefined CP Message Type");
+        ogs_error("[%s] Undefined CP Message Type [%d]",
+                smsf_ue->supi, cpheader.sm_service_message_type);
         /* goto end, send nsmf error response */
         return false;
     }
