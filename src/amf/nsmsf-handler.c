@@ -32,7 +32,6 @@ int amf_nsmsf_sm_service_handle_activate(
     int r;
 
     UeSmsContextData = recvmsg->UeSmsContextData;
-
     if (!UeSmsContextData) {
         ogs_error("[%s] No UeSmsContextData", amf_ue->supi);
         r = nas_5gs_send_gmm_reject_from_sbi(
@@ -83,6 +82,29 @@ int amf_nsmsf_sm_service_handle_deactivate(
 int amf_nsmsf_sm_service_handle_uplink_sms(
         amf_ue_t *amf_ue, ogs_sbi_message_t *recvmsg)
 {
-    ogs_info("Uplink SMS was submitted.");
+    OpenAPI_sms_record_delivery_data_t *SmsRecordDeliveryData = NULL;
+
+    ogs_assert(amf_ue);
+
+    int r;
+
+    SmsRecordDeliveryData = recvmsg->SmsRecordDeliveryData;
+    if (!SmsRecordDeliveryData) {
+        ogs_error("[%s] No SmsRecordDeliveryData", amf_ue->supi);
+        return OGS_ERROR;
+    }
+
+    if (!SmsRecordDeliveryData->sms_record_id) {
+        ogs_error("[%s] No smsRecordId", amf_ue->supi);
+        return OGS_ERROR;
+    }
+
+    if (!SmsRecordDeliveryData->delivery_status) {
+        ogs_error("[%s] No deliveryStatus", amf_ue->supi);
+        return OGS_ERROR;
+    }
+    
+    ogs_debug("[%s] Uplink SMS was submitted", amf_ue->supi);
+
     return OGS_OK;
 }
