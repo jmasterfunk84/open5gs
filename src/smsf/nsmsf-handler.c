@@ -174,9 +174,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     smsf_sms_cp_hdr_t cpheader;
     smsf_n1_n2_message_transfer_param_t param;
 
-    int size = 0;
-    size = sizeof(cpheader);
-
     /* could copy first byte of pkbuf into a variable to read that, then put whole thing in correct structure, then pull. */
     /* cast the buffer onto a header struct gsm_header = (ogs_nas_5gsm_header_t *)payload_container->buffer; */
 
@@ -388,17 +385,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 /* goto end, send nsmf error response */
                 return false;
             }
-
-            // smsf_sms_address_t rp_da;
-            // char outbuf[30] = {0};
-            // ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
-
-            // /* that's just the smsc!*/
-            // rp_da = rpdu.rp_destination_address;
-
-            // ogs_buffer_to_bcd(rp_da.rp_address, (rpdu.rp_destination_address.length - 1), outbuf);
-
-            // ogs_log_hexdump(OGS_LOG_INFO, outbuf, 15);
+            break;
 
         case 2:
             ogs_debug("[%s] RP-ACK (ms->n)", smsf_ue->supi);
