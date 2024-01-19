@@ -111,7 +111,7 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
     n2InfoContainer = N1N2MessageTransferReqData->n2_info_container;
     if (n2InfoContainer) {
         n2InformationClass = n2InfoContainer->n2_information_class;
-        if (!n2InformationClass)
+        if (!n2InformationClass) {
             ogs_error("No n2InformationClass");
             return OGS_ERROR;
         }
