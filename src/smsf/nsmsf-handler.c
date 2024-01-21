@@ -77,7 +77,7 @@ bool smsf_nsmsf_sm_service_handle_activate(
     if (UeSmsContextData->gpsi) {
         smsf_ue->gpsi = ogs_strdup(UeSmsContextData->gpsi);
     } else {
-        ogs_error("[%s] No gpsi.  MT SMS will not be possible.", smsf_ue->supi);
+        ogs_error("[%s] No gpsi.  SMS-MT will not be possible", smsf_ue->supi);
     }
 
     // Can remove if we store the elements seperately.
@@ -231,6 +231,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             switch(tpdu_hdr.tpMTI) {
             case 0:
                 ogs_debug("[%s] SMS-DELIVER Report (ms->n)", smsf_ue->supi);
+                ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
 
                 memset(&param, 0, sizeof(param));
                 param.n1smbuf = smsf_sms_encode_cp_ack(true,
@@ -280,7 +281,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 ogs_debug("[%s] Looking for [%s]", smsf_ue->supi, mt_gpsi);
                 mt_smsf_ue = smsf_ue_find_by_gpsi(mt_gpsi);
                 if (!mt_smsf_ue)
-                    ogs_error("Can't find MT Sub");
+                    ogs_error("[%s] No context with msisdn [%s]",
+                            smsf_ue->supi, mt_gpsi);
 
                 if (mt_gpsi)
                     ogs_free(mt_gpsi);
@@ -289,7 +291,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                 /* Send CP-Ack to MO UE */
                 //int r;
-                ogs_debug("[%s] SMS-SUBMIT (ms->n)", smsf_ue->supi);
+                ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
 
                 memset(&param, 0, sizeof(param));
                 param.n1smbuf = smsf_sms_encode_cp_ack(true,
@@ -389,7 +391,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
         case 2:
             ogs_debug("[%s] RP-ACK (ms->n)", smsf_ue->supi);
-            // Sending CP-ACK //
+            ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
+
             memset(&param, 0, sizeof(param));
             param.n1smbuf = smsf_sms_encode_cp_ack(false, cpheader.flags.tio);
             ogs_assert(param.n1smbuf);

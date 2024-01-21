@@ -62,8 +62,6 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
 
     tpdu_oa_real_length = ((tpdu->tp_originator_address.addr_length + 1) /2);
 
-    ogs_info("Real Bytes: [%d]", tpdurealbytes);
-
     cp_data.header.flags.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
     cp_data.header.flags.tio = ti_o;
     cp_data.header.flags.tif = ti_flag;

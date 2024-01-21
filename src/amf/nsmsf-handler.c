@@ -86,8 +86,6 @@ int amf_nsmsf_sm_service_handle_uplink_sms(
 
     ogs_assert(amf_ue);
 
-    int r;
-
     SmsRecordDeliveryData = recvmsg->SmsRecordDeliveryData;
     if (!SmsRecordDeliveryData) {
         ogs_error("[%s] No SmsRecordDeliveryData", amf_ue->supi);
