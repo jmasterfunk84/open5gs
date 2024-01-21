@@ -679,6 +679,8 @@ bool udm_nudm_sdm_handle_subscription_create(
 
     OpenAPI_sdm_subscription_t *SDMSubscription = NULL;
 
+    udm_sdm_subscription_t *sdm_subscription = NULL;
+
     ogs_assert(udm_ue);
     ogs_assert(stream);
     ogs_assert(recvmsg);
@@ -717,13 +719,11 @@ bool udm_nudm_sdm_handle_subscription_create(
         return false;
     }
 
-    /* does this only keep track of a single subscription? Damn, we need a list now? */
-    /* maybe list sess_list in amf_ue */
-    if (udm_ue->data_change_callback_uri)
-        ogs_free(udm_ue->data_change_callback_uri);
-    udm_ue->data_change_callback_uri =
-        ogs_strdup(SDMSubscription->callback_reference);
+    sdm_subscription = udm_sdm_subscription_add(udm_ue);
+    ogs_assert(sdm_subscription);
 
+    sdm_subscription->data_change_callback_uri =
+        ogs_strdup(SDMSubscription->callback_reference);
 
     server = ogs_sbi_server_from_stream(stream);
     ogs_assert(server);
@@ -734,8 +734,7 @@ bool udm_nudm_sdm_handle_subscription_create(
     header.resource.component[0] = udm_ue->supi;
     header.resource.component[1] =
             (char *)OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS;
-    /* TODO: subscription id */
-    header.resource.component[2] = udm_ue->ctx_id;
+    header.resource.component[2] = sdm_subscription->id;
 
     memset(&sendmsg, 0, sizeof(sendmsg));
     sendmsg.http.location = ogs_sbi_server_uri(server, &header);
@@ -758,22 +757,34 @@ bool udm_nudm_sdm_handle_subscription_delete(
 {
     ogs_sbi_message_t sendmsg;
     ogs_sbi_response_t *response = NULL;
-    ogs_sbi_server_t *server = NULL;
+    udm_sdm_subscription_t *sdm_subscription;
 
     ogs_assert(udm_ue);
     ogs_assert(stream);
     ogs_assert(recvmsg);
 
-    /* May need to figure out if that's an AMF or SMSF deleting a subscription.*/
-    /* literally no checking here, and would delete any subscription */
 
-    if (udm_ue->data_change_callback_uri) {
-        ogs_free(udm_ue->data_change_callback_uri);
-        udm_ue->data_change_callback_uri = NULL;
+    if (!recvmsg->h.resource.component[2]) {
+        ogs_error("[%s] No subscriptionID", udm_ue->supi);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                recvmsg, "No subscriptionID", udm_ue->supi));
+        return false;
     }
+    sdm_subscription = udm_sdm_subscription_find_by_id(
+            recvmsg->h.resource.component[2]);
 
-    server = ogs_sbi_server_from_stream(stream);
-    ogs_assert(server);
+    if (sdm_subscription) {
+        udm_sdm_subscription_remove(sdm_subscription);
+    } else {
+        ogs_error("Subscription to be deleted does not exist [%s]", 
+                recvmsg->h.resource.component[2]);
+        ogs_assert(true ==
+            ogs_sbi_server_send_error(
+                stream, OGS_SBI_HTTP_STATUS_NOT_FOUND,
+                recvmsg, "Subscription Not found", recvmsg->h.method));
+        return false;
+    }
 
     memset(&sendmsg, 0, sizeof(sendmsg));
     response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);

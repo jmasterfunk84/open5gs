@@ -482,11 +482,8 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
 
             SWITCH(sbi_message.h.resource.component[2])
             CASE(OGS_SBI_RESOURCE_NAME_MODIFY)
-                rv = amf_nsmf_pdusession_handle_update_sm_context(
+                amf_nsmf_pdusession_handle_update_sm_context(
                         sess, state, &sbi_message);
-                if (rv != OGS_OK) {
-                    AMF_SESS_CLEAR(sess);
-                }
                 break;
 
             CASE(OGS_SBI_RESOURCE_NAME_RELEASE)
@@ -697,9 +694,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                     break;
                 }
 
-                amf_ue = sess->amf_ue;
-                ogs_assert(amf_ue);
-                amf_ue = amf_ue_cycle(amf_ue);
+                amf_ue = amf_ue_cycle(sess->amf_ue);
                 if (!amf_ue) {
                     ogs_error("UE(amf_ue) Context has already been removed");
                     break;
@@ -708,13 +703,13 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                 ogs_error("[%d:%d] Cannot receive SBI message",
                         sess->psi, sess->pti);
                 if (sess->payload_container_type) {
-                    r = nas_5gs_send_back_gsm_message(sess,
+                    r = nas_5gs_send_back_gsm_message(sess->ran_ue, sess,
                             OGS_5GMM_CAUSE_PAYLOAD_WAS_NOT_FORWARDED,
                             AMF_NAS_BACKOFF_TIME);
                     ogs_expect(r == OGS_OK);
                     ogs_assert(r != OGS_ERROR);
                 } else {
-                    r = ngap_send_error_indication2(amf_ue,
+                    r = ngap_send_error_indication2(sess->ran_ue,
                             NGAP_Cause_PR_transport,
                             NGAP_CauseTransport_transport_resource_unavailable);
                     ogs_expect(r == OGS_OK);
