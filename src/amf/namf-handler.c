@@ -529,15 +529,10 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
                 return OGS_ERROR;
             }
 
-            /* Check if actually registered? */
             if (CM_IDLE(amf_ue)) {
                 status = OGS_SBI_HTTP_STATUS_ACCEPTED;
                 N1N2MessageTransferRspData.cause =
                     OpenAPI_n1_n2_message_transfer_cause_ATTEMPTING_TO_REACH_UE;
-
-                /* Store Paging Info */
-                //AMF_SESS_STORE_PAGING_INFO(
-                //        sess, sendmsg.http.location, NULL);
 
                 /* Store 5GSM Message */
                 AMF_UE_STORE_N1_PAGING_MESSAGE(amf_ue,
@@ -548,22 +543,10 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
                 ogs_expect(r == OGS_OK);
                 ogs_assert(r != OGS_ERROR);
             } else if (CM_CONNECTED(amf_ue)) {
-                ran_ue = ran_ue_cycle(amf_ue->ran_ue);
-
-                /* Should be moved to a function */
-                if (n1buf) {
-                    gmmbuf = gmm_build_sms_dl_nas_transport(amf_ue,
-                            OGS_NAS_PAYLOAD_CONTAINER_SMS, n1buf);
-                    ogs_assert(gmmbuf);
-                }
-
-                if (!gmmbuf) {
-                    ogs_error("gmm_build_status() failed");
-                    return OGS_ERROR;
-                }
-
-                r = nas_5gs_send_to_downlink_nas_transport(ran_ue, amf_ue, gmmbuf);
+                r = nas_5gs_send_downlink_sms(amf_ue_t *amf_ue,
+                        ogs_pkbuf_t *pkbuf);
                 ogs_expect(r == OGS_OK);
+                ogs_assert(r != OGS_ERROR);
             }
 
 

@@ -1094,23 +1094,10 @@ void ngap_handle_initial_context_setup_response(
     } else if (DOWNLINK_UE_SIGNALLING_PENDING(amf_ue) == true) {
         switch(amf_ue->paging.n1MessageClass) {
         case OpenAPI_n1_message_class_SMS:
-            ran_ue = ran_ue_cycle(amf_ue->ran_ue);
-
-            /* Should be moved to a function */
-            ogs_pkbuf_t *gmmbuf = NULL;
-            if (amf_ue->paging.n1buf) {
-                gmmbuf = gmm_build_sms_dl_nas_transport(amf_ue,
-                        OGS_NAS_PAYLOAD_CONTAINER_SMS, amf_ue->paging.n1buf);
-                ogs_assert(gmmbuf);
-            }
-
-            if (!gmmbuf) {
-                ogs_error("gmm_build_status() failed");
-                //return OGS_ERROR;
-            }
-
-            r = nas_5gs_send_to_downlink_nas_transport(ran_ue, amf_ue, gmmbuf);
+            r = nas_5gs_send_downlink_sms(amf_ue_t *amf_ue,
+                    ogs_pkbuf_t *pkbuf);
             ogs_expect(r == OGS_OK);
+            ogs_assert(r != OGS_ERROR);
 
             AMF_UE_CLEAR_N1_PAGING_INFO(amf_ue);
 
