@@ -183,6 +183,8 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
     message.h.resource.component[1] = amf_ue->supi;
     message.h.resource.component[2] = (char *)OGS_SBI_RESOURCE_NAME_SEND_SMS;
 
+    memset(&smsRecordData, 0, sizeof(smsRecordData));
+
     memset(&ueLocation, 0, sizeof(ueLocation));
     ueLocation.nr_location = ogs_sbi_build_nr_location(
             &amf_ue->nr_tai, &amf_ue->nr_cgi);
@@ -203,8 +205,6 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_uplink_sms(
         ogs_error("No time_zone");
         goto end;
     }
-
-    memset(&smsRecordData, 0, sizeof(smsRecordData));
 
     smsRecordData.sms_record_id = (char *)"1";
     if (!smsRecordData.sms_record_id) {
