@@ -543,7 +543,7 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
                 ogs_expect(r == OGS_OK);
                 ogs_assert(r != OGS_ERROR);
             } else if (CM_CONNECTED(amf_ue)) {
-            r = nas_5gs_send_downlink_sms(amf_ue, pkbuf);
+            r = nas_5gs_send_downlink_sms(amf_ue, n1buf);
                 ogs_expect(r == OGS_OK);
                 ogs_assert(r != OGS_ERROR);
             }

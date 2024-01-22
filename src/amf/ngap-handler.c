@@ -1094,7 +1094,7 @@ void ngap_handle_initial_context_setup_response(
     } else if (DOWNLINK_UE_SIGNALLING_PENDING(amf_ue) == true) {
         switch(amf_ue->paging.n1MessageClass) {
         case OpenAPI_n1_message_class_SMS:
-            r = nas_5gs_send_downlink_sms(amf_ue, n1buf);
+            r = nas_5gs_send_downlink_sms(amf_ue, amf_ue->paging.n1buf);
             ogs_expect(r == OGS_OK);
             ogs_assert(r != OGS_ERROR);
 
