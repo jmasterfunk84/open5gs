@@ -194,7 +194,7 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
 
             if (n1buf) {
                 gmmbuf = gmm_build_dl_nas_transport(sess,
-                        OGS_NAS_PAYLOAD_CONTAINER_N1_SM_INFORMATION, 
+                        OGS_NAS_PAYLOAD_CONTAINER_N1_SM_INFORMATION,
                         n1buf, 0, 0);
                 ogs_assert(gmmbuf);
             }
@@ -204,21 +204,21 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
                  * 4.3.2 PDU Session Establishment *
                  ***********************************/
 
-               ran_ue = ran_ue_cycle(sess->ran_ue);
-               if (ran_ue) {
-                   if (sess->pdu_session_establishment_accept) {
-                       ogs_pkbuf_free(sess->pdu_session_establishment_accept);
-                       sess->pdu_session_establishment_accept = NULL;
-                   }
+                ran_ue = ran_ue_cycle(sess->ran_ue);
+                if (ran_ue) {
+                    if (sess->pdu_session_establishment_accept) {
+                        ogs_pkbuf_free(sess->pdu_session_establishment_accept);
+                        sess->pdu_session_establishment_accept = NULL;
+                    }
 
                     if (ran_ue->initial_context_setup_request_sent == true) {
                         ngapbuf =
                             ngap_sess_build_pdu_session_resource_setup_request(
-                                ran_ue, gmmbuf, n2buf);
+                                ran_ue, sess, gmmbuf, n2buf);
                         ogs_assert(ngapbuf);
                     } else {
                         ngapbuf = ngap_sess_build_initial_context_setup_request(
-                                ran_ue, gmmbuf, n2buf);
+                                ran_ue, sess, gmmbuf, n2buf);
                         ogs_assert(ngapbuf);
 
                         ran_ue->initial_context_setup_request_sent = true;
@@ -283,7 +283,7 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
                         client = ogs_sbi_client_add(
                                 scheme, fqdn, fqdn_port, addr, addr6);
                         if (!client) {
-                            ogs_error("%s: ogs_sbi_client_add() failed", 
+                            ogs_error("%s: ogs_sbi_client_add() failed",
                                     OGS_FUNC);
 
                             ogs_free(fqdn);
