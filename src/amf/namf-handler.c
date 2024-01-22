@@ -540,7 +540,7 @@ int amf_namf_comm_handle_n1_n2_message_transfer(
                 //        sess, sendmsg.http.location, NULL);
 
                 /* Store 5GSM Message */
-                AMF_UE_STORE_N1_MESSAGE(amf_ue,
+                AMF_UE_STORE_N1_PAGING_MESSAGE(amf_ue,
                         OpenAPI_n1_message_class_SMS,
                         n1buf);
 

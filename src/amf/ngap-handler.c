@@ -1106,7 +1106,7 @@ void ngap_handle_initial_context_setup_response(
 
             if (!gmmbuf) {
                 ogs_error("gmm_build_status() failed");
-                return OGS_ERROR;
+                //return OGS_ERROR;
             }
 
             r = nas_5gs_send_to_downlink_nas_transport(ran_ue, amf_ue, gmmbuf);
@@ -1117,7 +1117,7 @@ void ngap_handle_initial_context_setup_response(
             break;
         default:
             ogs_fatal("Not implemented n1MessageClass[%d]",
-                    n1MessageClass);
+                    amf_ue->paging.n1MessageClass);
             ogs_assert_if_reached();
         }
     } else if (PAGING_ONGOING(amf_ue) == true) {

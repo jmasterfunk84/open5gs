@@ -493,6 +493,30 @@ struct amf_ue_s {
         ogs_assert((__aMF)); \
         (__aMF)->sm_service_activated = false; \
 
+    struct {
+#define AMF_UE_CLEAR_N1_PAGING_INFO(__aMF) \
+    do { \
+        ogs_assert(__aMF); \
+        ogs_debug("[%s] Clear N1 Paging Info", (__aMF)->supi); \
+        (__aMF)->paging.n1MessageClass = OpenAPI_n1_message_class_NULL; \
+    } while(0)
+
+#define AMF_UE_STORE_N1_PAGING_MESSAGE(__aMF, __mESSAGECLASS, __n1BUF) \
+    do { \
+        ogs_assert(__aMF); \
+        ogs_assert(__mESSAGECLASS); \
+        ogs_debug("[%s] Store N1 Paging Info", (__aMF)->supi); \
+        (__aMF)->paging.n1MessageClass = __mESSAGECLASS; \
+        (__aMF)->paging.n1buf = __n1BUF; \
+    } while(0)
+
+
+#define AMF_UE_PAGING_ONGOING(__aMF) ((__aMF) && \
+        ((__aMF)->paging.n1MessageClass))
+
+        int n1MessageClass;
+        ogs_pkbuf_t *n1buf;
+    } paging;
 
     bool            sms_over_nas_supported;
     bool            sms_subscribed;
@@ -692,30 +716,6 @@ typedef struct amf_sess_s {
             AMF_SESS_CLEAR_5GSM_MESSAGE(sess) \
         } \
     } while(0);
-
-    struct {
-#define AMF_UE_CLEAR_N1_PAGING_INFO(__aMF) \
-    do { \
-        ogs_assert(__aMF); \
-        ogs_debug("[%s] Clear N1 Paging Info", (__aMF)->supi); \
-        (__aMF)->paging.n1MessageClass = OpenAPI_n1_message_class_NULL; \
-    } while(0)
-
-#define AMF_UE_STORE_N1_PAGING_MESSAGE(__aMF, __mESSAGECLASS, __dATA) \
-    do { \
-        ogs_assert(__aMF); \
-        ogs_assert(__tYPE); \
-        ogs_debug("[%s] Store N1 Paging Info", (__aMF)->supi)); \
-        (__aMF)->paging.n1MessageClass = __mESSAGECLASS; \
-        (__aMF)->paging.data = __dATA; \
-    } while(0)
-
-#define AMF_UE_PAGING_ONGOING(__aMF) ((__aMF) &&
-        ((__aMF)->paging.n1MessageClass))
-
-        int n1MessageClass;
-        void *data;
-    } paging;
 
     struct {
         char *nsi_id;
