@@ -361,6 +361,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                     if (msisdn_bcd)
                         ogs_free(msisdn_bcd);
+                    /* There's a timestamp somewhere that needs to be freed */
                 }
                 /* Send RP-ACK to MO UE */
                 //int r;

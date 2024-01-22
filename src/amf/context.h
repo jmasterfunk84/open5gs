@@ -694,6 +694,30 @@ typedef struct amf_sess_s {
     } while(0);
 
     struct {
+#define AMF_UE_CLEAR_N1_PAGING_INFO(__aMF) \
+    do { \
+        ogs_assert(__aMF); \
+        ogs_debug("[%s] Clear N1 Paging Info", (__aMF)->supi); \
+        (__aMF)->paging.n1MessageClass = OpenAPI_n1_message_class_NULL; \
+    } while(0)
+
+#define AMF_UE_STORE_N1_PAGING_MESSAGE(__aMF, __mESSAGECLASS, __dATA) \
+    do { \
+        ogs_assert(__aMF); \
+        ogs_assert(__tYPE); \
+        ogs_debug("[%s] Store N1 Paging Info", (__aMF)->supi)); \
+        (__aMF)->paging.n1MessageClass = __mESSAGECLASS; \
+        (__aMF)->paging.data = __dATA; \
+    } while(0)
+
+#define AMF_UE_PAGING_ONGOING(__aMF) ((__aMF) &&
+        ((__aMF)->paging.n1MessageClass))
+
+        int n1MessageClass;
+        void *data;
+    } paging;
+
+    struct {
         char *nsi_id;
         struct {
             char *id;
@@ -871,9 +895,12 @@ bool amf_handover_request_transfer_needed(amf_ue_t *amf_ue);
 #define PAGING_ONGOING(__aMF) \
     (amf_paging_ongoing(__aMF) == true)
 bool amf_paging_ongoing(amf_ue_t *amf_ue);
-#define DOWNLINK_SIGNALLING_PENDING(__aMF) \
-    (amf_downlink_signalling_pending(__aMF) == true)
-bool amf_downlink_signalling_pending(amf_ue_t *amf_ue);
+#define DOWNLINK_SESS_SIGNALLING_PENDING(__aMF) \
+    (amf_downlink_sess_signalling_pending(__aMF) == true)
+bool amf_downlink_sess_signalling_pending(amf_ue_t *amf_ue);
+#define DOWNLINK_UE_SIGNALLING_PENDING(__aMF) \
+    (amf_downlink_ue_signalling_pending(__aMF) == true)
+bool amf_downlink_ue_signalling_pending(amf_ue_t *amf_ue);
 
 int amf_find_served_tai(ogs_5gs_tai_t *nr_tai);
 ogs_s_nssai_t *amf_find_s_nssai(
