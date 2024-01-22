@@ -641,6 +641,7 @@ int nas_5gs_send_configuration_update_command(
 int nas_5gs_send_downlink_sms(amf_ue_t *amf_ue, ogs_pkbuf_t *pkbuf)
 {
     int rv;
+    ran_ue_t *ran_ue = NULL;
     ogs_pkbuf_t *gmmbuf = NULL;
 
     ogs_assert(amf_ue);
