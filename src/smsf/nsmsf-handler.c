@@ -277,7 +277,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                 /* Look for the MT MSISDN */
                 smsf_ue_t *mt_smsf_ue = NULL;
-                char *mt_gpsi = ogs_msprintf("msisdn-%s", output_bcd);
+                char *mt_gpsi = ogs_msprintf("%s-%s", OGS_ID_GPSI_TYPE_MSISDN,
+                        output_bcd);
                 ogs_debug("[%s] Looking for [%s]", smsf_ue->supi, mt_gpsi);
                 mt_smsf_ue = smsf_ue_find_by_gpsi(mt_gpsi);
                 if (!mt_smsf_ue)
@@ -316,23 +317,28 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     tpduDeliver.header.tpMMS = 1;  // Could eval DCS for concatenation
 
                     /* Populate the Sender's MSISDN */
-                    char *msisdn;
-                    msisdn = ogs_calloc(1, 15);
-                    memcpy(msisdn, (smsf_ue->gpsi) + 7,
-                            strlen(smsf_ue->gpsi) - 7);
-                    char *msisdn_bcd;
-                    msisdn_bcd = ogs_calloc(1, 64);
-                    int msisdn_bcd_len;
-                    ogs_bcd_to_buffer(msisdn, msisdn_bcd, &msisdn_bcd_len);
-                    if (msisdn)
-                        ogs_free(msisdn);
+                    char *oa_msisdn;
+                    if (strncmp(smsf_ue->gpsi, OGS_ID_GPSI_TYPE_MSISDN,
+                            strlen(OGS_ID_GPSI_TYPE_MSISDN)) == 0) {
+                        oa_msisdn = ogs_id_get_value(smsf_ue->gpsi);
+                        ogs_assert(oa_msisdn);
+                    } else {
+                        ogs_error("SMS-MO without MSISDN");
+                    }
+                    char *oa_msisdn_bcd;
+                    oa_msisdn_bcd = ogs_calloc(1, OGS_MAX_MSISDN_BCD_LEN+1);
+                    int oa_msisdn_bcd_len;
+                    ogs_bcd_to_buffer(oa_msisdn, oa_msisdn_bcd,
+                            &oa_msisdn_bcd_len);
+                    if (oa_msisdn)
+                        ogs_free(oa_msisdn);
                     tpduDeliver.tp_originator_address.addr_length =
-                            strlen(msisdn);
+                            strlen(oa_msisdn);
                     tpduDeliver.tp_originator_address.header.ext = 1;
                     tpduDeliver.tp_originator_address.header.ton = 1;
                     tpduDeliver.tp_originator_address.header.npi = 1;
                     memcpy(&tpduDeliver.tp_originator_address.tp_address,
-                            msisdn_bcd, msisdn_bcd_len);
+                            oa_msisdn_bcd, oa_msisdn_bcd_len);
 
                     tpduDeliver.tpPID = tpdu_submit.tpPID;
                     tpduDeliver.tpDCS = tpdu_submit.tpDCS;
@@ -359,8 +365,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue,
                             stream, &param);
 
-                    if (msisdn_bcd)
-                        ogs_free(msisdn_bcd);
+                    if (oa_msisdn_bcd)
+                        ogs_free(oa_msisdn_bcd);
                     /* There's a timestamp somewhere that needs to be freed */
                 }
                 /* Send RP-ACK to MO UE */

@@ -705,6 +705,8 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
                     }
                 }
 
+                /* Check for UE Paging here. */
+
                 AMF_UE_CLEAR_PAGING_INFO(amf_ue);
                 AMF_UE_CLEAR_N2_TRANSFER(
                         amf_ue, pdu_session_resource_setup_request);
