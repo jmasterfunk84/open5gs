@@ -22,6 +22,7 @@
 
 #include "ogs-core.h"
 #include "ogs-proto.h"
+#include "context.h"
 
 #ifdef __cplusplus
 extern "C" {

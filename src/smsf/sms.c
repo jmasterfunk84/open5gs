@@ -137,23 +137,6 @@ ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o, int rp_message_refer
     return pkbuf;
 }
 
-void smsf_sms_increment_tio(smsf_ue_t *smsf_ue) {
-    ogs_assert(smsf_ue);
-
-    smsf_ue->mt_tio += 1;
-    if (smsf_ue->mt_tio > 7)
-        smsf_ue->mt_tio = 0;
-}
-
-void smsf_sms_increment_message_reference(smsf_ue_t *smsf_ue) {
-    ogs_assert(smsf_ue);
-
-    smsf_ue->mt_message_reference += 1;
-    if (smsf_ue->mt_message_reference == 0)
-        smsf_ue->mt_message_reference = 1;
-}
-
-
 /*
 int smsf_sms_get_user_data_byte_length(int tp_user_data_length);
     if (!tpdu_submit->tpDCS) {

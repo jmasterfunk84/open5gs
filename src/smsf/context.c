@@ -254,6 +254,22 @@ smsf_ue_t *smsf_ue_cycle(smsf_ue_t *smsf_ue)
     return ogs_pool_cycle(&smsf_ue_pool, smsf_ue);
 }
 
+void smsf_sms_increment_tio(smsf_ue_t *smsf_ue) {
+    ogs_assert(smsf_ue);
+
+    smsf_ue->mt_tio += 1;
+    if (smsf_ue->mt_tio > 7)
+        smsf_ue->mt_tio = 0;
+}
+
+void smsf_sms_increment_message_reference(smsf_ue_t *smsf_ue) {
+    ogs_assert(smsf_ue);
+
+    smsf_ue->mt_message_reference += 1;
+    if (smsf_ue->mt_message_reference == 0)
+        smsf_ue->mt_message_reference = 1;
+}
+
 int get_ue_load(void)
 {
     return (((ogs_pool_size(&smsf_ue_pool) -

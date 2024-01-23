@@ -77,6 +77,10 @@ smsf_ue_t *smsf_ue_find_by_gpsi(char *gpsi);
 
 smsf_ue_t *smsf_ue_cycle(smsf_ue_t *smsf_ue);
 
+void smsf_sms_increment_tio(smsf_ue_t *smsf_ue);
+
+void smsf_sms_increment_message_reference(smsf_ue_t *smsf_ue);
+
 int get_ue_load(void);
 
 #ifdef __cplusplus
