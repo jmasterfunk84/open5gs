@@ -161,17 +161,17 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
 ogs_pkbuf_t *smsf_sms_encode_rp_ack(
         bool ti_flag, int ti_o, int rp_message_reference);
 
-void smsf_sms_increment_tio(smsf_ue_t &smsf_ue);
+void smsf_sms_increment_tio(smsf_ue_t *smsf_ue);
 
-void smsf_sms_increment_message_reference(smsf_ue_t &smsf_ue);
+void smsf_sms_increment_message_reference(smsf_ue_t *smsf_ue);
 
 //int smsf_sms_get_user_data_byte_length(int tp_user_data_length);
 
 void smsf_sms_set_sc_timestamp(smsf_sms_tpscts_t *timestamp);
 
-void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t &tpduDeliver,
-                const smsf_sms_tpdu_submit_t &tpdu_submit,
-                const smsf_ue_t &mt_smsf_ue, const smsf_ue_t &smsf_ue);
+void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t *tpduDeliver,
+                const smsf_sms_tpdu_submit_t *tpdu_submit,
+                const smsf_ue_t *mt_smsf_ue, const smsf_ue_t *smsf_ue);
 
 #ifdef __cplusplus
 }
