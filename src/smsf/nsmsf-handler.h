@@ -26,11 +26,6 @@
 extern "C" {
 #endif
 
-/* 24.011 sec 7.2 */
-/* create a type for CP-DATA, CP-ACK, CP-ERROR */
-/* create a type for RP-DATA, RP-ACK, RP-ERROR */
-/* shorten to DA and OA? */
-
 bool smsf_nsmsf_sm_service_handle_activate(
         smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_sbi_message_t *message);

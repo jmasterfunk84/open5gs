@@ -159,7 +159,6 @@ void smsf_namf_comm_send_n1_n2_message_transfer(
     }
 
     xact->assoc_stream = stream;
-//    xact->state = param->state;
 
     r = ogs_sbi_discover_and_send(xact);
     if (r != OGS_OK) {

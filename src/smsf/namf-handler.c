@@ -38,8 +38,7 @@ bool smsf_namf_comm_handle_n1_n2_message_transfer(
     if (recvmsg->res_status == OGS_SBI_HTTP_STATUS_OK) {
         if (N1N2MessageTransferRspData->cause ==
             OpenAPI_n1_n2_message_transfer_cause_N1_MSG_NOT_TRANSFERRED) {
-//            smsf_n1_n2_message_transfer_param_t param;
-
+            /* Nothing */
         } else if (N1N2MessageTransferRspData->cause ==
             OpenAPI_n1_n2_message_transfer_cause_N1_N2_TRANSFER_INITIATED) {
             /* Nothing */

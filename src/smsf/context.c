@@ -208,9 +208,6 @@ void smsf_ue_remove(smsf_ue_t *smsf_ue)
     if (smsf_ue->gpsi)
         ogs_free(smsf_ue->gpsi);
 
-    if (smsf_ue->smsf_registration)
-        OpenAPI_smsf_registration_free(smsf_ue->smsf_registration);
-
     ogs_pool_free(&smsf_ue_pool, smsf_ue);
 }
 
@@ -242,7 +239,6 @@ smsf_ue_t *smsf_ue_find_by_gpsi(char *gpsi)
         }
     }
     return NULL;
-
 }
 
 smsf_ue_t *smsf_ue_cycle(smsf_ue_t *smsf_ue)

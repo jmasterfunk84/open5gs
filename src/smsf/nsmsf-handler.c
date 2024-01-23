@@ -165,12 +165,10 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     }
 
     /* do like ogs_nas_eps_decode_eps_network_feature_support*/
+    /* cast the buffer onto a header struct gsm_header = (ogs_nas_5gsm_header_t *)payload_container->buffer; */
     uint8_t templen;
     smsf_sms_cp_hdr_t cpheader;
     smsf_n1_n2_message_transfer_param_t param;
-
-    /* could copy first byte of pkbuf into a variable to read that, then put whole thing in correct structure, then pull. */
-    /* cast the buffer onto a header struct gsm_header = (ogs_nas_5gsm_header_t *)payload_container->buffer; */
 
     memcpy(&cpheader, sms_payload_buf->data, sizeof(smsf_sms_cp_hdr_t));
     ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_cp_hdr_t));
@@ -178,9 +176,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     ogs_debug("[%s] CP Header Message Type [%d]", smsf_ue->supi,
             cpheader.sm_service_message_type);
 
-    /* these brackets make SWITCH CASE easier */
     switch(cpheader.sm_service_message_type) {
-    case 1:
+    case SMSF_SERVICE_MESSAGE_TYPE_CP_DATA:
         ogs_debug("[%s] CP-Data", smsf_ue->supi);
         /* up to 249 bytes of user data follows*/
         smsf_sms_cp_data_t cpdata;
@@ -188,13 +185,28 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         memcpy(&cpdata.cp_user_data_length, sms_payload_buf->data, 1);
         ogs_pkbuf_pull(sms_payload_buf, 1);
 
+        ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
+        memset(&param, 0, sizeof(param));
+        param.n1smbuf = smsf_sms_encode_cp_ack(true,
+                cpheader.flags.tio);
+        ogs_assert(param.n1smbuf);
+        smsf_namf_comm_send_n1_n2_message_transfer(
+                smsf_ue, stream, &param);
+
+        /* The SMSF would normally send the CP-DATA payload to the SMSC.
+         * This could be done either Diameter SGD, MAP, or SBI.
+         * We will process the message here to allow for local delivery. 
+         */
+
+        /* saying that, maybe make a function that does all this, and make this handler look like a real SMSF. */
+
         smsf_sms_rpdu_message_type_t rpheader;
         memcpy(&rpheader, sms_payload_buf->data,
                 sizeof(smsf_sms_rpdu_message_type_t));
         ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_rpdu_message_type_t));
 
         switch(rpheader.value) {
-        case 0:
+        case SMSF_RP_MESSAGE_TYPE_MS2N_DATA:
             ogs_debug("[%s] RP-DATA (ms->n)", smsf_ue->supi);
             smsf_sms_rpdata_t rpdu;
             memset(&rpdu, 0, sizeof(smsf_sms_rpdata_t));
@@ -224,20 +236,11 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             memcpy(&tpdu_hdr, sms_payload_buf->data, sizeof(tpdu_hdr));
 
             switch(tpdu_hdr.tpMTI) {
-            case 0:
+            case SMSF_TPDU_MTI_SMS_DELIVER:
                 ogs_debug("[%s] SMS-DELIVER Report (ms->n)", smsf_ue->supi);
-                ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
-
-                memset(&param, 0, sizeof(param));
-                param.n1smbuf = smsf_sms_encode_cp_ack(true,
-                        cpheader.flags.tio);
-                ogs_assert(param.n1smbuf);
-
-                smsf_namf_comm_send_n1_n2_message_transfer(
-                        smsf_ue, stream, &param);
                 break;
 
-            case 1:
+            case SMSF_TPDU_MTI_SMS_SUBMIT:
                 ogs_debug("[%s] SMS-SUBMIT (ms->n)", smsf_ue->supi);
 
                 smsf_sms_tpdu_submit_t tpdu_submit;
@@ -286,36 +289,22 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 if (output_bcd)
                     ogs_free(output_bcd);
 
-                /* Send CP-Ack to MO UE */
-                ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
-
-                memset(&param, 0, sizeof(param));
-                param.n1smbuf = smsf_sms_encode_cp_ack(true,
-                        cpheader.flags.tio);
-                ogs_assert(param.n1smbuf);
-
-                smsf_namf_comm_send_n1_n2_message_transfer(
-                        smsf_ue, stream, &param);
-
                 if (!smsf_ue->mo_sms_subscribed) {
                     /* Could also 403 the send-sms */
                     ogs_error("[%s] Not subscribed for MO-SMS",
                             smsf_ue->supi);
 
                     ogs_debug("[%s] Sending RP-ERROR", smsf_ue->supi);
-
                     memset(&param, 0, sizeof(param));
                     param.n1smbuf = smsf_sms_encode_rp_error(
                         true, cpheader.flags.tio, rpdu.rp_message_reference);
                     ogs_assert(param.n1smbuf);
-
                     smsf_namf_comm_send_n1_n2_message_transfer(
                             smsf_ue, stream, &param);
                     break;
                 }
                 
                 if (mt_smsf_ue) {
-                    /* Send CP-DATA to MT UE */
                     ogs_debug("[%s] Sending CP-DATA", mt_smsf_ue->supi);
 
                     if (mt_smsf_ue->mt_sms_subscribed) {
@@ -346,20 +335,17 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                 }
 
-                /* Send RP-ACK to MO UE */
                 ogs_debug("[%s] Sending RP-Ack", smsf_ue->supi);
-
                 memset(&param, 0, sizeof(param));
                 param.n1smbuf = smsf_sms_encode_rp_ack(
                     true, cpheader.flags.tio, rpdu.rp_message_reference);
                 ogs_assert(param.n1smbuf);
-
                 smsf_namf_comm_send_n1_n2_message_transfer(
                         smsf_ue, stream, &param);
 
                 break;
 
-            case 2:
+            case SMSF_TPDU_MTI_SMS_COMMAND:
                 ogs_debug("[%s] SMS-COMMAND (ms->n)", smsf_ue->supi);
                 break;
 
@@ -372,22 +358,15 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             }
             break;
 
-        case 2:
+        case SMSF_RP_MESSAGE_TYPE_MS2N_ACK:
             ogs_debug("[%s] RP-ACK (ms->n)", smsf_ue->supi);
-            ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
-
-            memset(&param, 0, sizeof(param));
-            param.n1smbuf = smsf_sms_encode_cp_ack(false, cpheader.flags.tio);
-            ogs_assert(param.n1smbuf);
-
-            smsf_namf_comm_send_n1_n2_message_transfer(smsf_ue, stream, &param);
             break;
 
-        case 4:
+        case SMSF_RP_MESSAGE_TYPE_MS2N_ERROR:
             ogs_debug("[%s] RP-ERROR (ms->n)", smsf_ue->supi);
             break;
 
-        case 6:
+        case SMSF_RP_MESSAGE_TYPE_MS2N_SMMA:
             ogs_debug("[%s] RP-SMMA (ms->n)", smsf_ue->supi);
             break;
 
@@ -399,11 +378,11 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         }
 
         break;
-    case 4:
+    case SMSF_SERVICE_MESSAGE_TYPE_CP_ACK:
         ogs_debug("[%s] CP-ACK", smsf_ue->supi);
         /* no bytes follow */
         break;
-    case 16:
+    case SMSF_SERVICE_MESSAGE_TYPE_CP_ERROR:
         ogs_debug("[%s] CP-ERROR", smsf_ue->supi);
         /* 1 byte cp-cause follows */
         break;
@@ -414,12 +393,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         /* goto end, send nsmf error response */
         return false;
     }
-
-    /* i think pull removes bytes from the start of the buffer? */
-    // if (ogs_pkbuf_pull(sms_payload_buf, size) == NULL) {
-    //    ogs_error("ogs_pkbuf_pull() failed [size:%d]", (int)size);
-    //    return -1;
-    // }
 
     ogs_sbi_message_t sendmsg;
     ogs_sbi_header_t header;

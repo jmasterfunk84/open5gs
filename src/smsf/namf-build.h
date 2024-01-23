@@ -27,18 +27,7 @@ extern "C" {
 #endif
 
 typedef struct smsf_n1_n2_message_transfer_param_s {
-#define SMSF_N1_N2_MESSAGE_TRANSFER_NO_STATE             0
-#define SMSF_UE_REQUESTED_PDU_SESSION_ESTABLISHMENT      1
-#define SMSF_NETWORK_REQUESTED_PDU_SESSION_MODIFICATION  2
-#define SMSF_NETWORK_REQUESTED_QOS_FLOW_MODIFICATION     3
-#define SMSF_NETWORK_REQUESTED_PDU_SESSION_RELEASE       4
-#define SMSF_NETWORK_TRIGGERED_SERVICE_REQUEST           5
-#define SMSF_ERROR_INDICATON_RECEIVED_FROM_5G_AN         6
-    int state;
-
     ogs_pkbuf_t *n1smbuf;
-    ogs_pkbuf_t *n2smbuf;
-
     bool n1n2_failure_txf_notif_uri;
     bool skip_ind;
 } smsf_n1_n2_message_transfer_param_t;

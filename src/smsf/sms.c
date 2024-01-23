@@ -78,7 +78,7 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_put_u8(pkbuf, cp_data.header.sm_service_message_type);
     ogs_pkbuf_put_u8(pkbuf, cp_data.cp_user_data_length);
 
-    ogs_pkbuf_put_u8(pkbuf, 1); // Mesage Type = RP-Data N2MS
+    ogs_pkbuf_put_u8(pkbuf, SMSF_RP_MESSAGE_TYPE_N2MS_DATA);
     ogs_pkbuf_put_u8(pkbuf, rp_message_reference); // rp_message_reference
     ogs_pkbuf_put_data(pkbuf, (char *)"\x07\x91\x31\x60\x26\x00\x50\xf1", 8); // rp-oa
     ogs_pkbuf_put_u8(pkbuf, 0); // rp-da
@@ -125,14 +125,14 @@ ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o,
         return NULL;
     }
 
-    ogs_pkbuf_put_u8(pkbuf,cp_data.header.flags.octet);
-    ogs_pkbuf_put_u8(pkbuf,cp_data.header.sm_service_message_type);
-    ogs_pkbuf_put_u8(pkbuf,cp_data.cp_user_data_length);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.header.flags.octet);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.header.sm_service_message_type);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.cp_user_data_length);
 
-    ogs_pkbuf_put_u8(pkbuf,3); // Mesage Type = RP-ACK
-    ogs_pkbuf_put_u8(pkbuf,rp_message_reference);
-    ogs_pkbuf_put_u8(pkbuf,65); // Element ID 0x41
-    ogs_pkbuf_put_u8(pkbuf,0); // Length: 0
+    ogs_pkbuf_put_u8(pkbuf, SMSF_RP_MESSAGE_TYPE_N2MS_ACK);
+    ogs_pkbuf_put_u8(pkbuf, rp_message_reference);
+    ogs_pkbuf_put_u8(pkbuf, 65); // Element ID 0x41
+    ogs_pkbuf_put_u8(pkbuf, 0); // Length: 0
 
     return pkbuf;
 }
@@ -157,16 +157,16 @@ ogs_pkbuf_t *smsf_sms_encode_rp_error(bool ti_flag, int ti_o,
         return NULL;
     }
 
-    ogs_pkbuf_put_u8(pkbuf,cp_data.header.flags.octet);
-    ogs_pkbuf_put_u8(pkbuf,cp_data.header.sm_service_message_type);
-    ogs_pkbuf_put_u8(pkbuf,cp_data.cp_user_data_length);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.header.flags.octet);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.header.sm_service_message_type);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.cp_user_data_length);
 
-    ogs_pkbuf_put_u8(pkbuf,5); // Mesage Type = RP-ERROR n->ms
-    ogs_pkbuf_put_u8(pkbuf,rp_message_reference);
-    ogs_pkbuf_put_u8(pkbuf,1); // RP-Cause Length: 1
-    ogs_pkbuf_put_u8(pkbuf,50); // RP-Cause: Requested facility not subscribed
-    ogs_pkbuf_put_u8(pkbuf,65); // Element ID 0x41
-    ogs_pkbuf_put_u8(pkbuf,0); // Length: 0
+    ogs_pkbuf_put_u8(pkbuf, SMSF_RP_MESSAGE_TYPE_N2MS_ERROR);
+    ogs_pkbuf_put_u8(pkbuf, rp_message_reference);
+    ogs_pkbuf_put_u8(pkbuf, 1); // RP-Cause Length: 1
+    ogs_pkbuf_put_u8(pkbuf, 50); // RP-Cause: Requested facility not subscribed
+    ogs_pkbuf_put_u8(pkbuf, 65); // Element ID 0x41
+    ogs_pkbuf_put_u8(pkbuf, 0); // Length: 0
 
     return pkbuf;
 }

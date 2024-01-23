@@ -43,8 +43,6 @@ struct smsf_ue_s {
     ogs_sbi_object_t sbi;
     ogs_fsm_t sm;
 
-    /* where is this used??? */
-    OpenAPI_smsf_registration_t *smsf_registration;
     bool mo_sms_subscribed;
     bool mt_sms_subscribed;
 

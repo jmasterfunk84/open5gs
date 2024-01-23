@@ -237,9 +237,5 @@ bool smsf_nudm_uecm_handle_smsf_registration(
         return false;
     }
 
-    smsf_ue->smsf_registration = OpenAPI_smsf_registration_copy(
-            smsf_ue->smsf_registration,
-            SmsfRegistration);
-
     return true;
 }

@@ -151,6 +151,20 @@ typedef struct smsf_sms_tpdu_deliver_s {
 /* ADD ms2net kinda prefixes here */
 #define SMSF_SERVICE_MESSAGE_TYPE_CP_DATA            1
 #define SMSF_SERVICE_MESSAGE_TYPE_CP_ACK             4
+#define SMSF_SERVICE_MESSAGE_TYPE_CP_ERROR           16
+
+#define SMSF_RP_MESSAGE_TYPE_MS2N_DATA               0
+#define SMSF_RP_MESSAGE_TYPE_MS2N_ACK                2
+#define SMSF_RP_MESSAGE_TYPE_MS2N_ERROR              4
+#define SMSF_RP_MESSAGE_TYPE_MS2N_SMMA               6
+
+#define SMSF_RP_MESSAGE_TYPE_N2MS_DATA               1
+#define SMSF_RP_MESSAGE_TYPE_N2MS_ACK                3
+#define SMSF_RP_MESSAGE_TYPE_N2MS_ERROR              5
+
+#define SMSF_TPDU_MTI_SMS_DELIVER                    0
+#define SMSF_TPDU_MTI_SMS_SUBMIT                     1
+#define SMSF_TPDU_MTI_SMS_COMMAND                    2
 
 #define SMSF_PROTOCOL_DISCRIMINATOR_SMS             0x9
 
