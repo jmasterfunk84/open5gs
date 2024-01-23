@@ -621,6 +621,23 @@ bool udm_nudm_uecm_handle_smsf_registration(
     return true;
 }
 
+bool udm_nudm_uecm_handle_smsf_deregistration(
+    udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *message)
+{
+    int r;
+
+    ogs_assert(udm_ue);
+    ogs_assert(stream);
+    ogs_assert(message);
+
+    r = udm_sess_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDR_DR, NULL,
+            udm_nudr_dr_build_delete_smsf_context, udm_ue, stream, NULL);
+    ogs_expect(r == OGS_OK);
+    ogs_assert(r != OGS_ERROR);
+
+    return true;
+}
+
 bool udm_nudm_sdm_handle_subscription_provisioned(
     udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
