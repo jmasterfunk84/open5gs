@@ -36,7 +36,7 @@ int smsf_nudm_sdm_handle_provisioned_data(
         return false;
     }
 
-    if (!SmsManagementSubscriptionData->mo_sms_subscribed) {
+    if (!SmsManagementSubscriptionData->is_mo_sms_subscribed) {
         ogs_error("[%s] No moSmsSubscribed", smsf_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
@@ -44,7 +44,7 @@ int smsf_nudm_sdm_handle_provisioned_data(
         return false;
     }
 
-    if (!SmsManagementSubscriptionData->mt_sms_subscribed) {
+    if (!SmsManagementSubscriptionData->is_mt_sms_subscribed) {
         ogs_error("[%s] No mtSmsSubscribed", smsf_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
@@ -52,10 +52,10 @@ int smsf_nudm_sdm_handle_provisioned_data(
         return false;
     }
 
-    smsf_ue->sms_management_subscription_data =
-        OpenAPI_sms_management_subscription_data_copy(
-            smsf_ue->sms_management_subscription_data,
-            SmsManagementSubscriptionData);
+    smsf_ue->mo_sms_subscribed =
+            SmsManagementSubscriptionData->mo_sms_subscribed;
+    smsf_ue->mt_sms_subscribed =
+            SmsManagementSubscriptionData->mt_sms_subscribed;
 
     return OGS_OK;
 }

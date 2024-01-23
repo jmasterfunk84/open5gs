@@ -159,12 +159,11 @@ ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o);
 ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
                 int rp_message_reference, smsf_sms_tpdu_deliver_t *tpdu);
 
-ogs_pkbuf_t *smsf_sms_encode_rp_ack(
-        bool ti_flag, int ti_o, int rp_message_reference);
+ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o,
+        int rp_message_reference);
 
-void smsf_sms_increment_tio(smsf_ue_t *smsf_ue);
-
-void smsf_sms_increment_message_reference(smsf_ue_t *smsf_ue);
+ogs_pkbuf_t *smsf_sms_encode_rp_error(bool ti_flag, int ti_o,
+        int rp_message_reference);
 
 //int smsf_sms_get_user_data_byte_length(int tp_user_data_length);
 

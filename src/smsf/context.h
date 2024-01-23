@@ -46,7 +46,8 @@ struct smsf_ue_s {
     /* where is this used??? */
     OpenAPI_smsf_registration_t *smsf_registration;
     OpenAPI_ue_sms_context_data_t *ue_sms_context_data;
-    OpenAPI_sms_management_subscription_data_t *sms_management_subscription_data;
+    bool mo_sms_subscribed;
+    bool mt_sms_subscribed;
 
 #define UDM_SDM_SUBSCRIBED(__sMSF) \
     ((__sSMF) && ((__sMSF)->data_change_subscription_id))

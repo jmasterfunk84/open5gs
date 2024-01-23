@@ -105,7 +105,8 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     return pkbuf;
 }
 
-ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o, int rp_message_reference)
+ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o,
+        int rp_message_reference)
 {
     ogs_pkbuf_t *pkbuf = NULL;
     smsf_sms_cp_data_t cp_data;
@@ -133,6 +134,39 @@ ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o, int rp_message_refer
     ogs_pkbuf_put_u8(pkbuf,65); // Element ID 0x41
     ogs_pkbuf_put_u8(pkbuf,0); // Length: 0
 
+    return pkbuf;
+}
+
+ogs_pkbuf_t *smsf_sms_encode_rp_error(bool ti_flag, int ti_o,
+        int rp_message_reference)
+{
+    ogs_pkbuf_t *pkbuf = NULL;
+    smsf_sms_cp_data_t cp_data;
+
+    memset(&cp_data, 0, sizeof(smsf_sms_cp_data_t));
+
+    cp_data.header.flags.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
+    cp_data.header.flags.tio = ti_o;
+    cp_data.header.flags.tif = ti_flag;
+    cp_data.header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_DATA;
+    cp_data.cp_user_data_length = 6;
+
+    pkbuf = ogs_pkbuf_alloc(NULL, 9);
+    if (!pkbuf) {
+        ogs_error("ogs_pkbuf_alloc() failed");
+        return NULL;
+    }
+
+    ogs_pkbuf_put_u8(pkbuf,cp_data.header.flags.octet);
+    ogs_pkbuf_put_u8(pkbuf,cp_data.header.sm_service_message_type);
+    ogs_pkbuf_put_u8(pkbuf,cp_data.cp_user_data_length);
+
+    ogs_pkbuf_put_u8(pkbuf,5); // Mesage Type = RP-ERROR n->ms
+    ogs_pkbuf_put_u8(pkbuf,rp_message_reference);
+    ogs_pkbuf_put_u8(pkbuf,0); // RP-Cause Length: 0
+    ogs_pkbuf_put_u8(pkbuf,50); // RP-Cause: Requested facility not subscribed
+    ogs_pkbuf_put_u8(pkbuf,65); // Element ID 0x41
+    ogs_pkbuf_put_u8(pkbuf,0); // Length: 0
 
     return pkbuf;
 }
@@ -216,7 +250,7 @@ void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t *tpdu_deliver,
 
     tpdu_deliver->tpPID = tpdu_submit->tpPID;
     tpdu_deliver->tpDCS = tpdu_submit->tpDCS;
-    smsf_sms_set_sc_timestamp(&tpdu_deliver.tpSCTS);
+    smsf_sms_set_sc_timestamp(&tpdu_deliver->tpSCTS);
     tpdu_deliver->tpUDL = tpdu_submit->tpUDL;
 
     if (!tpdu_submit->tpDCS) {

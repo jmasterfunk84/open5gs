@@ -301,30 +301,53 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                 smsf_namf_comm_send_n1_n2_message_transfer(
                         smsf_ue, stream, &param);
+
+                if (!smsf_ue->mo_sms_subscribed) {
+                    ogs_error("[%s] Not subscribed for MO-SMS",
+                            smsf_ue->supi);
+
+                    ogs_debug("[%s] Sending RP-ERROR", smsf_ue->supi);
+
+                    memset(&param, 0, sizeof(param));
+                    param.n1smbuf = smsf_sms_encode_rp_error(
+                        true, cpheader.flags.tio, rpdu.rp_message_reference);
+                    ogs_assert(param.n1smbuf);
+
+                    smsf_namf_comm_send_n1_n2_message_transfer(
+                            smsf_ue, stream, &param);
+                    break;
+                }
                 
                 if (mt_smsf_ue) {
                     /* Send CP-DATA to MT UE */
                     ogs_debug("[%s] Sending CP-DATA", mt_smsf_ue->supi);
 
-                    memset(&param, 0, sizeof(param));
+                    if (mt_smsf_ue->mt_sms_subscribed) {
+                        memset(&param, 0, sizeof(param));
 
-                    smsf_sms_tpdu_deliver_t tpduDeliver;
-                    memset(&tpduDeliver, 0, sizeof(smsf_sms_tpdu_deliver_t));
-                    smsf_copy_submit_to_deliver(tpduDeliver, tpdu_submit,
-                            mt_smsf_ue, smsf_ue);
+                        smsf_sms_tpdu_deliver_t tpduDeliver;
+                        memset(&tpduDeliver, 0,
+                                sizeof(smsf_sms_tpdu_deliver_t));
+                        smsf_copy_submit_to_deliver(&tpduDeliver, &tpdu_submit,
+                                mt_smsf_ue, smsf_ue);
 
-                    smsf_sms_increment_tio(smsf_ue);
-                    smsf_sms_increment_message_reference(smsf_ue);
+                        smsf_sms_increment_tio(smsf_ue);
+                        smsf_sms_increment_message_reference(smsf_ue);
 
-                    param.n1smbuf = smsf_sms_encode_rp_data(false,
-                            mt_smsf_ue->mt_tio,
-                            mt_smsf_ue->mt_message_reference,
-                            &tpduDeliver);
+                        param.n1smbuf = smsf_sms_encode_rp_data(false,
+                                mt_smsf_ue->mt_tio,
+                                mt_smsf_ue->mt_message_reference,
+                                &tpduDeliver);
 
-                    ogs_assert(param.n1smbuf);
+                        ogs_assert(param.n1smbuf);
 
-                    smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue,
-                            stream, &param);
+                        smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue,
+                                stream, &param);
+                    } else {
+                        ogs_error("[%s] Not subscribed for MT-SMS",
+                                mt_smsf_ue->supi);
+                    }
+
                 }
 
                 /* Send RP-ACK to MO UE */
@@ -403,7 +426,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     // }
 
     /* Check MO subscription if allowed (send 403) (after CP-ACK is sent) */
-    /* check MT subscription if allowed */
 
     ogs_sbi_message_t sendmsg;
     ogs_sbi_header_t header;
