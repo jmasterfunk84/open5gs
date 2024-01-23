@@ -163,7 +163,7 @@ ogs_pkbuf_t *smsf_sms_encode_rp_error(bool ti_flag, int ti_o,
 
     ogs_pkbuf_put_u8(pkbuf,5); // Mesage Type = RP-ERROR n->ms
     ogs_pkbuf_put_u8(pkbuf,rp_message_reference);
-    ogs_pkbuf_put_u8(pkbuf,0); // RP-Cause Length: 0
+    ogs_pkbuf_put_u8(pkbuf,1); // RP-Cause Length: 1
     ogs_pkbuf_put_u8(pkbuf,50); // RP-Cause: Requested facility not subscribed
     ogs_pkbuf_put_u8(pkbuf,65); // Element ID 0x41
     ogs_pkbuf_put_u8(pkbuf,0); // Length: 0

@@ -212,8 +212,6 @@ void smsf_ue_remove(smsf_ue_t *smsf_ue)
         OpenAPI_smsf_registration_free(smsf_ue->smsf_registration);
     if (smsf_ue->ue_sms_context_data)
         OpenAPI_ue_sms_context_data_free(smsf_ue->ue_sms_context_data);
-    if (smsf_ue->sms_management_subscription_data)
-        OpenAPI_sms_management_subscription_data_free(smsf_ue->sms_management_subscription_data);
 
     ogs_pool_free(&smsf_ue_pool, smsf_ue);
 }
