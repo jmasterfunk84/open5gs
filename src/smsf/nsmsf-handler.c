@@ -252,8 +252,10 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 memcpy(&templen, sms_payload_buf->data, 1);
                 memcpy(&tpdu_submit.tp_destination_address,
                         sms_payload_buf->data, 2 + ((templen + 1) / 2));
-                ogs_pkbuf_pull(sms_payload_buf, 2 + ((templen + 1) / 2));   // Address length, Address type, address itself
-                memcpy(&tpdu_submit.tpPID, sms_payload_buf->data, 3);       // PID, DCS, UDL
+                /* Copy Address Length, Address Type, and Address Itself */
+                ogs_pkbuf_pull(sms_payload_buf, 2 + ((templen + 1) / 2));
+                /* Coopy PID, DCS, and UDL */
+                memcpy(&tpdu_submit.tpPID, sms_payload_buf->data, 3);
                 ogs_pkbuf_pull(sms_payload_buf, 3);
 
                 int tpdurealbytes;
@@ -266,12 +268,11 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 memcpy(&tpdu_submit.tpUD, sms_payload_buf->data, tpdurealbytes);
 
                 /* Begin looking for our TPDU destination smsf_ue */
-
                 smsf_sms_tp_address_t tp_da;
-                memset(&tp_da, 0, sizeof(smsf_sms_tp_address_t));
                 char *output_bcd;
-                output_bcd = ogs_calloc(1, 22+1);
+                memset(&tp_da, 0, sizeof(smsf_sms_tp_address_t));
                 tp_da = tpdu_submit.tp_destination_address;
+                output_bcd = ogs_calloc(1, OGS_MAX_MSISDN_BCD_LEN+1);
                 ogs_buffer_to_bcd(tp_da.tp_address, (tp_da.addr_length + 1) /2,
                         output_bcd);
 
@@ -291,7 +292,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     ogs_free(output_bcd);
 
                 /* Send CP-Ack to MO UE */
-                //int r;
                 ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
 
                 memset(&param, 0, sizeof(param));
@@ -302,8 +302,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 smsf_namf_comm_send_n1_n2_message_transfer(
                         smsf_ue, stream, &param);
                 
-                /* Convert SUBMIT to DELIVER and Queue towards mt_ue*/
-
                 if (mt_smsf_ue) {
                     /* Send CP-DATA to MT UE */
                     ogs_debug("[%s] Sending CP-DATA", mt_smsf_ue->supi);
@@ -311,49 +309,12 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     memset(&param, 0, sizeof(param));
 
                     smsf_sms_tpdu_deliver_t tpduDeliver;
-                    //smsf_copy_submit_to_deliver(&tpduDeliver, const? &tpdu_submit, mt_smsf_ue, smsf_ue)
                     memset(&tpduDeliver, 0, sizeof(smsf_sms_tpdu_deliver_t));
-                    tpduDeliver.header.tpUDHI = tpdu_submit.header.tpUDHI;
-                    tpduDeliver.header.tpMMS = 1;  // Could eval DCS for concatenation
+                    smsf_copy_submit_to_deliver(tpduDeliver, tpdu_submit,
+                            mt_smsf_ue, smsf_ue);
 
-                    /* Populate the Sender's MSISDN */
-                    char *oa_msisdn;
-                    if (strncmp(smsf_ue->gpsi, OGS_ID_GPSI_TYPE_MSISDN,
-                            strlen(OGS_ID_GPSI_TYPE_MSISDN)) == 0) {
-                        oa_msisdn = ogs_id_get_value(smsf_ue->gpsi);
-                        ogs_assert(oa_msisdn);
-                    } else {
-                        ogs_error("SMS-MO without MSISDN");
-                    }
-                    char *oa_msisdn_bcd;
-                    oa_msisdn_bcd = ogs_calloc(1, OGS_MAX_MSISDN_BCD_LEN+1);
-                    int oa_msisdn_bcd_len;
-                    ogs_bcd_to_buffer(oa_msisdn, oa_msisdn_bcd,
-                            &oa_msisdn_bcd_len);
-                    if (oa_msisdn)
-                        ogs_free(oa_msisdn);
-                    tpduDeliver.tp_originator_address.addr_length =
-                            strlen(oa_msisdn);
-                    tpduDeliver.tp_originator_address.header.ext = 1;
-                    tpduDeliver.tp_originator_address.header.ton = 1;
-                    tpduDeliver.tp_originator_address.header.npi = 1;
-                    memcpy(&tpduDeliver.tp_originator_address.tp_address,
-                            oa_msisdn_bcd, oa_msisdn_bcd_len);
-
-                    tpduDeliver.tpPID = tpdu_submit.tpPID;
-                    tpduDeliver.tpDCS = tpdu_submit.tpDCS;
-                    smsf_sms_set_sc_timestamp(&tpduDeliver.tpSCTS);
-                    tpduDeliver.tpUDL = tpdu_submit.tpUDL;
-
-                    memcpy(&tpduDeliver.tpUD, &tpdu_submit.tpUD, tpdurealbytes);
-
-                    mt_smsf_ue->mt_message_reference += 1;
-                    if (mt_smsf_ue->mt_message_reference == 0)
-                        mt_smsf_ue->mt_message_reference = 1;
-
-                    mt_smsf_ue->mt_tio += 1;
-                    if (mt_smsf_ue->mt_tio > 7)
-                        mt_smsf_ue->mt_tio = 0;
+                    smsf_sms_increment_tio(smsf_ue);
+                    smsf_sms_increment_message_reference(smsf_ue);
 
                     param.n1smbuf = smsf_sms_encode_rp_data(false,
                             mt_smsf_ue->mt_tio,
@@ -364,13 +325,9 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                     smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue,
                             stream, &param);
-
-                    if (oa_msisdn_bcd)
-                        ogs_free(oa_msisdn_bcd);
-                    /* There's a timestamp somewhere that needs to be freed */
                 }
+
                 /* Send RP-ACK to MO UE */
-                //int r;
                 ogs_debug("[%s] Sending RP-Ack", smsf_ue->supi);
 
                 memset(&param, 0, sizeof(param));
@@ -404,8 +361,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
             param.n1smbuf = smsf_sms_encode_cp_ack(false, cpheader.flags.tio);
             ogs_assert(param.n1smbuf);
 
-            smsf_namf_comm_send_n1_n2_message_transfer(
-                    smsf_ue, stream, &param);
+            smsf_namf_comm_send_n1_n2_message_transfer(smsf_ue, stream, &param);
             break;
 
         case 4:
@@ -446,14 +402,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     //    return -1;
     // }
 
-    /* I think it should split CP data, and RP data.  RP data would normally go to SMSC
-     * but, here we have to rip the userdata from the rp-data to get the destination address.
-     */
     /* Check MO subscription if allowed (send 403) (after CP-ACK is sent) */
     /* check MT subscription if allowed */
-    /* queue event for MT smsf_ue */
-    /* if UE found, then say so.  If ue not found, respond with error. */
-    /* form the SmsRecordDeliveryData */
 
     ogs_sbi_message_t sendmsg;
     ogs_sbi_header_t header;

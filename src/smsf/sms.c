@@ -137,6 +137,33 @@ ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o, int rp_message_refer
     return pkbuf;
 }
 
+void smsf_sms_increment_tio(smsf_ue_t &smsf_ue) {
+    ogs_assert(smsf_ue);
+
+    smsf_ue->mt_tio += 1;
+    if (smsf_ue->mt_tio > 7)
+        smsf_ue->mt_tio = 0;
+}
+
+void smsf_sms_increment_message_reference(smsf_ue_t &smsf_ue) {
+    ogs_assert(smsf_ue);
+
+    smsf_ue->mt_message_reference += 1;
+    if (smsf_ue->mt_message_reference == 0)
+        smsf_ue->mt_message_reference = 1;
+}
+
+
+/*
+int smsf_sms_get_user_data_byte_length(int tp_user_data_length);
+    if (!tpdu_submit->tpDCS) {
+        tpdurealbytes = ((tp_user_data_length + 1)*7/8);
+    } else {
+        reuturn tp_user_data_length;
+    }
+}
+*/
+
 void smsf_sms_set_sc_timestamp(smsf_sms_tpscts_t *sc_timestamp)
 {
     struct timeval tv;
@@ -160,4 +187,60 @@ void smsf_sms_set_sc_timestamp(smsf_sms_tpscts_t *sc_timestamp)
     sc_timestamp->minute = OGS_SCTS_TIME_TO_BCD(local.tm_min);
     sc_timestamp->second = OGS_SCTS_TIME_TO_BCD(local.tm_sec);
     sc_timestamp->timezone = local_time_zone;
+}
+
+void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t &tpdu_deliver,
+                const smsf_sms_tpdu_submit_t &tpdu_submit,
+                const smsf_ue_t &mt_smsf_ue, const smsf_ue_t &smsf_ue)
+{
+    ogs_assert(tpdu_deliver);
+    ogs_assert(tpdu_submit);
+    ogs_assert(mt_smsf_ue);
+    ogs_assert(smsf_ue);
+
+    int tpdurealbytes;
+
+    tpdu_deliver->header.tpUDHI = tpdu_submit->header.tpUDHI;
+    tpdu_deliver->header.tpMMS = 1;  // Could eval DCS for concatenation
+
+    /* Populate the Sender's MSISDN */
+    char *oa_msisdn;
+    if (strncmp(smsf_ue->gpsi, OGS_ID_GPSI_TYPE_MSISDN,
+            strlen(OGS_ID_GPSI_TYPE_MSISDN)) == 0) {
+        oa_msisdn = ogs_id_get_value(smsf_ue->gpsi);
+        ogs_assert(oa_msisdn);
+    } else {
+        ogs_error("SMS-MO without MSISDN");
+    }
+
+    char *oa_msisdn_bcd;
+    oa_msisdn_bcd = ogs_calloc(1, OGS_MAX_MSISDN_BCD_LEN+1);
+    int oa_msisdn_bcd_len;
+    ogs_bcd_to_buffer(oa_msisdn, oa_msisdn_bcd,
+            &oa_msisdn_bcd_len);
+    if (oa_msisdn)
+        ogs_free(oa_msisdn);
+    tpdu_deliver->tp_originator_address.addr_length =
+            strlen(oa_msisdn);
+    tpdu_deliver->tp_originator_address.header.ext = 1;
+    tpdu_deliver->tp_originator_address.header.ton = 1;
+    tpdu_deliver->tp_originator_address.header.npi = 1;
+    memcpy(&tpdu_deliver->tp_originator_address.tp_address,
+            oa_msisdn_bcd, oa_msisdn_bcd_len);
+
+    if (oa_msisdn_bcd)
+        ogs_free(oa_msisdn_bcd);
+
+    tpdu_deliver->tpPID = tpdu_submit->tpPID;
+    tpdu_deliver->tpDCS = tpdu_submit->tpDCS;
+    smsf_sms_set_sc_timestamp(&tpdu_deliver.tpSCTS);
+    tpdu_deliver->tpUDL = tpdu_submit->tpUDL;
+
+    if (!tpdu_submit->tpDCS) {
+        tpdurealbytes = ((tpdu_submit->tpUDL+1)*7/8);
+    } else {
+        tpdurealbytes = tpdu_submit->tpUDL;
+    }
+
+    memcpy(&tpdu_deliver->tpUD, &tpdu_submit->tpUD, tpdurealbytes);
 }
