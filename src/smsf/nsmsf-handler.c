@@ -187,7 +187,10 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
         ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
         memset(&param, 0, sizeof(param));
-        param.n1smbuf = smsf_sms_encode_cp_ack(true,
+        int ti_flag_ack = true;
+        if (cpheader.flags.tif)
+            ti_flag_ack = false;
+        param.n1smbuf = smsf_sms_encode_cp_ack(ti_flag_ack,
                 cpheader.flags.tio);
         ogs_assert(param.n1smbuf);
         smsf_namf_comm_send_n1_n2_message_transfer(
