@@ -192,8 +192,13 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                     smsf_nudm_sdm_handle_subscription_delete(
                         smsf_ue, stream, message);
 
-                    OGS_FSM_TRAN(&smsf_ue->sm,
-                            &smsf_ue_context_will_remove);
+                    r = smsf_ue_sbi_discover_and_send(
+                            OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
+                            smsf_nudm_uecm_build_smsf_registration_delete,
+                            smsf_ue, stream, NULL);
+
+                    ogs_expect(r == OGS_OK);
+                    ogs_assert(r != OGS_ERROR);
                     break;
 
                 DEFAULT
