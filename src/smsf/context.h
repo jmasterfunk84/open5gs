@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -45,7 +45,6 @@ struct smsf_ue_s {
 
     /* where is this used??? */
     OpenAPI_smsf_registration_t *smsf_registration;
-    OpenAPI_ue_sms_context_data_t *ue_sms_context_data;
     bool mo_sms_subscribed;
     bool mt_sms_subscribed;
 

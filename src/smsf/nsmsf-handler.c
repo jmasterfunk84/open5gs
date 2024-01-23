@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019,2020 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -79,11 +79,6 @@ bool smsf_nsmsf_sm_service_handle_activate(
     } else {
         ogs_error("[%s] No gpsi.  SMS-MT will not be possible", smsf_ue->supi);
     }
-
-    // Can remove if we store the elements seperately.
-    smsf_ue->ue_sms_context_data = OpenAPI_ue_sms_context_data_copy(
-            smsf_ue->ue_sms_context_data,
-            message->UeSmsContextData);
 
     r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
             smsf_nudm_uecm_build_smsf_registration, smsf_ue, stream, NULL);
@@ -303,6 +298,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                         smsf_ue, stream, &param);
 
                 if (!smsf_ue->mo_sms_subscribed) {
+                    /* Could also 403 the send-sms */
                     ogs_error("[%s] Not subscribed for MO-SMS",
                             smsf_ue->supi);
 
@@ -424,8 +420,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     //    ogs_error("ogs_pkbuf_pull() failed [size:%d]", (int)size);
     //    return -1;
     // }
-
-    /* Check MO subscription if allowed (send 403) (after CP-ACK is sent) */
 
     ogs_sbi_message_t sendmsg;
     ogs_sbi_header_t header;

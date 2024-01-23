@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -210,8 +210,6 @@ void smsf_ue_remove(smsf_ue_t *smsf_ue)
 
     if (smsf_ue->smsf_registration)
         OpenAPI_smsf_registration_free(smsf_ue->smsf_registration);
-    if (smsf_ue->ue_sms_context_data)
-        OpenAPI_ue_sms_context_data_free(smsf_ue->ue_sms_context_data);
 
     ogs_pool_free(&smsf_ue_pool, smsf_ue);
 }

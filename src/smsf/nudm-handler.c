@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -24,7 +24,12 @@
 int smsf_nudm_sdm_handle_provisioned_data(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
-    OpenAPI_sms_management_subscription_data_t *SmsManagementSubscriptionData = NULL;
+    OpenAPI_sms_management_subscription_data_t *SmsManagementSubscriptionData =
+            NULL;
+
+    ogs_assert(smsf_ue);
+    ogs_assert(stream);
+    ogs_assert(recvmsg);
 
     SmsManagementSubscriptionData = recvmsg->SmsManagementSubscriptionData;
 
@@ -70,6 +75,10 @@ int smsf_nudm_sdm_handle_subscription(
     ogs_sbi_response_t *response = NULL;
     ogs_sbi_server_t *server = NULL;
 
+    ogs_assert(smsf_ue);
+    ogs_assert(stream);
+    ogs_assert(recvmsg);
+
     if (!recvmsg->http.location) {
         ogs_error("[%s] No http.location", smsf_ue->supi);
         ogs_assert(true ==
@@ -114,7 +123,6 @@ int smsf_nudm_sdm_handle_subscription(
 
     memset(&UeSmsContextData, 0, sizeof(UeSmsContextData));
 
-    /* check these exist */
     UeSmsContextData.supi = smsf_ue->supi;
     UeSmsContextData.amf_id = smsf_ue->amf_instance_id;
     UeSmsContextData.access_type = smsf_ue->access_type;
@@ -149,6 +157,10 @@ int smsf_nudm_sdm_handle_subscription_delete(
     ogs_sbi_response_t *response = NULL;
     ogs_sbi_server_t *server = NULL;
 
+    ogs_assert(smsf_ue);
+    ogs_assert(stream);
+    ogs_assert(recvmsg);
+
     server = ogs_sbi_server_from_stream(stream);
     ogs_assert(server);
 
@@ -178,6 +190,10 @@ bool smsf_nudm_uecm_handle_smsf_registration(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
     OpenAPI_smsf_registration_t *SmsfRegistration = NULL;
+
+    ogs_assert(smsf_ue);
+    ogs_assert(stream);
+    ogs_assert(recvmsg);
 
     SmsfRegistration = recvmsg->SmsfRegistration;
 
