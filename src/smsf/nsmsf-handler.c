@@ -117,7 +117,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     ogs_assert(stream);
     ogs_assert(message);
 
-    ogs_info("[%s] UplinkSMS", smsf_ue->supi);
+    ogs_debug("[%s] UplinkSMS", smsf_ue->supi);
 
     OpenAPI_sms_record_data_t *SmsRecordData = NULL;
     OpenAPI_ref_to_binary_data_t *sms_payload = NULL;
