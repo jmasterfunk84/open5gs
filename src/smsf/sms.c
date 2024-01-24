@@ -54,7 +54,7 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     memset(&cp_data, 0, sizeof(smsf_sms_cp_data_t));
 
     int tpdurealbytes;
-    tpdurealbytes = smsf_sms_get_user_data_byte_length(!tpdu->tpDCS,
+    tpdurealbytes = smsf_sms_get_user_data_byte_length(tpdu->tpDCS,
             tpdu->tpUDL);
 
     tpdu_oa_real_length = ((tpdu->tp_originator_address.addr_length + 1) /2);
@@ -88,7 +88,7 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_put_data(pkbuf, tpdu->tp_originator_address.tp_address,
             tpdu_oa_real_length);
     ogs_pkbuf_put_u8(pkbuf, tpdu->tpPID);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpDCS);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpDCS.octet);
     ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.year);
     ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.month);
     ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.day);
@@ -173,7 +173,7 @@ int smsf_sms_get_user_data_byte_length(smsf_sms_tpdcs_t data_coding_scheme,
 {
     int user_data_bytes;
 
-    if (data_coding_scheme == 0) {
+    if (data_coding_scheme.octet == 0) {
         user_data_bytes = ((user_data_length + 1)*7/8);
     } else {
        user_data_bytes = user_data_length;

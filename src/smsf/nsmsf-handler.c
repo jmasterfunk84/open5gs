@@ -202,6 +202,13 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
          */
 
         /* saying that, maybe make a function that does all this, and make this handler look like a real SMSF. */
+        /* ogs_pkbuf_t *send_to_smsc(cpdata); 
+         * This function will return a packet buffer which should be send to a encode cp_data type function, taking the rp-data
+         * as an arguement.
+         * RP-ERROR when not MO subscribed.
+         * RP-ACK if RP-DATA is good.
+         * Spawn a new CP-DATA (maybe needs an event?)
+         */
 
         smsf_sms_rpdu_message_type_t rpheader;
         memcpy(&rpheader, sms_payload_buf->data,
