@@ -741,8 +741,9 @@ int amf_namf_callback_handle_dereg_notify(
      *    PDU session release command
      * 7. PDUSessionResourceReleaseResponse
      * 8. AM_Policy_Association_Termination
-     * 9.  Deregistration accept
-     * 10. Signalling Connecion Release
+     * 9. SM_Service_Deactivation
+     * 10.  Deregistration accept
+     * 11. Signalling Connecion Release
      */
     if (CM_CONNECTED(amf_ue)) {
         r = nas_5gs_send_de_registration_request(
@@ -776,6 +777,13 @@ int amf_namf_callback_handle_dereg_notify(
                 OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL,
                 NULL,
                 amf_npcf_am_policy_control_build_delete,
+                amf_ue, state, NULL);
+        ogs_expect(r == OGS_OK);
+        ogs_assert(r != OGS_ERROR);
+    } else if (SMSF_SERVICE_ACTIVATED(amf_ue)) {
+        r = amf_ue_sbi_discover_and_send(
+                OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                amf_nsmsf_sm_service_build_deactivate,
                 amf_ue, state, NULL);
         ogs_expect(r == OGS_OK);
         ogs_assert(r != OGS_ERROR);
@@ -1085,8 +1093,9 @@ int amf_namf_callback_handle_sdm_data_change_notify(
              *    PDU session release command
              * 7. PDUSessionResourceReleaseResponse
              * 8. AM_Policy_Association_Termination
-             * 9.  Deregistration accept
-             * 10. Signalling Connection Release
+             * 9. SM_Service_Deactivation
+             * 10. Deregistration accept
+             * 11. Signalling Connection Release
              */
             r = nas_5gs_send_de_registration_request(
                     amf_ue,
@@ -1108,6 +1117,13 @@ int amf_namf_callback_handle_sdm_data_change_notify(
                         OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL,
                         NULL,
                         amf_npcf_am_policy_control_build_delete,
+                        amf_ue, state, NULL);
+                ogs_expect(r == OGS_OK);
+                ogs_assert(r != OGS_ERROR);
+            } else if (SMSF_SERVICE_ACTIVATED(amf_ue)) {
+                r = amf_ue_sbi_discover_and_send(
+                        OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                        amf_nsmsf_sm_service_build_deactivate,
                         amf_ue, state, NULL);
                 ogs_expect(r == OGS_OK);
                 ogs_assert(r != OGS_ERROR);
