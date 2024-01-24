@@ -1221,7 +1221,7 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
 
                     } else if (state ==
                             AMF_NETWORK_INITIATED_EXPLICIT_DE_REGISTERED) {
-                        if ((SMSF_SERVICE_ACTIVATED(amf_ue)) {
+                        if (SMSF_SERVICE_ACTIVATED(amf_ue)) {
                             r = amf_ue_sbi_discover_and_send(
                                     OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
                                     amf_nsmsf_sm_service_build_deactivate,
