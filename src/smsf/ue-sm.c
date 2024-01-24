@@ -136,7 +136,7 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                             smsf_ue, stream, message);
 
                     SWITCH(message->h.method)
-                    CASE(OGS_SBI_HTTP_METHOD_POST)
+                    CASE(OGS_SBI_HTTP_METHOD_PUT)
                         r = smsf_ue_sbi_discover_and_send(
                                 OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
                                 smsf_nudm_sdm_build_get,
