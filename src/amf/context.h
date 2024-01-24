@@ -487,12 +487,6 @@ struct amf_ue_s {
         bool sbi_done;
     } explict_de_registered;
 
-#define SMSF_SERVICE_ACTIVATED(__aMF) \
-    ((__aMF) && ((__aMF)->sm_service_activated))
-#define CLEAR_SMSF_SERVICE_ACTIVATION(__aMF) \
-        ogs_assert((__aMF)); \
-        (__aMF)->sm_service_activated = false; \
-
     struct {
 #define AMF_UE_CLEAR_N1_PAGING_INFO(__aMF) \
     do { \
@@ -517,6 +511,16 @@ struct amf_ue_s {
         int n1MessageClass;
         ogs_pkbuf_t *n1buf;
     } paging;
+
+#define SMSF_SERVICE_CAN_BE_ACTIVATED(__aMF) \
+    ((__aMF) && ((__aMF)->sms_over_nas_supported) && \
+    ((__aMF)->sms_subscribed)\
+    ((__aMF)->sm_service_activated == false))
+#define SMSF_SERVICE_ACTIVATED(__aMF) \
+    ((__aMF) && ((__aMF)->sm_service_activated))
+#define CLEAR_SMSF_SERVICE_ACTIVATION(__aMF) \
+        ogs_assert((__aMF)); \
+        (__aMF)->sm_service_activated = false;
 
     bool            sms_over_nas_supported;
     bool            sms_subscribed;

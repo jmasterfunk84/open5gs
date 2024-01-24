@@ -1489,16 +1489,6 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e,
                         ogs_assert(r != OGS_ERROR);
                         OGS_FSM_TRAN(s, &gmm_state_initial_context_setup);
                         break;
-/*
-                    } else if (!SMSF_SM_SERVICE_ACTIVATED(amf_ue)) {
-                        r = amf_ue_sbi_discover_and_send(
-                                OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
-                                amf_nsmsf_sm_service_build_activate, amf_ue, 0, NULL);
-                        ogs_expect(r == OGS_OK);
-                        ogs_assert(r != OGS_ERROR);
-                        OGS_FSM_TRAN(s, &gmm_state_initial_context_setup);
-                        break;
-*/
                     } else if (!PCF_AM_POLICY_ASSOCIATED(amf_ue)) {
                         ogs_info("We Reach Potential Code Requirement - UE"
                             "is already SDM subscribed, but is it good for SMS?");
@@ -1507,6 +1497,14 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e,
                                 NULL,
                                 amf_npcf_am_policy_control_build_create,
                                 amf_ue, 0, NULL);
+                        ogs_expect(r == OGS_OK);
+                        ogs_assert(r != OGS_ERROR);
+                        OGS_FSM_TRAN(s, &gmm_state_initial_context_setup);
+                        break;
+                    } else if (SMSF_SERVICE_CAN_BE_ACTIVATED(amf_ue)) {
+                        r = amf_ue_sbi_discover_and_send(
+                                OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
+                                amf_nsmsf_sm_service_build_activate, amf_ue, 0, NULL);
                         ogs_expect(r == OGS_OK);
                         ogs_assert(r != OGS_ERROR);
                         OGS_FSM_TRAN(s, &gmm_state_initial_context_setup);
@@ -2393,8 +2391,7 @@ void gmm_state_initial_context_setup(ogs_fsm_t *s, amf_event_t *e)
                         break;
                     }
 
-                    if (amf_ue->sms_subscribed && 
-                            !SMSF_SERVICE_ACTIVATED(amf_ue)) {
+                    if (SMSF_SERVICE_CAN_BE_ACTIVATED(amf_ue)) {
                         r = amf_ue_sbi_discover_and_send(
                                 OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
                                 amf_nsmsf_sm_service_build_activate,

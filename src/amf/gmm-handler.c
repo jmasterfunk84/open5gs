@@ -530,7 +530,8 @@ ogs_nas_5gmm_cause_t gmm_handle_registration_update(amf_ue_t *amf_ue,
             OGS_ASN_CLEAR_DATA(&amf_ue->ueRadioCapability);
         }
         if (update_type->sms_over_nas_supported == 1) {
-            ogs_info("SMS over NAS supported by UE");
+            /* should we detect a change in this and deactivate? */
+            ogs_debug("SMS over NAS supported by UE");
             amf_ue->sms_over_nas_supported = true;
         }
     }
