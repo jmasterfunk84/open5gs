@@ -367,8 +367,6 @@ int amf_nudm_sdm_handle_provisioned(
 
         ogs_sbi_header_free(&header);
 
-        ogs_info("EntryB - Maybe Change Here?");
-
         r = amf_ue_sbi_discover_and_send(
                 OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL, NULL,
                 amf_npcf_am_policy_control_build_create, amf_ue, state, NULL);
