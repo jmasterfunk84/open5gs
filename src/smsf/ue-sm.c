@@ -134,14 +134,31 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                 CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
                     smsf_nudm_uecm_handle_smsf_registration(
                             smsf_ue, stream, message);
-                    
-                    r = smsf_ue_sbi_discover_and_send(
-                            OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
-                            smsf_nudm_sdm_build_get,
-                            smsf_ue, stream,
-                            (char *)OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA);
-                    ogs_expect(r == OGS_OK);
-                    ogs_assert(r != OGS_ERROR);
+
+                    SWITCH(message->h.method)
+                    CASE(OGS_SBI_HTTP_METHOD_POST)
+                        r = smsf_ue_sbi_discover_and_send(
+                                OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
+                                smsf_nudm_sdm_build_get,
+                                smsf_ue, stream,
+                                (char *)OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA);
+                        ogs_expect(r == OGS_OK);
+                        ogs_assert(r != OGS_ERROR);
+                        break;
+
+                    CASE(OGS_SBI_HTTP_METHOD_DELETE)
+                        OGS_FSM_TRAN(&smsf_ue->sm,
+                            &smsf_ue_context_will_remove);
+                        break;
+
+                    DEFAULT
+                        ogs_error("[%s] Invalid HTTP method [%s]",
+                                smsf_ue->supi, message->h.method);
+                        ogs_assert(true ==
+                            ogs_sbi_server_send_error(stream,
+                                OGS_SBI_HTTP_STATUS_FORBIDDEN, message,
+                                "Invalid HTTP method", message->h.method));
+                    END
                     break;
 
                 DEFAULT
