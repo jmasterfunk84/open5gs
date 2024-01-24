@@ -34,7 +34,7 @@ bool smsf_nsmsf_sm_service_handle_activate(
     ogs_assert(stream);
     ogs_assert(message);
     
-    ogs_debug("[%s] Activate SMService", smsf_ue->supi);
+    ogs_info("[%s] Activate SMService", smsf_ue->supi);
 
     OpenAPI_ue_sms_context_data_t *UeSmsContextData = NULL;
 
@@ -98,7 +98,7 @@ int smsf_nsmsf_sm_service_handle_deactivate(
     ogs_assert(stream);
     ogs_assert(message);
 
-    ogs_debug("[%s] Deactivate SMService", smsf_ue->supi);
+    ogs_info("[%s] Deactivate SMService", smsf_ue->supi);
 
     /* do we go to the nf we already subscribed to? */
     r = smsf_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
@@ -117,7 +117,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     ogs_assert(stream);
     ogs_assert(message);
 
-    ogs_debug("[%s] UplinkSMS", smsf_ue->supi);
+    ogs_info("[%s] UplinkSMS", smsf_ue->supi);
 
     OpenAPI_sms_record_data_t *SmsRecordData = NULL;
     OpenAPI_ref_to_binary_data_t *sms_payload = NULL;
