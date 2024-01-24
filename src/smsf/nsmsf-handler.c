@@ -260,11 +260,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 ogs_pkbuf_pull(sms_payload_buf, 3);
 
                 int tpdurealbytes;
-                if (!tpdu_submit.tpDCS) {
-                    tpdurealbytes = ((tpdu_submit.tpUDL+1)*7/8);
-                } else {
-                    tpdurealbytes = tpdu_submit.tpUDL;
-                }
+                tpdurealbytes = smsf_sms_get_user_data_byte_length(
+                        tpdu_submit.tpDCS, tpdu_submit.tpUDL);
 
                 memcpy(&tpdu_submit.tpUD, sms_payload_buf->data, tpdurealbytes);
 
@@ -284,7 +281,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 ogs_debug("[%s] Looking for [%s]", smsf_ue->supi, mt_gpsi);
                 mt_smsf_ue = smsf_ue_find_by_gpsi(mt_gpsi);
                 if (!mt_smsf_ue)
-                    ogs_error("[%s] No context with msisdn [%s]",
+                    ogs_error("[%s] No context with GPSI[%s]",
                             smsf_ue->supi, mt_gpsi);
 
                 if (mt_gpsi)

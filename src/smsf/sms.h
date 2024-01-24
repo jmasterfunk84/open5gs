@@ -123,7 +123,7 @@ typedef struct smsf_sms_tpdu_submit_s {
         uint8_t tpMR;
         smsf_sms_tp_address_t tp_destination_address;
         uint8_t tpPID;
-        uint8_t tpDCS;
+        smsf_sms_tpdcs_t tpDCS;
         uint8_t tpUDL;
         uint8_t tpUD[140];
 } __attribute__ ((packed)) smsf_sms_tpdu_submit_t;
@@ -142,7 +142,7 @@ typedef struct smsf_sms_tpdu_deliver_s {
         } header;
         smsf_sms_tp_address_t tp_originator_address;
         uint8_t tpPID;
-        uint8_t tpDCS;
+        smsf_sms_tpdcs_t tpDCS;
         smsf_sms_tpscts_t tpSCTS;
         uint8_t tpUDL;
         uint8_t tpUD[140];
@@ -179,7 +179,8 @@ ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o,
 ogs_pkbuf_t *smsf_sms_encode_rp_error(bool ti_flag, int ti_o,
         int rp_message_reference);
 
-//int smsf_sms_get_user_data_byte_length(int tp_user_data_length);
+int smsf_sms_get_user_data_byte_length(smsf_sms_tpdcs_t data_coding_scheme,
+    int user_data_length);
 
 void smsf_sms_set_sc_timestamp(smsf_sms_tpscts_t *timestamp);
 
