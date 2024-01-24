@@ -73,12 +73,6 @@ int amf_nsmsf_sm_service_handle_activate(
     return OGS_OK;
 }
 
-int amf_nsmsf_sm_service_handle_deactivate(
-        amf_ue_t *amf_ue, ogs_sbi_message_t *recvmsg)
-{
-    return OGS_OK;
-}
-
 int amf_nsmsf_sm_service_handle_uplink_sms(
         amf_ue_t *amf_ue, ogs_sbi_message_t *recvmsg)
 {
