@@ -514,7 +514,7 @@ struct amf_ue_s {
 
 #define SMSF_SERVICE_CAN_BE_ACTIVATED(__aMF) \
     ((__aMF) && ((__aMF)->sms_over_nas_supported) && \
-    ((__aMF)->sms_subscribed)\
+    ((__aMF)->sms_subscribed) && \
     ((__aMF)->sm_service_activated == false))
 #define SMSF_SERVICE_ACTIVATED(__aMF) \
     ((__aMF) && ((__aMF)->sm_service_activated))
