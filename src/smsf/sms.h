@@ -55,8 +55,11 @@ typedef struct smsf_sms_tp_address_s {
 } __attribute__ ((packed)) smsf_sms_tp_address_t;
 
 typedef struct smsf_sms_rpdu_message_type_s {
+        union {
         ED2(uint8_t reserved:5;,
             uint8_t value:3;)
+        uint8_t octet;
+        };
 } __attribute__ ((packed)) smsf_sms_rpdu_message_type_t;
 
 typedef struct smsf_sms_rpdata_s {

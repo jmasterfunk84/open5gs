@@ -48,7 +48,7 @@ ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o,
 {
 #define CPHEADER_FIXED_LENGTH 3
     ogs_pkbuf_t *pkbuf = NULL;
-    ogs_assert(cpdata);
+    ogs_assert(rpdu);
     smsf_sms_cp_data_t cp_data;
 
     memset(&cp_data, 0, sizeof(smsf_sms_cp_data_t));
@@ -68,7 +68,9 @@ ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_put_u8(pkbuf, cp_data.header.flags.octet);
     ogs_pkbuf_put_u8(pkbuf, cp_data.header.sm_service_message_type);
     ogs_pkbuf_put_u8(pkbuf, cp_data.cp_user_data_length);
-    ogs_pkbuf_put_data(pkbuf, rpdu, cp_data.cp_user_data_length);
+    ogs_pkbuf_put_data(pkbuf, rpdu->data, rpdu->len);
+
+    return pkbuf;
 }
 
 ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o, 
@@ -157,12 +159,12 @@ ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_data(const smsf_sms_rpdata_t *rpdu,
         return NULL;
     }
 
-    ogs_pkbuf_put_u8(pkbuf, rpdu->rpdu_message_type);
+    ogs_pkbuf_put_u8(pkbuf, rpdu->rpdu_message_type.octet);
     ogs_pkbuf_put_u8(pkbuf, rpdu->rp_message_reference);
     ogs_pkbuf_put_u8(pkbuf, rpdu->rp_originator_address.length);
     ogs_pkbuf_put_u8(pkbuf, rpdu->rp_originator_address.header.octet);
     ogs_pkbuf_put_data(pkbuf, rpdu->rp_originator_address.rp_address,
-            rpdu->rp_originator_address.length);
+            rpdu->rp_originator_address.length - 1);
     ogs_pkbuf_put_u8(pkbuf, 0); // RP-DA Address Length
 
     ogs_pkbuf_put_u8(pkbuf, tpdu_length);

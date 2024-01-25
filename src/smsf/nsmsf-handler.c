@@ -328,11 +328,10 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                         smsf_sms_rpdata_t rpduDeliver;
                         memset(&rpduDeliver, 0, sizeof(smsf_sms_rpdata_t));
-                        rpduDeliver.rpdu_message_type =
+                        rpduDeliver.rpdu_message_type.value =
                                 SMSF_RP_MESSAGE_TYPE_N2MS_DATA;
                         rpduDeliver.rp_message_reference =
                                 mt_smsf_ue->mt_message_reference;
-                        rpduDeliver.rpdu_message_type = 
                         smsf_copy_rp_address(&rpduDeliver.rp_originator_address,
                                 &rpdu.rp_destination_address);
 
@@ -341,13 +340,13 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                                 mt_smsf_ue->mt_message_reference,
                                 &tpduDeliver);
 
-                        ogs_pkbuf_t rpduout;
+                        ogs_pkbuf_t *rpduout;
 
-                        rpduout = smsf_sms_encode_n2ms_rp_data(&rpdu,
+                        rpduout = smsf_sms_encode_n2ms_rp_data(&rpduDeliver,
                                 &tpduDeliver);
 
                         param.n1smbuf = smsf_sms_encode_cp_data(false,
-                                mt_smsf_ue->mt_tio, &rpduout);
+                                mt_smsf_ue->mt_tio, rpduout);
 
                         ogs_assert(param.n1smbuf);
 
