@@ -198,6 +198,11 @@ void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t *tpduDeliver,
 void smsf_copy_rp_address(smsf_rpdu_address_t *destination,
         const smsf_rpdu_address_t *source);
 
+ogs_pkbuf_t send_to_local_smsc(const smsf_ue_t *smsf_ue,
+        ogs_sbi_stream_t *stream, ogs_pkbuf_t sms_payload_buf);
+void smsf_send_rpdu(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+        ogs_pkbuf_t *rpdubuf);
+
 #ifdef __cplusplus
 }
 #endif

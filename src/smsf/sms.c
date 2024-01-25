@@ -272,3 +272,197 @@ void smsf_copy_rp_address(smsf_rpdu_address_t *destination,
     destination->header.octet = source->header.octet;
     memcpy(&destination->rp_address, &source->rp_address, source->length);
 }
+
+ogs_pkbuf_t send_to_local_smsc(const smsf_ue_t *smsf_ue,
+        ogs_sbi_stream_t *stream, ogs_pkbuf_t sms_payload_buf)
+{
+    int templen;
+
+    smsf_sms_rpdu_message_type_t rpheader;
+    memcpy(&rpheader, sms_payload_buf->data,
+            sizeof(smsf_sms_rpdu_message_type_t));
+    ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_rpdu_message_type_t));
+
+    switch(rpheader.value) {
+    case SMSF_RP_MESSAGE_TYPE_MS2N_DATA:
+        ogs_debug("[%s] RP-DATA (ms->n)", smsf_ue->supi);
+        smsf_sms_rpdata_t rpdu;
+        memset(&rpdu, 0, sizeof(smsf_sms_rpdata_t));
+
+        rpdu.rpdu_message_type.value = rpheader.value;
+        memcpy(&rpdu.rp_message_reference, sms_payload_buf->data, 1);
+        ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_message_reference));
+        memcpy(&templen, sms_payload_buf->data, 1);
+        if (templen)
+            ogs_error("OA Length Invalid");
+
+        ogs_pkbuf_pull(sms_payload_buf, 1);
+        memcpy(&templen, sms_payload_buf->data, 1);
+        if (!templen)
+            ogs_error("DA Length Invalid");
+
+        memcpy(&rpdu.rp_destination_address,
+                sms_payload_buf->data, templen + 1);
+        ogs_pkbuf_pull(sms_payload_buf, templen + 1);
+
+        memcpy(&rpdu.rp_user_data_length, sms_payload_buf->data, 1);
+        ogs_pkbuf_pull(sms_payload_buf, 1);
+
+        /* RP Decoding complete.  Capture the TPDU now. */
+        smsf_sms_tpdu_hdr_t tpdu_hdr;
+
+        memcpy(&tpdu_hdr, sms_payload_buf->data, sizeof(tpdu_hdr));
+
+        switch(tpdu_hdr.tpMTI) {
+        case SMSF_TPDU_MTI_SMS_DELIVER:
+            ogs_debug("[%s] SMS-DELIVER Report (ms->n)", smsf_ue->supi);
+            break;
+
+        case SMSF_TPDU_MTI_SMS_SUBMIT:
+            ogs_debug("[%s] SMS-SUBMIT (ms->n)", smsf_ue->supi);
+
+            smsf_sms_tpdu_submit_t tpdu_submit;
+            memset(&tpdu_submit, 0, sizeof(smsf_sms_tpdu_submit_t));
+            memcpy(&tpdu_submit, sms_payload_buf->data, 2);
+            ogs_pkbuf_pull(sms_payload_buf, 2);
+            memcpy(&templen, sms_payload_buf->data, 1);
+            memcpy(&tpdu_submit.tp_destination_address,
+                    sms_payload_buf->data, 2 + ((templen + 1) / 2));
+            /* Copy Address Length, Address Type, and Address Itself */
+            ogs_pkbuf_pull(sms_payload_buf, 2 + ((templen + 1) / 2));
+            /* Copy PID, DCS, and UDL */
+            memcpy(&tpdu_submit.tpPID, sms_payload_buf->data, 3);
+            ogs_pkbuf_pull(sms_payload_buf, 3);
+
+            int tpdurealbytes;
+            tpdurealbytes = smsf_sms_get_user_data_byte_length(
+                    tpdu_submit.tpDCS, tpdu_submit.tpUDL);
+
+            memcpy(&tpdu_submit.tpUD, sms_payload_buf->data, tpdurealbytes);
+
+            /* Begin looking for our TPDU destination smsf_ue */
+            smsf_sms_tp_address_t tp_da;
+            char *output_bcd;
+            memset(&tp_da, 0, sizeof(smsf_sms_tp_address_t));
+            tp_da = tpdu_submit.tp_destination_address;
+            output_bcd = ogs_calloc(1, OGS_MAX_MSISDN_BCD_LEN+1);
+            ogs_buffer_to_bcd(tp_da.tp_address, (tp_da.addr_length + 1) /2,
+                    output_bcd);
+
+            /* Look for the MT MSISDN */
+            smsf_ue_t *mt_smsf_ue = NULL;
+            char *mt_gpsi = ogs_msprintf("%s-%s", OGS_ID_GPSI_TYPE_MSISDN,
+                    output_bcd);
+            ogs_debug("[%s] Looking for [%s]", smsf_ue->supi, mt_gpsi);
+            mt_smsf_ue = smsf_ue_find_by_gpsi(mt_gpsi);
+            if (!mt_smsf_ue)
+                ogs_error("[%s] No context with GPSI[%s]",
+                        smsf_ue->supi, mt_gpsi);
+
+            if (mt_gpsi)
+                ogs_free(mt_gpsi);
+            if (output_bcd)
+                ogs_free(output_bcd);
+
+            if (!smsf_ue->mo_sms_subscribed) {
+                /* Could also 403 the send-sms */
+                ogs_error("[%s] Not subscribed for MO-SMS",
+                        smsf_ue->supi);
+
+                ogs_debug("[%s] Sending RP-ERROR", smsf_ue->supi);
+                ogs_pkbuf_t *rpdubuf;
+                rpdubuf = smsf_sms_encode_n2ms_rp_error(
+                        rpdu.rp_message_reference, 50);
+                return rpdubuf;
+                break;
+            }
+            
+            if (mt_smsf_ue) {
+                ogs_debug("[%s] Sending CP-DATA", mt_smsf_ue->supi);
+
+                if (mt_smsf_ue->mt_sms_subscribed) {
+                    smsf_sms_tpdu_deliver_t tpduDeliver;
+                    memset(&tpduDeliver, 0,
+                            sizeof(smsf_sms_tpdu_deliver_t));
+                    smsf_copy_submit_to_deliver(&tpduDeliver, &tpdu_submit,
+                            mt_smsf_ue, smsf_ue);
+
+                    smsf_sms_increment_tio(smsf_ue);
+                    smsf_sms_increment_message_reference(smsf_ue);
+
+                    smsf_sms_rpdata_t rpduDeliver;
+                    memset(&rpduDeliver, 0, sizeof(smsf_sms_rpdata_t));
+                    rpduDeliver.rpdu_message_type.value =
+                            SMSF_RP_MESSAGE_TYPE_N2MS_DATA;
+                    rpduDeliver.rp_message_reference =
+                            mt_smsf_ue->mt_message_reference;
+                    smsf_copy_rp_address(&rpduDeliver.rp_originator_address,
+                            &rpdu.rp_destination_address);
+
+                    ogs_pkbuf_t *rpdubuf;
+                    rpdubuf = smsf_sms_encode_n2ms_rp_data(&rpduDeliver,
+                            &tpduDeliver);
+                    smsf_send_rpdu(mt_smsf_ue, stream, &rpdubuf);
+                } else {
+                    ogs_error("[%s] Not subscribed for MT-SMS",
+                            mt_smsf_ue->supi);
+                }
+            }
+
+            ogs_debug("[%s] Sending RP-Ack", smsf_ue->supi);
+            ogs_pkbuf_t *rpdubuf;
+            rpdubuf = smsf_sms_encode_n2ms_rp_ack(rpdu.rp_message_reference);
+            return rpdubuf;
+            break;
+
+        case SMSF_TPDU_MTI_SMS_COMMAND:
+            ogs_debug("[%s] SMS-COMMAND (ms->n)", smsf_ue->supi);
+            break;
+
+        default:
+            ogs_error("[%s] Undefined TPDU Message Type for ms->n [%d]",
+                    smsf_ue->supi, tpdu_hdr.tpMTI);
+
+            /* goto end, send nsmf error response */
+            return NULL;
+        }
+        break;
+
+    case SMSF_RP_MESSAGE_TYPE_MS2N_ACK:
+        ogs_debug("[%s] RP-ACK (ms->n)", smsf_ue->supi);
+        break;
+
+    case SMSF_RP_MESSAGE_TYPE_MS2N_ERROR:
+        ogs_debug("[%s] RP-ERROR (ms->n)", smsf_ue->supi);
+        break;
+
+    case SMSF_RP_MESSAGE_TYPE_MS2N_SMMA:
+        ogs_debug("[%s] RP-SMMA (ms->n)", smsf_ue->supi);
+        break;
+
+    default:
+        ogs_error("[%s] Undefined RPDU Message Type for ms->n [%d]",
+                smsf_ue->supi, rpheader.value);
+        /* goto end, send nsmf error response */
+        return NULL;
+    }
+
+    return NULL;
+}
+
+void smsf_send_rpdu(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+        ogs_pkbuf_t *rpdubuf)
+{
+    smsf_n1_n2_message_transfer_param_t param;
+
+    ogs_assert(smsf_ue)
+    ogs_assert(rpdubuf);
+
+    memset(&param, 0, sizeof(param));
+
+    param.n1smbuf = smsf_sms_encode_cp_data(false,
+            smsf_ue->mt_tio, rpdubuf);
+    ogs_assert(param.n1smbuf);
+    smsf_namf_comm_send_n1_n2_message_transfer(smsf_ue,
+            stream, &param);
+}
