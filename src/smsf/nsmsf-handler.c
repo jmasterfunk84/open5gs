@@ -303,8 +303,11 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                     ogs_debug("[%s] Sending RP-ERROR", smsf_ue->supi);
                     memset(&param, 0, sizeof(param));
-                    param.n1smbuf = smsf_sms_encode_rp_error(
-                        true, cpheader.flags.tio, rpdu.rp_message_reference);
+                    ogs_pkbuf_t *rpdubuf;
+                    rpdubuf = smsf_sms_encode_n2ms_rp_error(
+                            rpdu.rp_message_reference, 50);
+                    param.n1smbuf = smsf_sms_encode_cp_data(true,
+                            cpheader.flags.tio, rpdubuf);
                     ogs_assert(param.n1smbuf);
                     smsf_namf_comm_send_n1_n2_message_transfer(
                             smsf_ue, stream, &param);
@@ -315,8 +318,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                     ogs_debug("[%s] Sending CP-DATA", mt_smsf_ue->supi);
 
                     if (mt_smsf_ue->mt_sms_subscribed) {
-                        memset(&param, 0, sizeof(param));
-
                         smsf_sms_tpdu_deliver_t tpduDeliver;
                         memset(&tpduDeliver, 0,
                                 sizeof(smsf_sms_tpdu_deliver_t));
@@ -335,21 +336,13 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                         smsf_copy_rp_address(&rpduDeliver.rp_originator_address,
                                 &rpdu.rp_destination_address);
 
-                        param.n1smbuf = smsf_sms_encode_rp_data(false,
-                                mt_smsf_ue->mt_tio,
-                                mt_smsf_ue->mt_message_reference,
+                        ogs_pkbuf_t *rpdubuf;
+                        memset(&param, 0, sizeof(param));
+                        rpdubuf = smsf_sms_encode_n2ms_rp_data(&rpduDeliver,
                                 &tpduDeliver);
-
-                        ogs_pkbuf_t *rpduout;
-
-                        rpduout = smsf_sms_encode_n2ms_rp_data(&rpduDeliver,
-                                &tpduDeliver);
-
                         param.n1smbuf = smsf_sms_encode_cp_data(false,
-                                mt_smsf_ue->mt_tio, rpduout);
-
+                                mt_smsf_ue->mt_tio, rpdubuf);
                         ogs_assert(param.n1smbuf);
-
                         smsf_namf_comm_send_n1_n2_message_transfer(mt_smsf_ue,
                                 stream, &param);
                     } else {
@@ -360,8 +353,10 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
                 ogs_debug("[%s] Sending RP-Ack", smsf_ue->supi);
                 memset(&param, 0, sizeof(param));
-                param.n1smbuf = smsf_sms_encode_rp_ack(
-                    true, cpheader.flags.tio, rpdu.rp_message_reference);
+                ogs_pkbuf_t *rpdubuf;
+                rpdubuf = smsf_sms_encode_n2ms_rp_ack(rpdu.rp_message_reference);
+                param.n1smbuf = smsf_sms_encode_cp_data(true,
+                                cpheader.flags.tio, rpdubuf);
                 ogs_assert(param.n1smbuf);
                 smsf_namf_comm_send_n1_n2_message_transfer(
                         smsf_ue, stream, &param);

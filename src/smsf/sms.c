@@ -73,65 +73,6 @@ ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o,
     return pkbuf;
 }
 
-ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o, 
-        int rp_message_reference, smsf_sms_tpdu_deliver_t *tpdu)
-{
-    ogs_pkbuf_t *pkbuf = NULL;
-    smsf_sms_cp_data_t cp_data;
-
-    int tpdu_oa_real_length;
-
-    memset(&cp_data, 0, sizeof(smsf_sms_cp_data_t));
-
-    int tpdurealbytes;
-    tpdurealbytes = smsf_sms_get_user_data_byte_length(tpdu->tpDCS,
-            tpdu->tpUDL);
-
-    tpdu_oa_real_length = ((tpdu->tp_originator_address.addr_length + 1) /2);
-
-    cp_data.header.flags.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
-    cp_data.header.flags.tio = ti_o;
-    cp_data.header.flags.tif = ti_flag;
-    cp_data.header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_DATA;
-    cp_data.cp_user_data_length = 25 + tpdurealbytes + tpdu_oa_real_length;
-
-    pkbuf = ogs_pkbuf_alloc(NULL, 240);
-    if (!pkbuf) {
-        ogs_error("ogs_pkbuf_alloc() failed");
-        return NULL;
-    }
-
-    ogs_pkbuf_put_u8(pkbuf, cp_data.header.flags.octet);
-    ogs_pkbuf_put_u8(pkbuf, cp_data.header.sm_service_message_type);
-    ogs_pkbuf_put_u8(pkbuf, cp_data.cp_user_data_length);
-
-    ogs_pkbuf_put_u8(pkbuf, SMSF_RP_MESSAGE_TYPE_N2MS_DATA);
-    ogs_pkbuf_put_u8(pkbuf, rp_message_reference); // rp_message_reference
-    ogs_pkbuf_put_data(pkbuf, (char *)"\x07\x91\x31\x60\x26\x00\x50\xf1", 8); // rp-oa
-    ogs_pkbuf_put_u8(pkbuf, 0); // rp-da
-    // 13 is the size of the tpdu stuff.
-    ogs_pkbuf_put_u8(pkbuf, tpdurealbytes + tpdu_oa_real_length + 13);
-
-    ogs_pkbuf_put_u8(pkbuf, tpdu->header.octet);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tp_originator_address.addr_length);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tp_originator_address.header.octet);
-    ogs_pkbuf_put_data(pkbuf, tpdu->tp_originator_address.tp_address,
-            tpdu_oa_real_length);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpPID);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpDCS.octet);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.year);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.month);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.day);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.hour);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.minute);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.second);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.timezone);
-    ogs_pkbuf_put_u8(pkbuf, tpdu->tpUDL);
-    ogs_pkbuf_put_data(pkbuf, &tpdu->tpUD,tpdurealbytes);
-
-    return pkbuf;
-}
-
 ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_data(const smsf_sms_rpdata_t *rpdu,
         const smsf_sms_tpdu_deliver_t *tpdu)
 {
@@ -189,29 +130,16 @@ ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_data(const smsf_sms_rpdata_t *rpdu,
     return pkbuf;
 }
 
-ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o,
-        int rp_message_reference)
+ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_ack(int rp_message_reference)
 {
+#define RP_ACK_FIXED_LENGTH 4
     ogs_pkbuf_t *pkbuf = NULL;
-    smsf_sms_cp_data_t cp_data;
 
-    memset(&cp_data, 0, sizeof(smsf_sms_cp_data_t));
-
-    cp_data.header.flags.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
-    cp_data.header.flags.tio = ti_o;
-    cp_data.header.flags.tif = ti_flag;
-    cp_data.header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_DATA;
-    cp_data.cp_user_data_length = 4;
-
-    pkbuf = ogs_pkbuf_alloc(NULL, 7);
+    pkbuf = ogs_pkbuf_alloc(NULL, RP_ACK_FIXED_LENGTH);
     if (!pkbuf) {
         ogs_error("ogs_pkbuf_alloc() failed");
         return NULL;
     }
-
-    ogs_pkbuf_put_u8(pkbuf, cp_data.header.flags.octet);
-    ogs_pkbuf_put_u8(pkbuf, cp_data.header.sm_service_message_type);
-    ogs_pkbuf_put_u8(pkbuf, cp_data.cp_user_data_length);
 
     ogs_pkbuf_put_u8(pkbuf, SMSF_RP_MESSAGE_TYPE_N2MS_ACK);
     ogs_pkbuf_put_u8(pkbuf, rp_message_reference);
@@ -221,34 +149,21 @@ ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o,
     return pkbuf;
 }
 
-ogs_pkbuf_t *smsf_sms_encode_rp_error(bool ti_flag, int ti_o,
-        int rp_message_reference)
+ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_error(int rp_message_reference, int cause)
 {
+#define RP_ERROR_FIXED_LENGTH 6
     ogs_pkbuf_t *pkbuf = NULL;
-    smsf_sms_cp_data_t cp_data;
 
-    memset(&cp_data, 0, sizeof(smsf_sms_cp_data_t));
-
-    cp_data.header.flags.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
-    cp_data.header.flags.tio = ti_o;
-    cp_data.header.flags.tif = ti_flag;
-    cp_data.header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_DATA;
-    cp_data.cp_user_data_length = 6;
-
-    pkbuf = ogs_pkbuf_alloc(NULL, 9);
+    pkbuf = ogs_pkbuf_alloc(NULL, RP_ERROR_FIXED_LENGTH);
     if (!pkbuf) {
         ogs_error("ogs_pkbuf_alloc() failed");
         return NULL;
     }
 
-    ogs_pkbuf_put_u8(pkbuf, cp_data.header.flags.octet);
-    ogs_pkbuf_put_u8(pkbuf, cp_data.header.sm_service_message_type);
-    ogs_pkbuf_put_u8(pkbuf, cp_data.cp_user_data_length);
-
     ogs_pkbuf_put_u8(pkbuf, SMSF_RP_MESSAGE_TYPE_N2MS_ERROR);
     ogs_pkbuf_put_u8(pkbuf, rp_message_reference);
     ogs_pkbuf_put_u8(pkbuf, 1); // RP-Cause Length: 1
-    ogs_pkbuf_put_u8(pkbuf, 50); // RP-Cause: Requested facility not subscribed
+    ogs_pkbuf_put_u8(pkbuf, cause); // RP-Cause: Requested facility not subscribed
     ogs_pkbuf_put_u8(pkbuf, 65); // Element ID 0x41
     ogs_pkbuf_put_u8(pkbuf, 0); // Length: 0
 

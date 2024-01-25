@@ -179,17 +179,12 @@ ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o);
 ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o, 
         const ogs_pkbuf_t *rpdu);
 
-ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
-        int rp_message_reference, smsf_sms_tpdu_deliver_t *tpdu);
-
 ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_data(const smsf_sms_rpdata_t *rpdu,
         const smsf_sms_tpdu_deliver_t *tpdu);
 
-ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o,
-        int rp_message_reference);
+ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_ack(int rp_message_reference);
 
-ogs_pkbuf_t *smsf_sms_encode_rp_error(bool ti_flag, int ti_o,
-        int rp_message_reference);
+ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_error(int rp_message_reference, int cause);
 
 int smsf_sms_get_user_data_byte_length(smsf_sms_tpdcs_t data_coding_scheme,
     int user_data_length);
