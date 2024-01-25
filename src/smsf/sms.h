@@ -28,15 +28,18 @@
 extern "C" {
 #endif
 
-typedef struct smsf_sms_address_s {
+typedef struct smsf_rpdu_address_s {
         uint8_t length;
+        union {
         struct {
         ED3(uint8_t ext:1;,
             uint8_t ton:3;,
             uint8_t npi:4;)
+        };
+        uint8_t octet;
         } header;
         uint8_t rp_address[11];
-} __attribute__ ((packed)) smsf_sms_address_t;
+} __attribute__ ((packed)) smsf_rpdu_address_t;
 
 typedef struct smsf_sms_tp_address_s {
         uint8_t addr_length;
@@ -59,8 +62,8 @@ typedef struct smsf_sms_rpdu_message_type_s {
 typedef struct smsf_sms_rpdata_s {
         smsf_sms_rpdu_message_type_t rpdu_message_type;
         uint8_t rp_message_reference;
-        smsf_sms_address_t rp_originator_address;
-        smsf_sms_address_t rp_destination_address;
+        smsf_rpdu_address_t rp_originator_address;
+        smsf_rpdu_address_t rp_destination_address;
         uint8_t rp_user_data_length;
 } __attribute__ ((packed)) smsf_sms_rpdata_t;
 
@@ -170,8 +173,14 @@ typedef struct smsf_sms_tpdu_deliver_s {
 
 ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o);
 
+ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o, 
+        const ogs_pkbuf_t *rpdu);
+
 ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
-                int rp_message_reference, smsf_sms_tpdu_deliver_t *tpdu);
+        int rp_message_reference, smsf_sms_tpdu_deliver_t *tpdu);
+
+ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_data(const smsf_sms_rpdata_t *rpdu,
+        const smsf_sms_tpdu_deliver_t *tpdu);
 
 ogs_pkbuf_t *smsf_sms_encode_rp_ack(bool ti_flag, int ti_o,
         int rp_message_reference);
@@ -185,8 +194,11 @@ int smsf_sms_get_user_data_byte_length(smsf_sms_tpdcs_t data_coding_scheme,
 void smsf_sms_set_sc_timestamp(smsf_sms_tpscts_t *timestamp);
 
 void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t *tpduDeliver,
-                const smsf_sms_tpdu_submit_t *tpdu_submit,
-                const smsf_ue_t *mt_smsf_ue, const smsf_ue_t *smsf_ue);
+        const smsf_sms_tpdu_submit_t *tpdu_submit,
+        const smsf_ue_t *mt_smsf_ue, const smsf_ue_t *smsf_ue);
+
+void smsf_copy_rp_address(smsf_rpdu_address_t *destination,
+        const smsf_rpdu_address_t *source);
 
 #ifdef __cplusplus
 }

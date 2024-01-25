@@ -43,8 +43,36 @@ ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o)
     return pkbuf;
 }
 
+ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o, 
+        const ogs_pkbuf_t *rpdu)
+{
+#define CPHEADER_FIXED_LENGTH 3
+    ogs_pkbuf_t *pkbuf = NULL;
+    ogs_assert(cpdata);
+    smsf_sms_cp_data_t cp_data;
+
+    memset(&cp_data, 0, sizeof(smsf_sms_cp_data_t));
+
+    cp_data.header.flags.pd = SMSF_PROTOCOL_DISCRIMINATOR_SMS;
+    cp_data.header.flags.tio = ti_o;
+    cp_data.header.flags.tif = ti_flag;
+    cp_data.header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_DATA;
+    cp_data.cp_user_data_length = rpdu->len;
+
+    pkbuf = ogs_pkbuf_alloc(NULL, CPHEADER_FIXED_LENGTH + rpdu->len);
+    if (!pkbuf) {
+        ogs_error("ogs_pkbuf_alloc() failed");
+        return NULL;
+    }
+
+    ogs_pkbuf_put_u8(pkbuf, cp_data.header.flags.octet);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.header.sm_service_message_type);
+    ogs_pkbuf_put_u8(pkbuf, cp_data.cp_user_data_length);
+    ogs_pkbuf_put_data(pkbuf, rpdu, cp_data.cp_user_data_length);
+}
+
 ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o, 
-                int rp_message_reference, smsf_sms_tpdu_deliver_t *tpdu)
+        int rp_message_reference, smsf_sms_tpdu_deliver_t *tpdu)
 {
     ogs_pkbuf_t *pkbuf = NULL;
     smsf_sms_cp_data_t cp_data;
@@ -98,6 +126,63 @@ ogs_pkbuf_t *smsf_sms_encode_rp_data(bool ti_flag, int ti_o,
     ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.timezone);
     ogs_pkbuf_put_u8(pkbuf, tpdu->tpUDL);
     ogs_pkbuf_put_data(pkbuf, &tpdu->tpUD,tpdurealbytes);
+
+    return pkbuf;
+}
+
+ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_data(const smsf_sms_rpdata_t *rpdu,
+        const smsf_sms_tpdu_deliver_t *tpdu)
+{
+#define TPDU_FIXED_LENGTH 13
+#define RPDU_FIXED_LENGTH 6
+    ogs_pkbuf_t *pkbuf = NULL;
+    int tpdu_oa_real_length;
+    int tpdu_ud_real_length;
+    int tpdu_length;
+    int rpdu_length;
+
+    ogs_assert(rpdu);
+    ogs_assert(tpdu);
+
+    tpdu_ud_real_length = smsf_sms_get_user_data_byte_length(tpdu->tpDCS,
+            tpdu->tpUDL);
+    tpdu_oa_real_length = ((tpdu->tp_originator_address.addr_length + 1) /2);
+    tpdu_length = TPDU_FIXED_LENGTH + tpdu_ud_real_length + tpdu_oa_real_length;
+    rpdu_length = RPDU_FIXED_LENGTH + rpdu->rp_originator_address.length +
+            tpdu_length;
+
+    pkbuf = ogs_pkbuf_alloc(NULL, rpdu_length);
+    if (!pkbuf) {
+        ogs_error("ogs_pkbuf_alloc() failed");
+        return NULL;
+    }
+
+    ogs_pkbuf_put_u8(pkbuf, rpdu->rpdu_message_type);
+    ogs_pkbuf_put_u8(pkbuf, rpdu->rp_message_reference);
+    ogs_pkbuf_put_u8(pkbuf, rpdu->rp_originator_address.length);
+    ogs_pkbuf_put_u8(pkbuf, rpdu->rp_originator_address.header.octet);
+    ogs_pkbuf_put_data(pkbuf, rpdu->rp_originator_address.rp_address,
+            rpdu->rp_originator_address.length);
+    ogs_pkbuf_put_u8(pkbuf, 0); // RP-DA Address Length
+
+    ogs_pkbuf_put_u8(pkbuf, tpdu_length);
+
+    ogs_pkbuf_put_u8(pkbuf, tpdu->header.octet);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tp_originator_address.addr_length);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tp_originator_address.header.octet);
+    ogs_pkbuf_put_data(pkbuf, tpdu->tp_originator_address.tp_address,
+            tpdu_oa_real_length);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpPID);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpDCS.octet);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.year);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.month);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.day);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.hour);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.minute);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.second);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpSCTS.timezone);
+    ogs_pkbuf_put_u8(pkbuf, tpdu->tpUDL);
+    ogs_pkbuf_put_data(pkbuf, &tpdu->tpUD, tpdu_ud_real_length);
 
     return pkbuf;
 }
@@ -208,8 +293,8 @@ void smsf_sms_set_sc_timestamp(smsf_sms_tpscts_t *sc_timestamp)
 }
 
 void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t *tpdu_deliver,
-                const smsf_sms_tpdu_submit_t *tpdu_submit,
-                const smsf_ue_t *mt_smsf_ue, const smsf_ue_t *smsf_ue)
+        const smsf_sms_tpdu_submit_t *tpdu_submit,
+        const smsf_ue_t *mt_smsf_ue, const smsf_ue_t *smsf_ue)
 {
     ogs_assert(tpdu_deliver);
     ogs_assert(tpdu_submit);
@@ -258,4 +343,15 @@ void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t *tpdu_deliver,
             tpdu_submit->tpDCS, tpdu_submit->tpUDL);
 
     memcpy(&tpdu_deliver->tpUD, &tpdu_submit->tpUD, tpdurealbytes);
+}
+
+void smsf_copy_rp_address(smsf_rpdu_address_t *destination,
+        const smsf_rpdu_address_t *source)
+{
+    ogs_assert(source);
+    ogs_assert(destination);
+
+    destination->length = source->length;
+    destination->header.octet = source->header.octet;
+    memcpy(&destination->rp_address, &source->rp_address, source->length);
 }

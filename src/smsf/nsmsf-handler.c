@@ -262,7 +262,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                         sms_payload_buf->data, 2 + ((templen + 1) / 2));
                 /* Copy Address Length, Address Type, and Address Itself */
                 ogs_pkbuf_pull(sms_payload_buf, 2 + ((templen + 1) / 2));
-                /* Coopy PID, DCS, and UDL */
+                /* Copy PID, DCS, and UDL */
                 memcpy(&tpdu_submit.tpPID, sms_payload_buf->data, 3);
                 ogs_pkbuf_pull(sms_payload_buf, 3);
 
@@ -326,10 +326,28 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                         smsf_sms_increment_tio(smsf_ue);
                         smsf_sms_increment_message_reference(smsf_ue);
 
+                        smsf_sms_rpdata_t rpduDeliver;
+                        memset(&rpduDeliver, 0, sizeof(smsf_sms_rpdata_t));
+                        rpduDeliver.rpdu_message_type =
+                                SMSF_RP_MESSAGE_TYPE_N2MS_DATA;
+                        rpduDeliver.rp_message_reference =
+                                mt_smsf_ue->mt_message_reference;
+                        rpduDeliver.rpdu_message_type = 
+                        smsf_copy_rp_address(&rpduDeliver.rp_originator_address,
+                                &rpdu.rp_destination_address);
+
                         param.n1smbuf = smsf_sms_encode_rp_data(false,
                                 mt_smsf_ue->mt_tio,
                                 mt_smsf_ue->mt_message_reference,
                                 &tpduDeliver);
+
+                        ogs_pkbuf_t rpduout;
+
+                        rpduout = smsf_sms_encode_n2ms_rp_data(&rpdu,
+                                &tpduDeliver);
+
+                        param.n1smbuf = smsf_sms_encode_cp_data(false,
+                                mt_smsf_ue->mt_tio, &rpduout);
 
                         ogs_assert(param.n1smbuf);
 
@@ -339,7 +357,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                         ogs_error("[%s] Not subscribed for MT-SMS",
                                 mt_smsf_ue->supi);
                     }
-
                 }
 
                 ogs_debug("[%s] Sending RP-Ack", smsf_ue->supi);
