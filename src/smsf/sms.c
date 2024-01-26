@@ -238,8 +238,6 @@ void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t *tpdu_deliver,
     int oa_msisdn_bcd_len;
     ogs_bcd_to_buffer(oa_msisdn, oa_msisdn_bcd,
             &oa_msisdn_bcd_len);
-    if (oa_msisdn)
-        ogs_free(oa_msisdn);
     tpdu_deliver->tp_originator_address.addr_length =
             strlen(oa_msisdn);
     tpdu_deliver->tp_originator_address.header.ext = 1;
@@ -248,6 +246,8 @@ void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t *tpdu_deliver,
     memcpy(&tpdu_deliver->tp_originator_address.tp_address,
             oa_msisdn_bcd, oa_msisdn_bcd_len);
 
+    if (oa_msisdn)
+        ogs_free(oa_msisdn);
     if (oa_msisdn_bcd)
         ogs_free(oa_msisdn_bcd);
 
@@ -273,8 +273,8 @@ void smsf_copy_rp_address(smsf_rpdu_address_t *destination,
     memcpy(&destination->rp_address, &source->rp_address, source->length);
 }
 
-ogs_pkbuf_t send_to_local_smsc(const smsf_ue_t *smsf_ue,
-        ogs_sbi_stream_t *stream, ogs_pkbuf_t sms_payload_buf)
+ogs_pkbuf_t *send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+        ogs_pkbuf_t *sms_payload_buf)
 {
     int templen;
 
@@ -402,7 +402,7 @@ ogs_pkbuf_t send_to_local_smsc(const smsf_ue_t *smsf_ue,
                     ogs_pkbuf_t *rpdubuf;
                     rpdubuf = smsf_sms_encode_n2ms_rp_data(&rpduDeliver,
                             &tpduDeliver);
-                    smsf_send_rpdu(mt_smsf_ue, stream, &rpdubuf);
+                    smsf_send_rpdu(mt_smsf_ue, stream, rpdubuf);
                 } else {
                     ogs_error("[%s] Not subscribed for MT-SMS",
                             mt_smsf_ue->supi);
@@ -455,7 +455,7 @@ void smsf_send_rpdu(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
 {
     smsf_n1_n2_message_transfer_param_t param;
 
-    ogs_assert(smsf_ue)
+    ogs_assert(smsf_ue);
     ogs_assert(rpdubuf);
 
     memset(&param, 0, sizeof(param));

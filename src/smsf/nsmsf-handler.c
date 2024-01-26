@@ -166,7 +166,6 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
 
     /* do like ogs_nas_eps_decode_eps_network_feature_support*/
     /* cast the buffer onto a header struct gsm_header = (ogs_nas_5gsm_header_t *)payload_container->buffer; */
-    uint8_t templen;
     smsf_sms_cp_hdr_t cpheader;
     smsf_n1_n2_message_transfer_param_t param;
 
@@ -211,12 +210,15 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
          */
 
         memset(&param, 0, sizeof(param));
-        send_to_local_smsc(smsf_ue, stream, sms_payload_buf);
-        param.n1smbuf = smsf_sms_encode_cp_data(ti_flag_ack,
-                cpheader.flags.tio, sms_payload_buf);
-        ogs_assert(param.n1smbuf);
-        smsf_namf_comm_send_n1_n2_message_transfer(
-                smsf_ue, stream, &param);
+        ogs_pkbuf_t *fromsmsc;
+        fromsmsc = send_to_local_smsc(smsf_ue, stream, sms_payload_buf);
+        if (fromsmsc) {
+            param.n1smbuf = smsf_sms_encode_cp_data(ti_flag_ack,
+                    cpheader.flags.tio, fromsmsc);
+            ogs_assert(param.n1smbuf);
+            smsf_namf_comm_send_n1_n2_message_transfer(
+                    smsf_ue, stream, &param);
+        }
 
         // smsf_sms_rpdu_message_type_t rpheader;
         // memcpy(&rpheader, sms_payload_buf->data,
@@ -403,7 +405,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         //     return false;
         // }
 
-        // break;
+        break;
     case SMSF_SERVICE_MESSAGE_TYPE_CP_ACK:
         ogs_debug("[%s] CP-ACK", smsf_ue->supi);
         /* no bytes follow */
