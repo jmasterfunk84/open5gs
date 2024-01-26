@@ -276,7 +276,7 @@ void smsf_copy_rp_address(smsf_rpdu_address_t *destination,
 ogs_pkbuf_t *send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_pkbuf_t *sms_payload_buf)
 {
-    int templen;
+    int templen = 0;
 
     smsf_sms_rpdu_message_type_t rpheader;
     memcpy(&rpheader, sms_payload_buf->data,

@@ -207,6 +207,8 @@ void smsf_ue_remove(smsf_ue_t *smsf_ue)
         ogs_free(smsf_ue->amf_instance_id);
     if (smsf_ue->gpsi)
         ogs_free(smsf_ue->gpsi);
+    if (smsf_ue->data_change_subscription_id)
+        ogs_free(smsf_ue->data_change_subscription_id);
 
     ogs_pool_free(&smsf_ue_pool, smsf_ue);
 }
