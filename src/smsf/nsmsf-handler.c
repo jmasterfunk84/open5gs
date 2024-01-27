@@ -218,6 +218,11 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     case SMSF_SERVICE_MESSAGE_TYPE_CP_ERROR:
         ogs_debug("[%s] CP-ERROR", smsf_ue->supi);
         /* 1 byte cp-cause follows */
+        int cp_cause = 0;
+        if (sms_payload_buf->data = 1) {
+            memcpy(cp_cause, sms_payload_buf->data, 1);
+            ogs_error("[%s] CP-ERROR[%d]", smsf_ue->supi, cp_cause);
+        }
         break;
 
     default:
