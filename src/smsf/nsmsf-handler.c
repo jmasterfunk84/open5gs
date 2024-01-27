@@ -180,9 +180,12 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         cp_data = (smsf_sms_cp_data_t *)sms_payload_buf->data;
         ogs_assert(cp_data);
         ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_cp_data_t));
-        ogs_debug("LEN1 %d, LeN2 %d",
-                sms_payload_buf->len,
-                cp_data->cp_user_data_length);
+        if (sms_payload_buf->len != cp_data->cp_user_data_length) {
+            ogs_error("CP-DATA Length Does Not Match Payload");
+            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                    message, "SMS_PAYLOAD_ERROR", smsf_ue->supi));
+            return false;
+        }
 
         ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
         memset(&param, 0, sizeof(param));
@@ -196,7 +199,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
                 smsf_ue, stream, &param);
 
         /* The SMSF normally sends the RP-DATA payload to the SMSC here.
-         * For future work, this can use either Diameter SGD, MAP, or SBI.
+         * For future work, this can use either Diameter SGd, MAP, or SBI.
          * We will process the message here to allow for local delivery.
          */
         memset(&param, 0, sizeof(param));
@@ -227,7 +230,8 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
     default:
         ogs_error("[%s] Undefined CP Message Type [%d]",
                 smsf_ue->supi, cp_header->sm_service_message_type);
-        /* goto end, send nsmf error response */
+        ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                message, "SMS_PAYLOAD_ERROR", smsf_ue->supi));
         return false;
     }
 
