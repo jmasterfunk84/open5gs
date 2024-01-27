@@ -14,7 +14,7 @@ smsf:
         mnc: 70
   sbi:
     server:
-      - address: 127.0.0.16
+      - address: 127.0.0.21
         port: 7777
     client:
 #      nrf:
