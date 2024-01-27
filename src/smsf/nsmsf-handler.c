@@ -164,70 +164,69 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         return false;
     }
 
-    /* do like ogs_nas_eps_decode_eps_network_feature_support*/
-    /* cast the buffer onto a header struct gsm_header = (ogs_nas_5gsm_header_t *)payload_container->buffer; */
-    smsf_sms_cp_hdr_t cpheader;
+    smsf_sms_cp_hdr_t *cp_header;
     smsf_n1_n2_message_transfer_param_t param;
-
-    memcpy(&cpheader, sms_payload_buf->data, sizeof(smsf_sms_cp_hdr_t));
-    ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_cp_hdr_t));
+    
+    cp_header = (smsf_sms_cp_hdr_t *)sms_payload_buf->data;
+    ogs_assert(cp_header);
 
     ogs_debug("[%s] CP Header Message Type [%d]", smsf_ue->supi,
-            cpheader.sm_service_message_type);
+            cp_header->sm_service_message_type);
 
-    switch(cpheader.sm_service_message_type) {
+    switch(cp_header->sm_service_message_type) {
     case SMSF_SERVICE_MESSAGE_TYPE_CP_DATA:
         ogs_debug("[%s] CP-Data", smsf_ue->supi);
-        /* up to 249 bytes of user data follows*/
-        smsf_sms_cp_data_t cpdata;
-        memcpy(&cpdata, &cpheader, sizeof(smsf_sms_cp_hdr_t));
-        memcpy(&cpdata.cp_user_data_length, sms_payload_buf->data, 1);
-        ogs_pkbuf_pull(sms_payload_buf, 1);
+        smsf_sms_cp_data_t *cp_data;
+        cp_data = (smsf_sms_cp_data_t *)sms_payload_buf->data;
+        ogs_assert(cp_data);
+        ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_cp_data_t));
+        ogs_debug("LEN1 %d, LeN2 %d",
+                sms_payload_buf->len,
+                cp_data->cp_user_data_length);
 
         ogs_debug("[%s] Sending CP-ACK", smsf_ue->supi);
         memset(&param, 0, sizeof(param));
         int ti_flag_ack = true;
-        if (cpheader.flags.tif)
+        if (cp_header->flags.tif)
             ti_flag_ack = false;
         param.n1smbuf = smsf_sms_encode_cp_ack(ti_flag_ack,
-                cpheader.flags.tio);
+                cp_header->flags.tio);
         ogs_assert(param.n1smbuf);
         smsf_namf_comm_send_n1_n2_message_transfer(
                 smsf_ue, stream, &param);
 
-        /* The SMSF would normally send the CP-DATA payload to the SMSC.
-         * This could be done either Diameter SGD, MAP, or SBI.
-         * We will process the message here to allow for local delivery. 
+        /* The SMSF normally sends the RP-DATA payload to the SMSC here.
+         * For future work, this can use either Diameter SGD, MAP, or SBI.
+         * We will process the message here to allow for local delivery.
          */
-
         memset(&param, 0, sizeof(param));
-        ogs_pkbuf_t *fromsmsc;
-        fromsmsc = send_to_local_smsc(smsf_ue, stream, sms_payload_buf);
-        if (fromsmsc) {
+        ogs_pkbuf_t *smsc_result;
+        smsc_result = smsf_send_to_local_smsc(smsf_ue, stream, sms_payload_buf);
+        if (smsc_result) {
             param.n1smbuf = smsf_sms_encode_cp_data(ti_flag_ack,
-                    cpheader.flags.tio, fromsmsc);
+                    cp_header->flags.tio, smsc_result);
             ogs_assert(param.n1smbuf);
             smsf_namf_comm_send_n1_n2_message_transfer(
                     smsf_ue, stream, &param);
         }
         break;
+
     case SMSF_SERVICE_MESSAGE_TYPE_CP_ACK:
         ogs_debug("[%s] CP-ACK", smsf_ue->supi);
         /* no bytes follow */
         break;
+
     case SMSF_SERVICE_MESSAGE_TYPE_CP_ERROR:
         ogs_debug("[%s] CP-ERROR", smsf_ue->supi);
-        /* 1 byte cp-cause follows */
-        int cp_cause = 0;
-        if (sms_payload_buf->data = 1) {
-            memcpy(cp_cause, sms_payload_buf->data, 1);
-            ogs_error("[%s] CP-ERROR[%d]", smsf_ue->supi, cp_cause);
-        }
+        smsf_sms_cp_error_t *cp_error;
+        cp_error = (smsf_sms_cp_error_t *)sms_payload_buf->data;
+        ogs_assert(cp_error);
+        ogs_error("[%s] CP-ERROR[%d]", smsf_ue->supi, cp_error->cp_cause);
         break;
 
     default:
         ogs_error("[%s] Undefined CP Message Type [%d]",
-                smsf_ue->supi, cpheader.sm_service_message_type);
+                smsf_ue->supi, cp_header->sm_service_message_type);
         /* goto end, send nsmf error response */
         return false;
     }

@@ -23,7 +23,7 @@
 #include "ogs-core.h"
 #include "ogs-proto.h"
 #include "context.h"
-// Added for send_to_local_smsc(), so maybe don't put it here.
+// Added for smsf_send_to_local_smsc(), so maybe don't put it here.
 #include "namf-build.h"
 #include "sbi-path.h"
 
@@ -89,6 +89,11 @@ typedef struct smsf_sms_cp_data_s {
         smsf_sms_cp_hdr_t header;
         uint8_t cp_user_data_length;
 } __attribute__ ((packed)) smsf_sms_cp_data_t;
+
+typedef struct smsf_sms_cp_error_s {
+        smsf_sms_cp_hdr_t header;
+        uint8_t cp_cause;
+} __attribute__ ((packed)) smsf_sms_cp_error_t;
 
 typedef struct smsf_sms_tpdu_hdr_s {
         ED2(uint8_t spare:6;,
@@ -201,7 +206,7 @@ void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t *tpduDeliver,
 void smsf_copy_rp_address(smsf_rpdu_address_t *destination,
         const smsf_rpdu_address_t *source);
 
-ogs_pkbuf_t *send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
+ogs_pkbuf_t *smsf_send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_pkbuf_t *sms_payload_buf);
 void smsf_send_rpdu(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
         ogs_pkbuf_t *rpdubuf);
