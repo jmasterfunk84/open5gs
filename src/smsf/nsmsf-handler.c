@@ -231,7 +231,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         ogs_error("[%s] Undefined CP Message Type [%d]",
                 smsf_ue->supi, cp_header->sm_service_message_type);
         ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                message, "SMS_PAYLOAD_ERROR", smsf_ue->supi));
+                message, "SMS_PAYLOAD_ERROR", smsf_ue->supi);
         return false;
     }
 
