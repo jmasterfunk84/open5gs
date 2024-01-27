@@ -275,8 +275,8 @@ void smsf_copy_rp_address(smsf_rpdu_address_t *destination,
     memcpy(&destination->rp_address, &source->rp_address, source->length);
 }
 
-ogs_pkbuf_t *smsf_send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream,
-        ogs_pkbuf_t *sms_payload_buf)
+ogs_pkbuf_t *smsf_send_to_internal_smsc(smsf_ue_t *smsf_ue,
+        ogs_sbi_stream_t *stream, ogs_pkbuf_t *sms_payload_buf)
 {
     int templen = 0;
 
@@ -431,7 +431,6 @@ ogs_pkbuf_t *smsf_send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *strea
             ogs_error("[%s] Undefined TPDU Message Type for ms->n [%d]",
                     smsf_ue->supi, tpdu_hdr->tpMTI);
 
-            /* goto end, send nsmf error response */
             return NULL;
         }
         break;
@@ -451,7 +450,6 @@ ogs_pkbuf_t *smsf_send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *strea
     default:
         ogs_error("[%s] Undefined RPDU Message Type for ms->n [%d]",
                 smsf_ue->supi, rp_header->value);
-        /* goto end, send nsmf error response */
         return NULL;
     }
 

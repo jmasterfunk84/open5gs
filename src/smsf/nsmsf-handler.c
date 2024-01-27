@@ -204,7 +204,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
          */
         memset(&param, 0, sizeof(param));
         ogs_pkbuf_t *smsc_result;
-        smsc_result = smsf_send_to_local_smsc(smsf_ue, stream, sms_payload_buf);
+        smsc_result = smsf_send_to_internal_smsc(smsf_ue, stream, sms_payload_buf);
         if (smsc_result) {
             param.n1smbuf = smsf_sms_encode_cp_data(ti_flag_ack,
                     cp_header->flags.tio, smsc_result);
