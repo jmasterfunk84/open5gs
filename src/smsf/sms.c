@@ -21,6 +21,7 @@
 
 ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o)
 {
+#define CP_ACK_FIXED_LENGTH 2
     ogs_pkbuf_t *pkbuf = NULL;
     smsf_sms_cp_hdr_t cp_data_header;
 
@@ -31,7 +32,7 @@ ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o)
     cp_data_header.flags.tif = ti_flag;
     cp_data_header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_ACK;
 
-    pkbuf = ogs_pkbuf_alloc(NULL, 2);
+    pkbuf = ogs_pkbuf_alloc(NULL, CP_ACK_FIXED_LENGTH);
     if (!pkbuf) {
         ogs_error("ogs_pkbuf_alloc() failed");
         return NULL;
@@ -46,7 +47,7 @@ ogs_pkbuf_t *smsf_sms_encode_cp_ack(bool ti_flag, int ti_o)
 ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o, 
         const ogs_pkbuf_t *rpdu)
 {
-#define CPHEADER_FIXED_LENGTH 3
+#define CP_HEADER_FIXED_LENGTH 3
     ogs_pkbuf_t *pkbuf = NULL;
     ogs_assert(rpdu);
     smsf_sms_cp_data_t cp_data;
@@ -59,7 +60,7 @@ ogs_pkbuf_t *smsf_sms_encode_cp_data(bool ti_flag, int ti_o,
     cp_data.header.sm_service_message_type = SMSF_SERVICE_MESSAGE_TYPE_CP_DATA;
     cp_data.cp_user_data_length = rpdu->len;
 
-    pkbuf = ogs_pkbuf_alloc(NULL, CPHEADER_FIXED_LENGTH + rpdu->len);
+    pkbuf = ogs_pkbuf_alloc(NULL, CP_HEADER_FIXED_LENGTH + rpdu->len);
     if (!pkbuf) {
         ogs_error("ogs_pkbuf_alloc() failed");
         return NULL;
@@ -149,7 +150,8 @@ ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_ack(int rp_message_reference)
     return pkbuf;
 }
 
-ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_error(int rp_message_reference, int cause)
+ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_error(int rp_message_reference,
+        int rp_cause)
 {
 #define RP_ERROR_FIXED_LENGTH 6
     ogs_pkbuf_t *pkbuf = NULL;
@@ -163,7 +165,7 @@ ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_error(int rp_message_reference, int cause)
     ogs_pkbuf_put_u8(pkbuf, SMSF_RP_MESSAGE_TYPE_N2MS_ERROR);
     ogs_pkbuf_put_u8(pkbuf, rp_message_reference);
     ogs_pkbuf_put_u8(pkbuf, 1); // RP-Cause Length: 1
-    ogs_pkbuf_put_u8(pkbuf, cause); // RP-Cause: Requested facility not subscribed
+    ogs_pkbuf_put_u8(pkbuf, rp_cause);
     ogs_pkbuf_put_u8(pkbuf, 65); // Element ID 0x41
     ogs_pkbuf_put_u8(pkbuf, 0); // Length: 0
 
@@ -176,7 +178,7 @@ int smsf_sms_get_user_data_byte_length(smsf_sms_tpdcs_t data_coding_scheme,
     int user_data_bytes;
 
     if (data_coding_scheme.octet == 0) {
-        user_data_bytes = ((user_data_length + 1)*7/8);
+        user_data_bytes = ((user_data_length + 1) * 7/8);
     } else {
        user_data_bytes = user_data_length;
     }
@@ -221,7 +223,7 @@ void smsf_copy_submit_to_deliver(smsf_sms_tpdu_deliver_t *tpdu_deliver,
     int tpdurealbytes;
 
     tpdu_deliver->header.tpUDHI = tpdu_submit->header.tpUDHI;
-    tpdu_deliver->header.tpMMS = 1;  // Could eval DCS for concatenation
+    tpdu_deliver->header.tpMMS = 1;
 
     /* Populate the Sender's MSISDN */
     char *oa_msisdn;
@@ -278,18 +280,23 @@ ogs_pkbuf_t *smsf_send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *strea
 {
     int templen = 0;
 
-    smsf_sms_rpdu_message_type_t rpheader;
-    memcpy(&rpheader, sms_payload_buf->data,
-            sizeof(smsf_sms_rpdu_message_type_t));
+    ogs_assert(smsf_ue);
+    ogs_assert(stream);
+    ogs_assert(sms_payload_buf);
+
+    smsf_sms_rpdu_message_type_t *rp_header;
+    rp_header = (smsf_sms_rpdu_message_type_t *)sms_payload_buf->data;
+    ogs_assert(rp_header);
+
     ogs_pkbuf_pull(sms_payload_buf, sizeof(smsf_sms_rpdu_message_type_t));
 
-    switch(rpheader.value) {
+    switch(rp_header->value) {
     case SMSF_RP_MESSAGE_TYPE_MS2N_DATA:
         ogs_debug("[%s] RP-DATA (ms->n)", smsf_ue->supi);
         smsf_sms_rpdata_t rpdu;
         memset(&rpdu, 0, sizeof(smsf_sms_rpdata_t));
 
-        rpdu.rpdu_message_type.value = rpheader.value;
+        rpdu.rpdu_message_type.value = rp_header->value;
         memcpy(&rpdu.rp_message_reference, sms_payload_buf->data, 1);
         ogs_pkbuf_pull(sms_payload_buf, sizeof(rpdu.rp_message_reference));
         memcpy(&templen, sms_payload_buf->data, 1);
@@ -309,11 +316,11 @@ ogs_pkbuf_t *smsf_send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *strea
         ogs_pkbuf_pull(sms_payload_buf, 1);
 
         /* RP Decoding complete.  Capture the TPDU now. */
-        smsf_sms_tpdu_hdr_t tpdu_hdr;
+        smsf_sms_tpdu_hdr_t *tpdu_hdr;
+        tpdu_hdr = (smsf_sms_tpdu_hdr_t *)sms_payload_buf->data;
+        ogs_assert(tpdu_hdr);
 
-        memcpy(&tpdu_hdr, sms_payload_buf->data, sizeof(tpdu_hdr));
-
-        switch(tpdu_hdr.tpMTI) {
+        switch(tpdu_hdr->tpMTI) {
         case SMSF_TPDU_MTI_SMS_DELIVER:
             ogs_debug("[%s] SMS-DELIVER Report (ms->n)", smsf_ue->supi);
             break;
@@ -371,6 +378,7 @@ ogs_pkbuf_t *smsf_send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *strea
 
                 ogs_debug("[%s] Sending RP-ERROR", smsf_ue->supi);
                 ogs_pkbuf_t *rpdubuf;
+                // RP-Cause: Requested facility not subscribed (50)
                 rpdubuf = smsf_sms_encode_n2ms_rp_error(
                         rpdu.rp_message_reference, 50);
                 return rpdubuf;
@@ -421,7 +429,7 @@ ogs_pkbuf_t *smsf_send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *strea
 
         default:
             ogs_error("[%s] Undefined TPDU Message Type for ms->n [%d]",
-                    smsf_ue->supi, tpdu_hdr.tpMTI);
+                    smsf_ue->supi, tpdu_hdr->tpMTI);
 
             /* goto end, send nsmf error response */
             return NULL;
@@ -442,7 +450,7 @@ ogs_pkbuf_t *smsf_send_to_local_smsc(smsf_ue_t *smsf_ue, ogs_sbi_stream_t *strea
 
     default:
         ogs_error("[%s] Undefined RPDU Message Type for ms->n [%d]",
-                smsf_ue->supi, rpheader.value);
+                smsf_ue->supi, rp_header->value);
         /* goto end, send nsmf error response */
         return NULL;
     }

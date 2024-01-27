@@ -192,7 +192,8 @@ ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_data(const smsf_sms_rpdata_t *rpdu,
 
 ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_ack(int rp_message_reference);
 
-ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_error(int rp_message_reference, int cause);
+ogs_pkbuf_t *smsf_sms_encode_n2ms_rp_error(int rp_message_reference,
+        int rp_cause);
 
 int smsf_sms_get_user_data_byte_length(smsf_sms_tpdcs_t data_coding_scheme,
     int user_data_length);
