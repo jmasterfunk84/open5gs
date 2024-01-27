@@ -183,7 +183,7 @@ bool smsf_nsmsf_sm_service_handle_uplink_sms(
         if (sms_payload_buf->len != cp_data->cp_user_data_length) {
             ogs_error("CP-DATA Length Does Not Match Payload");
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    message, "SMS_PAYLOAD_ERROR", smsf_ue->supi));
+                    message, "SMS_PAYLOAD_ERROR", smsf_ue->supi);
             return false;
         }
 
