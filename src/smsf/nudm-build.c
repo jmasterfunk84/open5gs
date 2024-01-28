@@ -52,8 +52,6 @@ ogs_sbi_request_t *smsf_nudm_uecm_build_smsf_registration(
         goto end;
     }
 
-    // Mandatory:
-    // should pull from config!
     if (ogs_local_conf()->num_of_serving_plmn_id) {
         OpenAPI_list_t *PlmnIdList = NULL;
         int i;
