@@ -504,7 +504,6 @@ struct amf_ue_s {
         (__aMF)->paging.n1buf = __n1BUF; \
     } while(0)
 
-
 #define AMF_UE_PAGING_ONGOING(__aMF) ((__aMF) && \
         ((__aMF)->paging.n1MessageClass))
 

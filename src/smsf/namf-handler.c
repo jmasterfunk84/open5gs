@@ -90,32 +90,6 @@ bool smsf_namf_comm_handle_n1_n2_message_transfer_failure_notify(
         return false;
     }
 
-/*
-    smsf_ue = smsf_ue_find_by_paging_n1n2message_location(
-        N1N2MsgTxfrFailureNotification->n1n2_msg_data_uri);
-    if (!smsf_ue) {
-        ogs_error("Not found");
-        ogs_assert(true ==
-            ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_NOT_FOUND,
-                recvmsg, N1N2MsgTxfrFailureNotification->n1n2_msg_data_uri,
-                NULL));
-        return false;
-    }
-*/
-    /*
-     * TODO:
-     *
-     * TS23.502 4.2.3.3 Network Triggered Service Request
-     *
-     * 5. [Conditional] AMF to smsf:
-     * Namf_Communication_N1N2Transfer Failure Notification.
-     *
-     * When a Namf_Communication_N1N2Transfer Failure Notification
-     * is received, smsf informs the UPF (if applicable).
-     *
-     * Procedure for pause of charging at smsf is specified in clause 4.4.4.
-     */
-
     ogs_assert(true == ogs_sbi_send_http_status_no_content(stream));
     return true;
 }
