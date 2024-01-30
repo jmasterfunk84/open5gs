@@ -147,6 +147,8 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                         break;
 
                     CASE(OGS_SBI_HTTP_METHOD_DELETE)
+                        smsf_nudm_uecm_handle_smsf_registration_delete(
+                            smsf_ue, stream, message);
                         OGS_FSM_TRAN(&smsf_ue->sm,
                             &smsf_ue_context_will_remove);
                         break;

@@ -152,16 +152,11 @@ int smsf_nudm_sdm_handle_subscription(
 int smsf_nudm_sdm_handle_subscription_delete(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
-    ogs_sbi_message_t sendmsg;
-    ogs_sbi_response_t *response = NULL;
-
     ogs_assert(smsf_ue);
     ogs_assert(stream);
 
-    memset(&sendmsg, 0, sizeof(sendmsg));
-    response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
-    ogs_assert(response);
-    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+    if (smsf_ue->data_change_subscription_id)
+        ogs_free(smsf_ue->data_change_subscription_id);
 
     return OGS_OK;
 }
@@ -218,4 +213,21 @@ bool smsf_nudm_uecm_handle_smsf_registration(
     }
 
     return true;
+}
+
+int smsf_nudm_uecm_handle_smsf_registration_delete(
+    smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
+{
+    ogs_sbi_message_t sendmsg;
+    ogs_sbi_response_t *response = NULL;
+
+    ogs_assert(smsf_ue);
+    ogs_assert(stream);
+
+    memset(&sendmsg, 0, sizeof(sendmsg));
+    response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+
+    return OGS_OK;
 }
