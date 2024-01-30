@@ -98,6 +98,8 @@ int smsf_context_parse_config(void)
                 ogs_assert(smsf_key);
                 if (!strcmp(smsf_key, "default")) {
                     /* handle config in sbi library */
+                } else if (!strcmp(smsf_key, "serving")) {
+                    /* handle config in sbi library */
                 } else if (!strcmp(smsf_key, "sbi")) {
                     /* handle config in sbi library */
                     ogs_yaml_iter_t sbi_iter;
