@@ -437,6 +437,30 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_free(strerror);
             return false;
         END
+    CASE(OGS_SBI_HTTP_METHOD_DELETE)
+        SWITCH(recvmsg->h.resource.component[3])
+        CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
+            memset(&sendmsg, 0, sizeof(sendmsg));
+
+            response = ogs_sbi_build_response(
+                    &sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+            return true;
+
+        DEFAULT
+            strerror = ogs_msprintf("[%s] Invalid resource name [%s]",
+                    udm_ue->supi, recvmsg->h.resource.component[3]);
+            ogs_assert(strerror);
+
+            ogs_error("%s", strerror);
+            ogs_assert(true ==
+                ogs_sbi_server_send_error(
+                    stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                    recvmsg, strerror, NULL));
+            ogs_free(strerror);
+            return false;
+        END
     END
 
     SWITCH(recvmsg->h.resource.component[3])

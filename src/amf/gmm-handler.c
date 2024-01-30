@@ -530,9 +530,10 @@ ogs_nas_5gmm_cause_t gmm_handle_registration_update(amf_ue_t *amf_ue,
             OGS_ASN_CLEAR_DATA(&amf_ue->ueRadioCapability);
         }
         if (update_type->sms_over_nas_supported == 1) {
-            /* should we detect a change in this and deactivate? */
             ogs_debug("SMS over NAS supported by UE");
             amf_ue->sms_over_nas_supported = true;
+        } else {
+            amf_ue->sms_over_nas_supported = false;
         }
     }
 
@@ -1418,7 +1419,6 @@ int gmm_handle_ul_nas_transport(ran_ue_t *ran_ue, amf_ue_t *amf_ue,
         ogs_pkbuf_put_data(smsbuf,
             payload_container->buffer, payload_container->length);
 
-        /* not a discover and send.  we should send to smsf in ue context. */
         r = amf_ue_sbi_discover_and_send(
                 OGS_SBI_SERVICE_TYPE_NSMSF_SMS, NULL,
                 amf_nsmsf_sm_service_build_uplink_sms,

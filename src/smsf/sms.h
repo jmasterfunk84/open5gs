@@ -23,7 +23,6 @@
 #include "ogs-core.h"
 #include "ogs-proto.h"
 #include "context.h"
-// Added for smsf_send_to_internal_smsc(), so maybe don't put it here.
 #include "namf-build.h"
 #include "sbi-path.h"
 

@@ -715,8 +715,7 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
                     }
                 }
 
-                /* Check for UE Paging here. */
-
+                AMF_UE_CLEAR_N1_PAGING_INFO(amf_ue);
                 AMF_UE_CLEAR_PAGING_INFO(amf_ue);
                 AMF_UE_CLEAR_N2_TRANSFER(
                         amf_ue, pdu_session_resource_setup_request);
@@ -1490,8 +1489,6 @@ static void common_register_state(ogs_fsm_t *s, amf_event_t *e,
                         OGS_FSM_TRAN(s, &gmm_state_initial_context_setup);
                         break;
                     } else if (!PCF_AM_POLICY_ASSOCIATED(amf_ue)) {
-                        ogs_info("We Reach Potential Code Requirement - UE"
-                            "is already SDM subscribed, but is it good for SMS?");
                         r = amf_ue_sbi_discover_and_send(
                                 OGS_SBI_SERVICE_TYPE_NPCF_AM_POLICY_CONTROL,
                                 NULL,

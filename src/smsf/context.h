@@ -50,7 +50,6 @@ struct smsf_ue_s {
     ((__sSMF) && ((__sMSF)->data_change_subscription_id))
     char *data_change_subscription_id;
 
-    /* how do we give it a ctx_id? */
     char *ctx_id;
     char *supi;
     char *amf_instance_id;
