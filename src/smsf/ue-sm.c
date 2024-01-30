@@ -208,9 +208,6 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                     break;
 
                 CASE(OGS_SBI_HTTP_METHOD_DELETE)
-                    smsf_nudm_sdm_handle_subscription_delete(
-                        smsf_ue, stream, message);
-
                     r = smsf_ue_sbi_discover_and_send(
                             OGS_SBI_SERVICE_TYPE_NUDM_UECM, NULL,
                             smsf_nudm_uecm_build_smsf_registration_delete,

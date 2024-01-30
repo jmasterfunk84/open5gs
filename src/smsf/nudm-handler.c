@@ -149,18 +149,6 @@ int smsf_nudm_sdm_handle_subscription(
     return OGS_OK;
 }
 
-int smsf_nudm_sdm_handle_subscription_delete(
-    smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
-{
-    ogs_assert(smsf_ue);
-    ogs_assert(stream);
-
-    if (smsf_ue->data_change_subscription_id)
-        ogs_free(smsf_ue->data_change_subscription_id);
-
-    return OGS_OK;
-}
-
 bool smsf_nudm_uecm_handle_smsf_registration(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
