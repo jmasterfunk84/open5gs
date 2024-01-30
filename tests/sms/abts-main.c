@@ -18,7 +18,6 @@
  */
 
 #include "test-app.h"
-#include "af/init.h"
 
 abts_suite *test_simple(abts_suite *suite);
 
@@ -32,8 +31,6 @@ const struct testlist {
 static void terminate(void)
 {
     ogs_msleep(50);
-
-    af_terminate();
 
     test_child_terminate();
     app_terminate();
@@ -51,9 +48,6 @@ static void initialize(const char *const argv[])
     test_5gc_init();
 
     rv = app_initialize(argv);
-    ogs_assert(rv == OGS_OK);
-
-    rv = af_initialize();
     ogs_assert(rv == OGS_OK);
 }
 

@@ -98,6 +98,7 @@ static void test1_func(abts_case *tc, void *data)
     test_ue->registration_request_param.requested_nssai = 1;
     test_ue->registration_request_param.last_visited_registered_tai = 1;
     test_ue->registration_request_param.ue_usage_setting = 1;
+    test_ue->registration_request_param.update_type = 1;
     nasbuf = testgmm_build_registration_request(test_ue, NULL, false, false);
     ABTS_PTR_NOTNULL(tc, nasbuf);
 
@@ -220,9 +221,10 @@ static void test1_func(abts_case *tc, void *data)
 
     /* Send SMS */
     const char *sms_payload = 
-        "0028"
-        "4022000001008140 1b0009f124000000 1009f12458ac0009 f1240000002009f1"
-        "2458ac00";
+        "19013a"
+        "00d3000291f733"
+        "01560b913160990900f3000826"
+        "00540068006900730020006900730020006100200074006500730074002e00200020d83dde0a";
 
     ogs_pkbuf_t *smsbuf;
     char hexbuf[OGS_HUGE_LEN];
