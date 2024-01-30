@@ -1331,7 +1331,6 @@ void gmm_state_registered(ogs_fsm_t *s, amf_event_t *e)
                     if (sbi_message->res_status != OGS_SBI_HTTP_STATUS_OK) {
                         ogs_error("[%s] HTTP response error [%d]",
                                 amf_ue->supi, sbi_message->res_status);
-                        /* if we're getting a 404 here, maybe we should deregister the UE for SMS? */
                         break;
                     }
 
