@@ -60,8 +60,8 @@ void testgmm_recv(test_ue_t *test_ue, ogs_pkbuf_t *pkbuf)
                 test_ue, &message.gmm.configuration_update_command);
         break;
     case OGS_NAS_5GS_DL_NAS_TRANSPORT:
-        switch(message.gmm.dl_nas_transport.payload_container_type)
-        CASE OGS_NAS_PAYLOAD_CONTAINER_SMS:
+        switch(message.gmm.dl_nas_transport.payload_container_type.value) {
+        case OGS_NAS_PAYLOAD_CONTAINER_SMS:
             testgmm_handle_sms_dl_nas_transport(test_ue,
                     &message.gmm.dl_nas_transport);
             break;
@@ -69,6 +69,7 @@ void testgmm_recv(test_ue_t *test_ue, ogs_pkbuf_t *pkbuf)
             testgmm_handle_dl_nas_transport(test_ue,
                     &message.gmm.dl_nas_transport);
             break;
+        }
         break;
     case OGS_NAS_5GS_5GMM_STATUS:
         break;

@@ -84,6 +84,8 @@ int app_initialize(const char *const argv[])
     if (ogs_global_conf()->parameter.no_amf == 0)
         amf_thread = test_child_create("amf", argv_out);
 
+    if (ogs_global_conf()->parameter.no_smsf == 0)
+        smsf_thread = test_child_create("smsf", argv_out);
     if (ogs_global_conf()->parameter.no_ausf == 0)
         ausf_thread = test_child_create("ausf", argv_out);
     if (ogs_global_conf()->parameter.no_udm == 0)
@@ -96,9 +98,6 @@ int app_initialize(const char *const argv[])
         bsf_thread = test_child_create("bsf", argv_out);
     if (ogs_global_conf()->parameter.no_udr == 0)
         udr_thread = test_child_create("udr", argv_out);
-
-    if (ogs_global_conf()->parameter.no_smsf == 0)
-        smsf_thread = test_child_create("smsf", argv_out);
 
     /*
      * Wait for all sockets listening
@@ -127,6 +126,7 @@ void app_terminate(void)
     if (pcf_thread) ogs_thread_destroy(pcf_thread);
     if (udm_thread) ogs_thread_destroy(udm_thread);
     if (ausf_thread) ogs_thread_destroy(ausf_thread);
+    if (smsf_thread) ogs_thread_destroy(smsf_thread);
 
     if (hss_thread) ogs_thread_destroy(hss_thread);
     if (pcrf_thread) ogs_thread_destroy(pcrf_thread);
@@ -134,8 +134,6 @@ void app_terminate(void)
     if (sepp_thread) ogs_thread_destroy(sepp_thread);
     if (scp_thread) ogs_thread_destroy(scp_thread);
     if (nrf_thread) ogs_thread_destroy(nrf_thread);
-
-    if (smsf_thread) ogs_thread_destroy(smsf_thread);
 }
 
 void test_app_init(void)
