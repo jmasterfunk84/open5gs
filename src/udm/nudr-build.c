@@ -386,7 +386,6 @@ ogs_sbi_request_t *udm_nudr_dr_build_delete_smsf_context(
     request = ogs_sbi_build_request(&message);
     ogs_assert(request);
 
-end:
     ogs_free(message.h.resource.component[4]);
 
     return request;
