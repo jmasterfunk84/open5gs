@@ -132,11 +132,11 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
             CASE(OGS_SBI_RESOURCE_NAME_REGISTRATIONS)
                 SWITCH(message->h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
-                    smsf_nudm_uecm_handle_smsf_registration(
-                            smsf_ue, stream, message);
-
                     SWITCH(message->h.method)
                     CASE(OGS_SBI_HTTP_METHOD_PUT)
+                        smsf_nudm_uecm_handle_smsf_registration(
+                                smsf_ue, stream, message);
+
                         r = smsf_ue_sbi_discover_and_send(
                                 OGS_SBI_SERVICE_TYPE_NUDM_SDM, NULL,
                                 smsf_nudm_sdm_build_get,
