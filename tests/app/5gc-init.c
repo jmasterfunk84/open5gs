@@ -31,6 +31,7 @@ static ogs_thread_t *pcf_thread = NULL;
 static ogs_thread_t *nssf_thread = NULL;
 static ogs_thread_t *bsf_thread = NULL;
 static ogs_thread_t *udr_thread = NULL;
+static ogs_thread_t *smsf_thread = NULL;
 
 int app_initialize(const char *const argv[])
 {
@@ -80,6 +81,9 @@ int app_initialize(const char *const argv[])
     if (ogs_global_conf()->parameter.no_udr == 0)
         udr_thread = test_child_create("udr", argv_out);
 
+    if (ogs_global_conf()->parameter.no_smsf == 0)
+        smsf_thread = test_child_create("smsf", argv_out);
+
     /*
      * Wait for all sockets listening
      * 
@@ -107,6 +111,8 @@ void app_terminate(void)
     if (sepp_thread) ogs_thread_destroy(sepp_thread);
     if (scp_thread) ogs_thread_destroy(scp_thread);
     if (nrf_thread) ogs_thread_destroy(nrf_thread);
+
+    if (smsf_thread) ogs_thread_destroy(smsf_thread);
 }
 
 void test_5gc_init(void)
