@@ -153,35 +153,15 @@ int smsf_nudm_sdm_handle_subscription_delete(
     smsf_ue_t *smsf_ue, ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
 {
     ogs_sbi_message_t sendmsg;
-    ogs_sbi_header_t header;
     ogs_sbi_response_t *response = NULL;
-    ogs_sbi_server_t *server = NULL;
 
     ogs_assert(smsf_ue);
     ogs_assert(stream);
-    ogs_assert(recvmsg);
 
-    server = ogs_sbi_server_from_stream(stream);
-    ogs_assert(server);
-
-    memset(&header, 0, sizeof(header));
-    header.service.name =
-        (char *)OGS_SBI_SERVICE_NAME_NSMSF_SMS;
-    header.api.version = (char *)OGS_SBI_API_V2;
-    header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_UE_CONTEXTS;
-    header.resource.component[1] = smsf_ue->supi;
-
-    /* is this needed  to send location?*/
     memset(&sendmsg, 0, sizeof(sendmsg));
-    sendmsg.http.location = ogs_sbi_server_uri(server, &header);
-
-    response = ogs_sbi_build_response(&sendmsg,
-        OGS_SBI_HTTP_STATUS_NO_CONTENT);
+    response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_NO_CONTENT);
     ogs_assert(response);
     ogs_assert(true == ogs_sbi_server_send_response(stream, response));
-
-    if (sendmsg.http.location)
-        ogs_free(sendmsg.http.location);
 
     return OGS_OK;
 }
