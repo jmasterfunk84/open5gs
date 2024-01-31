@@ -578,8 +578,8 @@ static void test2_func(abts_case *tc, void *data)
     /* Send SMS */
     char hexbuf[OGS_HUGE_LEN];
     const char *sms_payload_1 = 
-        "19013a"
-        "0001000291f733"
+        "190146"
+        "0001000291f73F"
         "01010c91947152760041000832"
         "005400680069007300200069007300200061006E006F007400680065007200200074006500730074002E00200020d83dde0a";
 
