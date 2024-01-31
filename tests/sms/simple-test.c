@@ -222,7 +222,7 @@ static void test1_func(abts_case *tc, void *data)
 
     /* Send SMS */
     char hexbuf[OGS_HUGE_LEN];
-    const char *sms_payload = 
+    const char *sms_payload_1 = 
         "19013a"
         "0001000291f733"
         "01560c91947152760041000826"
@@ -231,7 +231,7 @@ static void test1_func(abts_case *tc, void *data)
     smsbuf = ogs_pkbuf_alloc(NULL, OGS_MAX_SDU_LEN);
     ogs_assert(smsbuf);
     ogs_pkbuf_put_data(smsbuf, 
-            ogs_hex_from_string(sms_payload, hexbuf, sizeof(hexbuf)), 61);
+            ogs_hex_from_string(sms_payload_1, hexbuf, sizeof(hexbuf)), 61);
 
     gmmbuf = testgmm_build_sms_ul_nas_transport(test_ue, smsbuf);
     ABTS_PTR_NOTNULL(tc, gmmbuf);
@@ -257,11 +257,11 @@ static void test1_func(abts_case *tc, void *data)
             test_ue->ngap_procedure_code);
 
     /* Send CP-ACK to MT */
-    const char *sms_payload = "9904";
+    const char *sms_payload_2 = "9904";
     smsbuf = ogs_pkbuf_alloc(NULL, OGS_MAX_SDU_LEN);
     ogs_assert(smsbuf);
     ogs_pkbuf_put_data(smsbuf, 
-            ogs_hex_from_string(sms_payload, hexbuf, sizeof(hexbuf)), 61);
+            ogs_hex_from_string(sms_payload_2, hexbuf, sizeof(hexbuf)), 61);
 
     gmmbuf = testgmm_build_sms_ul_nas_transport(test_ue, smsbuf);
     ABTS_PTR_NOTNULL(tc, gmmbuf);
@@ -279,11 +279,11 @@ static void test1_func(abts_case *tc, void *data)
             test_ue->ngap_procedure_code);
 
     /* Send CP-ACK to MO */
-    const char *sms_payload = "1904";
+    const char *sms_payload_3 = "1904";
     smsbuf = ogs_pkbuf_alloc(NULL, OGS_MAX_SDU_LEN);
     ogs_assert(smsbuf);
     ogs_pkbuf_put_data(smsbuf, 
-            ogs_hex_from_string(sms_payload, hexbuf, sizeof(hexbuf)), 2);
+            ogs_hex_from_string(sms_payload_3, hexbuf, sizeof(hexbuf)), 2);
 
     gmmbuf = testgmm_build_sms_ul_nas_transport(test_ue, smsbuf);
     ABTS_PTR_NOTNULL(tc, gmmbuf);
@@ -293,11 +293,11 @@ static void test1_func(abts_case *tc, void *data)
     ABTS_INT_EQUAL(tc, OGS_OK, rv);
 
     /* Send RP-ACK to MT */
-    const char *sms_payload = "99010403014100;
+    const char *sms_payload_4 = "99010403014100";
     smsbuf = ogs_pkbuf_alloc(NULL, OGS_MAX_SDU_LEN);
     ogs_assert(smsbuf);
     ogs_pkbuf_put_data(smsbuf, 
-            ogs_hex_from_string(sms_payload, hexbuf, sizeof(hexbuf)), 7);
+            ogs_hex_from_string(sms_payload_4, hexbuf, sizeof(hexbuf)), 7);
 
     gmmbuf = testgmm_build_sms_ul_nas_transport(test_ue, smsbuf);
     ABTS_PTR_NOTNULL(tc, gmmbuf);
