@@ -29,6 +29,7 @@ static void test1_func(abts_case *tc, void *data)
     ogs_pkbuf_t *nasbuf;
     ogs_pkbuf_t *sendbuf;
     ogs_pkbuf_t *recvbuf;
+    ogs_pkbuf_t *smsbuf;
     ogs_ngap_message_t message;
     int i;
 
@@ -220,14 +221,12 @@ static void test1_func(abts_case *tc, void *data)
     ABTS_INT_EQUAL(tc, OGS_OK, rv);
 
     /* Send SMS */
+    char hexbuf[OGS_HUGE_LEN];
     const char *sms_payload = 
         "19013a"
-        "00d3000291f733"
+        "0001000291f733"
         "01560c91947152760041000826"
         "00540068006900730020006900730020006100200074006500730074002e00200020d83dde0a";
-
-    ogs_pkbuf_t *smsbuf;
-    char hexbuf[OGS_HUGE_LEN];
 
     smsbuf = ogs_pkbuf_alloc(NULL, OGS_MAX_SDU_LEN);
     ogs_assert(smsbuf);
@@ -241,7 +240,7 @@ static void test1_func(abts_case *tc, void *data)
     rv = testgnb_ngap_send(ngap, sendbuf);
     ABTS_INT_EQUAL(tc, OGS_OK, rv);
 
-    /* DL NAS transport */
+    /* DL NAS transport - CP-ACK MO */
     recvbuf = testgnb_ngap_read(ngap);
     ABTS_PTR_NOTNULL(tc, recvbuf);
     testngap_recv(test_ue, recvbuf);
@@ -249,7 +248,7 @@ static void test1_func(abts_case *tc, void *data)
             NGAP_ProcedureCode_id_DownlinkNASTransport,
             test_ue->ngap_procedure_code);
 
-    /* DL NAS transport */
+    /* DL NAS transport - RP-DATA MT */
     recvbuf = testgnb_ngap_read(ngap);
     ABTS_PTR_NOTNULL(tc, recvbuf);
     testngap_recv(test_ue, recvbuf);
@@ -257,7 +256,57 @@ static void test1_func(abts_case *tc, void *data)
             NGAP_ProcedureCode_id_DownlinkNASTransport,
             test_ue->ngap_procedure_code);
 
-    /* DL NAS transport */
+    /* Send CP-ACK to MT */
+    const char *sms_payload = "9904";
+    smsbuf = ogs_pkbuf_alloc(NULL, OGS_MAX_SDU_LEN);
+    ogs_assert(smsbuf);
+    ogs_pkbuf_put_data(smsbuf, 
+            ogs_hex_from_string(sms_payload, hexbuf, sizeof(hexbuf)), 61);
+
+    gmmbuf = testgmm_build_sms_ul_nas_transport(test_ue, smsbuf);
+    ABTS_PTR_NOTNULL(tc, gmmbuf);
+    sendbuf = testngap_build_uplink_nas_transport(test_ue, gmmbuf);
+    ABTS_PTR_NOTNULL(tc, sendbuf);
+    rv = testgnb_ngap_send(ngap, sendbuf);
+    ABTS_INT_EQUAL(tc, OGS_OK, rv);
+
+    /* DL NAS transport RP-ACK MO */
+    recvbuf = testgnb_ngap_read(ngap);
+    ABTS_PTR_NOTNULL(tc, recvbuf);
+    testngap_recv(test_ue, recvbuf);
+    ABTS_INT_EQUAL(tc,
+            NGAP_ProcedureCode_id_DownlinkNASTransport,
+            test_ue->ngap_procedure_code);
+
+    /* Send CP-ACK to MO */
+    const char *sms_payload = "1904";
+    smsbuf = ogs_pkbuf_alloc(NULL, OGS_MAX_SDU_LEN);
+    ogs_assert(smsbuf);
+    ogs_pkbuf_put_data(smsbuf, 
+            ogs_hex_from_string(sms_payload, hexbuf, sizeof(hexbuf)), 2);
+
+    gmmbuf = testgmm_build_sms_ul_nas_transport(test_ue, smsbuf);
+    ABTS_PTR_NOTNULL(tc, gmmbuf);
+    sendbuf = testngap_build_uplink_nas_transport(test_ue, gmmbuf);
+    ABTS_PTR_NOTNULL(tc, sendbuf);
+    rv = testgnb_ngap_send(ngap, sendbuf);
+    ABTS_INT_EQUAL(tc, OGS_OK, rv);
+
+    /* Send RP-ACK to MT */
+    const char *sms_payload = "99010403014100;
+    smsbuf = ogs_pkbuf_alloc(NULL, OGS_MAX_SDU_LEN);
+    ogs_assert(smsbuf);
+    ogs_pkbuf_put_data(smsbuf, 
+            ogs_hex_from_string(sms_payload, hexbuf, sizeof(hexbuf)), 7);
+
+    gmmbuf = testgmm_build_sms_ul_nas_transport(test_ue, smsbuf);
+    ABTS_PTR_NOTNULL(tc, gmmbuf);
+    sendbuf = testngap_build_uplink_nas_transport(test_ue, gmmbuf);
+    ABTS_PTR_NOTNULL(tc, sendbuf);
+    rv = testgnb_ngap_send(ngap, sendbuf);
+    ABTS_INT_EQUAL(tc, OGS_OK, rv);
+
+    /* DL NAS transport CP-ACK MT */
     recvbuf = testgnb_ngap_read(ngap);
     ABTS_PTR_NOTNULL(tc, recvbuf);
     testngap_recv(test_ue, recvbuf);
