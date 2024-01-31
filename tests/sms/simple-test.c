@@ -293,7 +293,7 @@ static void test1_func(abts_case *tc, void *data)
     ABTS_INT_EQUAL(tc, OGS_OK, rv);
 
     /* Send RP-ACK to MT */
-    const char *sms_payload_4 = "99010403014100";
+    const char *sms_payload_4 = "99010402014100";
     smsbuf = ogs_pkbuf_alloc(NULL, OGS_MAX_SDU_LEN);
     ogs_assert(smsbuf);
     ogs_pkbuf_put_data(smsbuf, 
