@@ -580,13 +580,13 @@ static void test2_func(abts_case *tc, void *data)
     const char *sms_payload_1 = 
         "19013a"
         "0001000291f733"
-        "01010c91947152760041000826"
-        "00540068006900730020006900730020006100200074006500730074002e00200020d83dde0a";
+        "01010c91947152760041000832"
+        "005400680069007300200069007300200061006E006F007400680065007200200074006500730074002E00200020d83dde0a";
 
     smsbuf = ogs_pkbuf_alloc(NULL, OGS_MAX_SDU_LEN);
     ogs_assert(smsbuf);
     ogs_pkbuf_put_data(smsbuf, 
-            ogs_hex_from_string(sms_payload_1, hexbuf, sizeof(hexbuf)), 61);
+            ogs_hex_from_string(sms_payload_1, hexbuf, sizeof(hexbuf)), 73);
 
     gmmbuf = testgmm_build_sms_ul_nas_transport(test_ue, smsbuf);
     ABTS_PTR_NOTNULL(tc, gmmbuf);
@@ -735,7 +735,7 @@ abts_suite *test_simple(abts_suite *suite)
 
     // 7-bit GSM Message
     abts_run_test(suite, test1_func, NULL);
-    // 8-bit with Emoji
+    // UCS2 with Emoji
     abts_run_test(suite, test2_func, NULL);
 
     return suite;
