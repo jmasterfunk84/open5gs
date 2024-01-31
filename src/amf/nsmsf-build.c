@@ -64,7 +64,6 @@ ogs_sbi_request_t *amf_nsmsf_sm_service_build_activate(
         goto end;
     }
 
-    // These aren't mandatory, should they really go to end?
     if (amf_ue->num_of_msisdn) {
         if (amf_ue->msisdn[0]) {
             UeSmsContextData.gpsi = ogs_msprintf("%s-%s",

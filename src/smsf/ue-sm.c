@@ -241,9 +241,6 @@ void smsf_ue_state_operational(ogs_fsm_t *s, smsf_event_t *e)
                 CASE(OGS_SBI_RESOURCE_NAME_N1_N2_MESSAGES)
                     smsf_namf_comm_handle_n1_n2_message_transfer(
                             smsf_ue, 0, message);
-                    /* We might need to use state above to determine 
-                        * if we're returning CP ack, submit report, or MT SMS Body.
-                        */
                     break;
 
                 DEFAULT
