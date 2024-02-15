@@ -84,6 +84,11 @@ int milenage_f1(const uint8_t *opc, const uint8_t *k,
 	for (i = 0; i < 16; i++)
 		tmp3[i] ^= tmp1[i];
 	/* XOR with c1 (= ..00, i.e., NOP) */
+#if 1
+	const char *c1 = "00000000000000000000000000000000";
+	for (i = 0; i < 16; i++)
+		tmp3[i] ^= c1[i];
+#endif
 
 	/* f1 || f1* = E_K(tmp3) XOR OP_c */
 	if (aes_128_encrypt_block(k, tmp3, tmp1))
@@ -143,7 +148,13 @@ int milenage_f2345(const uint8_t *opc, const uint8_t *k,
 #else
     ShiftBits(r2, tmp1, tmp2, opc);
 #endif
+#if 0
 	tmp1[15] ^= 1; /* XOR c2 (= ..01) */
+#else
+	const char *c2 = "00000000000000000000000000000001";
+	for (i = 0; i < 16; i++)
+		tmp1[i] ^= c2[i];
+#endif
 	/* f5 || f2 = E_K(tmp1) XOR OP_c */
 	if (aes_128_encrypt_block(k, tmp1, tmp3))
 		return -1;
@@ -163,7 +174,13 @@ int milenage_f2345(const uint8_t *opc, const uint8_t *k,
 #else
         ShiftBits(r3, tmp1, tmp2, opc);
 #endif
+#if 0
 		tmp1[15] ^= 2; /* XOR c3 (= ..02) */
+#else
+		const char *c3 = "00000000000000000000000000000002";
+		for (i = 0; i < 16; i++)
+			tmp1[i] ^= c3[i];
+#endif
 		if (aes_128_encrypt_block(k, tmp1, ck))
 			return -1;
 		for (i = 0; i < 16; i++)
@@ -179,7 +196,13 @@ int milenage_f2345(const uint8_t *opc, const uint8_t *k,
 #else
         ShiftBits(r4, tmp1, tmp2, opc);
 #endif
+#if 0
 		tmp1[15] ^= 4; /* XOR c4 (= ..04) */
+#else
+		const char *c4 = "00000000000000000000000000000004";
+		for (i = 0; i < 16; i++)
+			tmp1[i] ^= c4[i];
+#endif
 		if (aes_128_encrypt_block(k, tmp1, ik))
 			return -1;
 		for (i = 0; i < 16; i++)
@@ -195,7 +218,13 @@ int milenage_f2345(const uint8_t *opc, const uint8_t *k,
 #else
         ShiftBits(r5, tmp1, tmp2, opc);
 #endif
+#if 0
 		tmp1[15] ^= 8; /* XOR c5 (= ..08) */
+#else
+		const char *c5 = "00000000000000000000000000000008";
+		for (i = 0; i < 16; i++)
+			tmp1[i] ^= c5[i];
+#endif
 		if (aes_128_encrypt_block(k, tmp1, tmp1))
 			return -1;
 		for (i = 0; i < 6; i++)
