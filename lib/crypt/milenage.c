@@ -85,7 +85,8 @@ int milenage_f1(const uint8_t *opc, const uint8_t *k,
 		tmp3[i] ^= tmp1[i];
 	/* XOR with c1 (= ..00, i.e., NOP) */
 #if 1
-	const char *c1 = "00000000000000000000000000000000";
+	const char *c1 =
+			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 	for (i = 0; i < 16; i++)
 		tmp3[i] ^= c1[i];
 #endif
@@ -151,7 +152,8 @@ int milenage_f2345(const uint8_t *opc, const uint8_t *k,
 #if 0
 	tmp1[15] ^= 1; /* XOR c2 (= ..01) */
 #else
-	const char *c2 = "00000000000000000000000000000001";
+	const char *c2 =
+			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01";
 	for (i = 0; i < 16; i++)
 		tmp1[i] ^= c2[i];
 #endif
@@ -177,7 +179,8 @@ int milenage_f2345(const uint8_t *opc, const uint8_t *k,
 #if 0
 		tmp1[15] ^= 2; /* XOR c3 (= ..02) */
 #else
-		const char *c3 = "00000000000000000000000000000002";
+		const char *c3 =
+			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02";
 		for (i = 0; i < 16; i++)
 			tmp1[i] ^= c3[i];
 #endif
@@ -199,7 +202,8 @@ int milenage_f2345(const uint8_t *opc, const uint8_t *k,
 #if 0
 		tmp1[15] ^= 4; /* XOR c4 (= ..04) */
 #else
-		const char *c4 = "00000000000000000000000000000004";
+		const char *c4 =
+			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04";
 		for (i = 0; i < 16; i++)
 			tmp1[i] ^= c4[i];
 #endif
@@ -221,7 +225,8 @@ int milenage_f2345(const uint8_t *opc, const uint8_t *k,
 #if 0
 		tmp1[15] ^= 8; /* XOR c5 (= ..08) */
 #else
-		const char *c5 = "00000000000000000000000000000008";
+		const char *c5 =
+			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08";
 		for (i = 0; i < 16; i++)
 			tmp1[i] ^= c5[i];
 #endif
