@@ -93,6 +93,7 @@ extern "C" {
 #define OGS_SBI_RESOURCE_NAME_SM_DATA               "sm-data"
 #define OGS_SBI_RESOURCE_NAME_SMF_SELECT_DATA       "smf-select-data"
 #define OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMF_DATA "ue-context-in-smf-data"
+#define OGS_SBI_RESOURCE_NAME_NSSAI                 "nssai"
 #define OGS_SBI_RESOURCE_NAME_SMF_SELECTION_SUBSCRIPTION_DATA \
                                             "smf-selection-subscription-data"
 #define OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS     "sdm-subscriptions"
