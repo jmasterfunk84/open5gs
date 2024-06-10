@@ -243,6 +243,7 @@ ogs_sbi_request_t *udm_nudr_dr_build_query_subscription_provisioned(
         sendmsg.h.resource.component[4] =
             (char *)OGS_SBI_RESOURCE_NAME_AM_DATA;
         sendmsg.param.fields_presence = true;
+        sendmsg.param.fields = (char *)OGS_SBI_RESOURCE_NAME_NSSAI;
         break;
 
     DEFAULT

@@ -265,6 +265,9 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
                 DEFAULT
                     SWITCH(message->h.resource.component[3])
                     CASE(OGS_SBI_RESOURCE_NAME_PROVISIONED_DATA)
+                        if (message->param.fields_presence) {
+                            ogs_info("Asking for fields!");
+                        };
                         udm_nudr_dr_handle_subscription_provisioned(
                                 udm_ue, stream, message);
                         break;
