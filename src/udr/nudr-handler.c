@@ -480,6 +480,10 @@ bool udr_nudr_dr_handle_subscription_provisioned(
 
         OpenAPI_lnode_t *node = NULL;
 
+        if (!recvmsg->param.fields_presence) {
+            ogs_info("Asking for fields!");
+        };
+
         GpsiList = OpenAPI_list_create();
         for (i = 0; i < subscription_data.num_of_msisdn; i++) {
             char *gpsi = ogs_msprintf("%s-%s",
