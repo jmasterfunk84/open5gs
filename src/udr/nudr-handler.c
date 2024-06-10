@@ -484,6 +484,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             ogs_info("Asking for fields!");
         };
 
+        // IF "gpsis"
         GpsiList = OpenAPI_list_create();
         for (i = 0; i < subscription_data.num_of_msisdn; i++) {
             char *gpsi = ogs_msprintf("%s-%s",
@@ -492,11 +493,13 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             OpenAPI_list_add(GpsiList, gpsi);
         }
 
+        // IF "subscribedUeAmbr"
         SubscribedUeAmbr.uplink = ogs_sbi_bitrate_to_string(
                 subscription_data.ambr.uplink, OGS_SBI_BITRATE_KBPS);
         SubscribedUeAmbr.downlink = ogs_sbi_bitrate_to_string(
                 subscription_data.ambr.downlink, OGS_SBI_BITRATE_KBPS);
 
+        // IF NSSAI
         memset(&NSSAI, 0, sizeof(NSSAI));
         DefaultSingleNssaiList = OpenAPI_list_create();
         for (i = 0; i < subscription_data.num_of_slice; i++) {
@@ -547,14 +550,23 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         memset(&AccessAndMobilitySubscriptionData, 0,
                 sizeof(AccessAndMobilitySubscriptionData));
 
-        if (GpsiList->count)
-            AccessAndMobilitySubscriptionData.gpsis = GpsiList;
+        if (recvmsg->param.fields_presence &&
+                !strcmp(recvmsg->param.fields, "gpsis")) {
+            if (GpsiList->count)
+                AccessAndMobilitySubscriptionData.gpsis = GpsiList;
+        }
 
-        AccessAndMobilitySubscriptionData.subscribed_ue_ambr =
-            &SubscribedUeAmbr;
+        if (recvmsg->param.fields_presence &&
+                !strcmp(recvmsg->param.fields, "SubscribedUeAmbr")) {
+            AccessAndMobilitySubscriptionData.subscribed_ue_ambr =
+                &SubscribedUeAmbr;
+        }
 
-        if (DefaultSingleNssaiList->count)
-            AccessAndMobilitySubscriptionData.nssai = &NSSAI;
+        if (recvmsg->param.fields_presence &&
+                !strcmp(recvmsg->param.fields, "nssai")) {
+            if (DefaultSingleNssaiList->count)
+                AccessAndMobilitySubscriptionData.nssai = &NSSAI;
+        }
 
         memset(&sendmsg, 0, sizeof(sendmsg));
         sendmsg.AccessAndMobilitySubscriptionData =
