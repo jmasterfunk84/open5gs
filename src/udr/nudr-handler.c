@@ -481,7 +481,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         OpenAPI_lnode_t *node = NULL;
 
         if (recvmsg->param.fields_presence) {
-            ogs_info("Asking for fields!");
+            ogs_info("Asking for fields! [%s]", recvmsg->param.fields);
         };
 
         // IF "gpsis"
