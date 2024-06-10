@@ -550,19 +550,19 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         memset(&AccessAndMobilitySubscriptionData, 0,
                 sizeof(AccessAndMobilitySubscriptionData));
 
-        if (recvmsg->param.fields_presence &&
+        if (!recvmsg->param.fields_presence ||
                 !strcmp(recvmsg->param.fields, "gpsis")) {
             if (GpsiList->count)
                 AccessAndMobilitySubscriptionData.gpsis = GpsiList;
         }
 
-        if (recvmsg->param.fields_presence &&
+        if (!recvmsg->param.fields_presence ||
                 !strcmp(recvmsg->param.fields, "SubscribedUeAmbr")) {
             AccessAndMobilitySubscriptionData.subscribed_ue_ambr =
                 &SubscribedUeAmbr;
         }
 
-        if (recvmsg->param.fields_presence &&
+        if (!recvmsg->param.fields_presence ||
                 !strcmp(recvmsg->param.fields, "nssai")) {
             if (DefaultSingleNssaiList->count)
                 AccessAndMobilitySubscriptionData.nssai = &NSSAI;
