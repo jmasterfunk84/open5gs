@@ -483,30 +483,26 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         if (recvmsg->param.fields_presence) {
             ogs_info("Asking for fields! [%s]", recvmsg->param.fields);
 
+            // This isn't working right... 
             // Decoding of fields
-            char *v = NULL;
             char *token = NULL;
             char *saveptr = NULL;
 
-            ogs_assert(discovery_option);
-            ogs_assert(service_names);
-
-            token = ogs_strtok_r(v, ",", &saveptr);
+            token = ogs_strtok_r(recvmsg->param.fields, ",", &saveptr);
             while (token != NULL) {
-                if (!strcmp(recvmsg->param.fields, "gpsis")) {
+                if (!strcmp(token, "gpsis")) {
                     ogs_info("Has gpsis!");
                 }
-                if (!strcmp(recvmsg->param.fields, "SubscribedUeAmbr")) {
+                if (!strcmp(token, "SubscribedUeAmbr")) {
                     ogs_info("Has AMBR!");
                 }
-                if (!strcmp(recvmsg->param.fields, "nssais")) {
-                    ogs_info("Has nssais!");
+                if (!strcmp(token, "nssai")) {
+                    ogs_info("Has nssai!");
                 }
 
                 token = ogs_strtok_r(NULL, ",", &saveptr);
             }
 
-            ogs_free(v);
         // end decode
         }
 
