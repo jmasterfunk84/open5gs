@@ -1231,8 +1231,7 @@ static char *build_json(ogs_sbi_message_t *message)
         item = OpenAPI_smf_registration_convertToJSON(message->SmfRegistration);
         ogs_assert(item);
     } else if (message->Nssai) {
-        item = OpenAPI_nssai_convertToJSON(
-                message->Nssai);
+        item = OpenAPI_nssai_convertToJSON(message->Nssai);
         ogs_assert(item);
     } else if (message->AccessAndMobilitySubscriptionData) {
         item = OpenAPI_access_and_mobility_subscription_data_convertToJSON(
@@ -1700,8 +1699,7 @@ static int parse_json(ogs_sbi_message_t *message,
             SWITCH(message->h.resource.component[1])
             CASE(OGS_SBI_RESOURCE_NAME_NSSAI)
                 if (message->res_status < 300) {
-                    message->Nssai =
-                        OpenAPI_nssai_parseFromJSON(item);
+                    message->Nssai = OpenAPI_nssai_parseFromJSON(item);
                     if (!message->Nssai) {
                         rv = OGS_ERROR;
                         ogs_error("JSON parse error");
