@@ -109,6 +109,8 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
                 message->Amf3GppAccessRegistrationModification);
     if (message->SmfRegistration)
         OpenAPI_smf_registration_free(message->SmfRegistration);
+    if (message->Nssai)
+        OpenAPI_nssai_free(message->Nssai);
     if (message->AccessAndMobilitySubscriptionData)
         OpenAPI_access_and_mobility_subscription_data_free(
                 message->AccessAndMobilitySubscriptionData);
@@ -1228,6 +1230,10 @@ static char *build_json(ogs_sbi_message_t *message)
     } else if (message->SmfRegistration) {
         item = OpenAPI_smf_registration_convertToJSON(message->SmfRegistration);
         ogs_assert(item);
+    } else if (message->Nssai) {
+        item = OpenAPI_nssai_convertToJSON(
+                message->Nssai);
+        ogs_assert(item);
     } else if (message->AccessAndMobilitySubscriptionData) {
         item = OpenAPI_access_and_mobility_subscription_data_convertToJSON(
                 message->AccessAndMobilitySubscriptionData);
@@ -1692,6 +1698,19 @@ static int parse_json(ogs_sbi_message_t *message,
 
         CASE(OGS_SBI_SERVICE_NAME_NUDM_SDM)
             SWITCH(message->h.resource.component[1])
+            CASE(OGS_SBI_RESOURCE_NAME_NSSAI)
+                if (message->res_status < 300) {
+                    message->Nssai =
+                        OpenAPI_nssai_parseFromJSON(item);
+                    if (!message->Nssai) {
+                        rv = OGS_ERROR;
+                        ogs_error("JSON parse error");
+                    }
+                } else {
+                    ogs_error("HTTP ERROR Status : %d", message->res_status);
+                }
+                break;
+
             CASE(OGS_SBI_RESOURCE_NAME_AM_DATA)
                 if (message->res_status < 300) {
                     message->AccessAndMobilitySubscriptionData =
