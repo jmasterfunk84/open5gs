@@ -637,43 +637,30 @@ bool udm_nudr_dr_handle_subscription_provisioned(
         memset(&sendmsg, 0, sizeof(sendmsg));
 
         // Check if original request was for /nudm-sdm/v2/{supi}/nssai
-        char *saveptr = NULL;
-        char *savestr = NULL;
-        savestr = ogs_sbi_parse_uri(recvmsg->h.uri, "?", &saveptr);
-        if (savestr) {
-            savestr = ogs_sbi_parse_uri(NULL, "=", &saveptr);
-            if (savestr) {
-                if (!strcmp(savestr, OGS_SBI_PARAM_FIELDS)) {
-                    savestr = ogs_sbi_parse_uri(NULL, ",", &saveptr);
-                    // k, but, this could be more.  while it.
-                    if (!strcmp(savestr, OGS_SBI_RESOURCE_NAME_NSSAI)) {
-                        ogs_info("NSSAI Confirmed in URI.");
-                        OpenAPI_nssai_t *Nssai = NULL;
-                        Nssai = AccessAndMobilitySubscriptionData->nssai;
-                        if (!Nssai) {
-                            ogs_error("[%s] No Nssai",
-                                    udm_ue->supi);
-                            ogs_assert(true ==
-                                ogs_sbi_server_send_error(
-                                    stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                                    recvmsg, "No Nssai",
-                                    udm_ue->supi, NULL));
-                            return false;
-                        }
+        ogs_sbi_request_t *request = NULL;
+        request = ogs_sbi_request_from_stream(stream);
 
-                        sendmsg.Nssai = OpenAPI_nssai_copy(sendmsg.Nssai,
-                            Nssai);
-                        response = ogs_sbi_build_response(&sendmsg,
-                            recvmsg->res_status);
-                        ogs_assert(response);
-                        ogs_assert(true == ogs_sbi_server_send_response(stream,
-                                response));
-                        OpenAPI_nssai_free(sendmsg.Nssai);
-
-                        break;
-                    }
-                }
+        if (!strcmp(request->h.resource.component[1],
+                OGS_SBI_RESOURCE_NAME_NSSAI)) {
+            OpenAPI_nssai_t *Nssai = NULL;
+            Nssai = AccessAndMobilitySubscriptionData->nssai;
+            if (!Nssai) {
+                ogs_error("[%s] No Nssai", udm_ue->supi);
+                ogs_assert(true ==
+                    ogs_sbi_server_send_error(
+                        stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                        recvmsg, "No Nssai",
+                        udm_ue->supi, NULL));
+                return false;
             }
+
+            sendmsg.Nssai = OpenAPI_nssai_copy(sendmsg.Nssai, Nssai);
+            response = ogs_sbi_build_response(&sendmsg, recvmsg->res_status);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+            OpenAPI_nssai_free(sendmsg.Nssai);
+
+            break;
         }
 
         sendmsg.AccessAndMobilitySubscriptionData =
