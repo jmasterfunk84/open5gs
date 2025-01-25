@@ -130,6 +130,7 @@ int upf_context_parse_config(void)
     int rv;
     yaml_document_t *document = NULL;
     ogs_yaml_iter_t root_iter;
+    int idx = 0;
 
     document = ogs_app()->document;
     ogs_assert(document);
@@ -141,7 +142,8 @@ int upf_context_parse_config(void)
     while (ogs_yaml_iter_next(&root_iter)) {
         const char *root_key = ogs_yaml_iter_key(&root_iter);
         ogs_assert(root_key);
-        if (!strcmp(root_key, "upf")) {
+        if ((!strcmp(root_key, "upf")) &&
+            (idx++ == ogs_app()->config_section_id)) {
             ogs_yaml_iter_t upf_iter;
             ogs_yaml_iter_recurse(&root_iter, &upf_iter);
             while (ogs_yaml_iter_next(&upf_iter)) {
@@ -175,9 +177,8 @@ upf_sess_t *upf_sess_add(ogs_pfcp_f_seid_t *cp_f_seid)
 
     ogs_assert(cp_f_seid);
 
-    ogs_pool_alloc(&upf_sess_pool, &sess);
+    ogs_pool_id_calloc(&upf_sess_pool, &sess);
     ogs_assert(sess);
-    memset(sess, 0, sizeof *sess);
 
     ogs_pfcp_pool_init(&sess->pfcp);
 
@@ -244,7 +245,7 @@ int upf_sess_remove(upf_sess_t *sess)
     ogs_pfcp_pool_final(&sess->pfcp);
 
     ogs_pool_free(&upf_n4_seid_pool, sess->upf_n4_seid_node);
-    ogs_pool_free(&upf_sess_pool, sess);
+    ogs_pool_id_free(&upf_sess_pool, sess);
     if (sess->apn_dnn)
         ogs_free(sess->apn_dnn);
     upf_metrics_inst_global_dec(UPF_METR_GLOB_GAUGE_UPF_SESSIONNBR);
@@ -350,6 +351,11 @@ upf_sess_t *upf_sess_find_by_ipv6(uint32_t *addr6)
             trie = trie->left;
     }
     return ret;
+}
+
+upf_sess_t *upf_sess_find_by_id(ogs_pool_id_t id)
+{
+    return ogs_pool_find_by_id(&upf_sess_pool, id);
 }
 
 upf_sess_t *upf_sess_add_by_message(ogs_pfcp_message_t *message)
@@ -676,8 +682,11 @@ uint8_t upf_sess_set_ue_ipv6_framed_routes(upf_sess_t *sess,
 
 void upf_sess_urr_acc_add(upf_sess_t *sess, ogs_pfcp_urr_t *urr, size_t size, bool is_uplink)
 {
-    upf_sess_urr_acc_t *urr_acc = &sess->urr_acc[urr->id];
+    upf_sess_urr_acc_t *urr_acc = NULL;
     uint64_t vol;
+
+    ogs_assert(urr->id > 0 && urr->id <= OGS_MAX_NUM_OF_URR);
+    urr_acc = &sess->urr_acc[urr->id-1];
 
     /* Increment total & ul octets + pkts */
     urr_acc->total_octets += size;
@@ -716,9 +725,12 @@ void upf_sess_urr_acc_add(upf_sess_t *sess, ogs_pfcp_urr_t *urr, size_t size, bo
 void upf_sess_urr_acc_fill_usage_report(upf_sess_t *sess, const ogs_pfcp_urr_t *urr,
                                   ogs_pfcp_user_plane_report_t *report, unsigned int idx)
 {
-    upf_sess_urr_acc_t *urr_acc = &sess->urr_acc[urr->id];
+    upf_sess_urr_acc_t *urr_acc = NULL;
     ogs_time_t last_report_timestamp;
     ogs_time_t now;
+
+    ogs_assert(urr->id > 0 && urr->id <= OGS_MAX_NUM_OF_URR);
+    urr_acc = &sess->urr_acc[urr->id-1];
 
     now = ogs_time_now(); /* we need UTC for start_time and end_time */
 
@@ -774,7 +786,11 @@ void upf_sess_urr_acc_fill_usage_report(upf_sess_t *sess, const ogs_pfcp_urr_t *
 
 void upf_sess_urr_acc_snapshot(upf_sess_t *sess, ogs_pfcp_urr_t *urr)
 {
-    upf_sess_urr_acc_t *urr_acc = &sess->urr_acc[urr->id];
+    upf_sess_urr_acc_t *urr_acc = NULL;
+
+    ogs_assert(urr->id > 0 && urr->id <= OGS_MAX_NUM_OF_URR);
+    urr_acc = &sess->urr_acc[urr->id-1];
+
     urr_acc->last_report.total_octets = urr_acc->total_octets;
     urr_acc->last_report.dl_octets = urr_acc->dl_octets;
     urr_acc->last_report.ul_octets = urr_acc->ul_octets;
@@ -810,7 +826,10 @@ static void upf_sess_urr_acc_timers_cb(void *data)
 
 static void upf_sess_urr_acc_validity_time_setup(upf_sess_t *sess, ogs_pfcp_urr_t *urr)
 {
-    upf_sess_urr_acc_t *urr_acc = &sess->urr_acc[urr->id];
+    upf_sess_urr_acc_t *urr_acc = NULL;
+
+    ogs_assert(urr->id > 0 && urr->id <= OGS_MAX_NUM_OF_URR);
+    urr_acc = &sess->urr_acc[urr->id-1];
 
     ogs_debug("Installing URR Quota Validity Time timer");
     urr_acc->reporting_enabled = true;
@@ -823,7 +842,10 @@ static void upf_sess_urr_acc_validity_time_setup(upf_sess_t *sess, ogs_pfcp_urr_
 
 static void upf_sess_urr_acc_time_quota_setup(upf_sess_t *sess, ogs_pfcp_urr_t *urr)
 {
-    upf_sess_urr_acc_t *urr_acc = &sess->urr_acc[urr->id];
+    upf_sess_urr_acc_t *urr_acc = NULL;
+
+    ogs_assert(urr->id > 0 && urr->id <= OGS_MAX_NUM_OF_URR);
+    urr_acc = &sess->urr_acc[urr->id-1];
 
     ogs_debug("Installing URR Time Quota timer");
     urr_acc->reporting_enabled = true;
@@ -835,7 +857,10 @@ static void upf_sess_urr_acc_time_quota_setup(upf_sess_t *sess, ogs_pfcp_urr_t *
 
 static void upf_sess_urr_acc_time_threshold_setup(upf_sess_t *sess, ogs_pfcp_urr_t *urr)
 {
-    upf_sess_urr_acc_t *urr_acc = &sess->urr_acc[urr->id];
+    upf_sess_urr_acc_t *urr_acc = NULL;
+
+    ogs_assert(urr->id > 0 && urr->id <= OGS_MAX_NUM_OF_URR);
+    urr_acc = &sess->urr_acc[urr->id-1];
 
     ogs_debug("Installing URR Time Threshold timer");
     urr_acc->reporting_enabled = true;
@@ -848,7 +873,11 @@ static void upf_sess_urr_acc_time_threshold_setup(upf_sess_t *sess, ogs_pfcp_urr
 
 void upf_sess_urr_acc_timers_setup(upf_sess_t *sess, ogs_pfcp_urr_t *urr)
 {
-    upf_sess_urr_acc_t *urr_acc = &sess->urr_acc[urr->id];
+    upf_sess_urr_acc_t *urr_acc = NULL;
+
+    ogs_assert(urr->id > 0 && urr->id <= OGS_MAX_NUM_OF_URR);
+    urr_acc = &sess->urr_acc[urr->id-1];
+
     urr_acc->time_start = ogs_time_ntp32_now();
     if (urr->rep_triggers.quota_validity_time && urr->quota_validity_time > 0)
         upf_sess_urr_acc_validity_time_setup(sess, urr);

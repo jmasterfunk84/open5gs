@@ -36,19 +36,25 @@ typedef struct ogs_sbi_smf_info_s ogs_sbi_smf_info_t;
 typedef struct ogs_sbi_nf_instance_s ogs_sbi_nf_instance_t;
 
 typedef enum {
-    OGS_SBI_DISCOVERY_DELEGATED_AUTO = 0,
-    OGS_SBI_DISCOVERY_DELEGATED_YES,
-    OGS_SBI_DISCOVERY_DELEGATED_NO,
-} ogs_sbi_discovery_delegated_mode;
+    OGS_SBI_CLIENT_DELEGATED_AUTO = 0,
+    OGS_SBI_CLIENT_DELEGATED_YES,
+    OGS_SBI_CLIENT_DELEGATED_NO,
+} ogs_sbi_client_delegated_mode_e;
 
-typedef struct ogs_sbi_discovery_config_s {
-    ogs_sbi_discovery_delegated_mode delegated;
-    bool no_service_names;
-    bool prefer_requester_nf_instance_id;
-} ogs_sbi_discovery_config_t;
+/* To hold all delegated config under sbi.client.delegated */
+typedef struct ogs_sbi_client_delegated_config_s {
+    struct {
+        ogs_sbi_client_delegated_mode_e nfm;  /* e.g. Registration, Heartbeat */
+        ogs_sbi_client_delegated_mode_e disc; /* NF discovery */
+    } nrf;
+    struct {
+        ogs_sbi_client_delegated_mode_e next; /* Next-hop SCP delegation */
+    } scp;
+} ogs_sbi_client_delegated_config_t;
 
 typedef struct ogs_sbi_context_s {
-    ogs_sbi_discovery_config_t discovery_config; /* SCP Discovery Delegated */
+    /* For sbi.client.delegated */
+    ogs_sbi_client_delegated_config_t client_delegated_config;
 
 #define OGS_HOME_NETWORK_PKI_VALUE_MIN 1
 #define OGS_HOME_NETWORK_PKI_VALUE_MAX 254
@@ -65,6 +71,7 @@ typedef struct ogs_sbi_context_s {
 
             const char *private_key;
             const char *cert;
+            const char *sslkeylog;
 
             bool verify_client;
             const char *verify_client_cacert;
@@ -77,6 +84,7 @@ typedef struct ogs_sbi_context_s {
 
             const char *private_key;
             const char *cert;
+            const char *sslkeylog;
         } client;
     } tls;
 
@@ -216,6 +224,8 @@ typedef ogs_sbi_request_t *(*ogs_sbi_build_f)(
 typedef struct ogs_sbi_xact_s {
     ogs_lnode_t lnode;
 
+    ogs_pool_id_t id;
+
     ogs_sbi_service_type_e service_type;
     OpenAPI_nf_type_e requester_nf_type;
     ogs_sbi_discovery_option_t *discovery_option;
@@ -223,11 +233,13 @@ typedef struct ogs_sbi_xact_s {
     ogs_sbi_request_t *request;
     ogs_timer_t *t_response;
 
-    ogs_sbi_stream_t *assoc_stream;
+    ogs_pool_id_t assoc_stream_id;
+
     int state;
     char *target_apiroot;
 
     ogs_sbi_object_t *sbi_object;
+    ogs_pool_id_t sbi_object_id;
 } ogs_sbi_xact_t;
 
 typedef struct ogs_sbi_nf_service_s {
@@ -281,12 +293,7 @@ typedef struct ogs_sbi_subscription_spec_s {
 typedef struct ogs_sbi_subscription_data_s {
     ogs_lnode_t lnode;
 
-#define OGS_SBI_VALIDITY_SEC(v) \
-        ogs_time_sec(v) + (ogs_time_usec(v) ? 1 : 0)
-    struct {
-        int validity_duration;
-    } time;
-
+    ogs_time_t validity_duration;           /* valditiyTime(unit: usec) */
     ogs_timer_t *t_validity;                /* check validation */
     ogs_timer_t *t_patch;                   /* for sending PATCH */
 
@@ -300,6 +307,7 @@ typedef struct ogs_sbi_subscription_data_s {
     struct {
         OpenAPI_nf_type_e nf_type;          /* nfType */
         char *service_name;                 /* ServiceName */
+        char *nf_instance_id;               /* NF Instance Id */
     } subscr_cond;
 
     uint64_t requester_features;
@@ -539,13 +547,14 @@ bool ogs_sbi_discovery_option_target_plmn_list_is_matched(
 void ogs_sbi_object_free(ogs_sbi_object_t *sbi_object);
 
 ogs_sbi_xact_t *ogs_sbi_xact_add(
+        ogs_pool_id_t sbi_object_id,
         ogs_sbi_object_t *sbi_object,
         ogs_sbi_service_type_e service_type,
         ogs_sbi_discovery_option_t *discovery_option,
         ogs_sbi_build_f build, void *context, void *data);
 void ogs_sbi_xact_remove(ogs_sbi_xact_t *xact);
 void ogs_sbi_xact_remove_all(ogs_sbi_object_t *sbi_object);
-ogs_sbi_xact_t *ogs_sbi_xact_cycle(ogs_sbi_xact_t *xact);
+ogs_sbi_xact_t *ogs_sbi_xact_find_by_id(ogs_pool_id_t id);
 
 ogs_sbi_subscription_spec_t *ogs_sbi_subscription_spec_add(
         OpenAPI_nf_type_e nf_type, const char *service_name);
@@ -568,6 +577,8 @@ ogs_sbi_subscription_data_t *ogs_sbi_subscription_data_find(char *id);
 bool ogs_sbi_supi_in_vplmn(char *supi);
 bool ogs_sbi_plmn_id_in_vplmn(ogs_plmn_id_t *plmn_id);
 bool ogs_sbi_fqdn_in_vplmn(char *fqdn);
+
+void ogs_sbi_keylog_callback(const SSL *ssl, const char *line);
 
 #ifdef __cplusplus
 }

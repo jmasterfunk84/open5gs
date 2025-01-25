@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -134,56 +134,73 @@ static int ogs_sbi_context_prepare(void)
     self.tls.server.scheme = OpenAPI_uri_scheme_http;
     self.tls.client.scheme = OpenAPI_uri_scheme_http;
 
+    /* Initialize delegated config with defaults */
+    self.client_delegated_config.nrf.nfm  = OGS_SBI_CLIENT_DELEGATED_AUTO;
+    self.client_delegated_config.nrf.disc = OGS_SBI_CLIENT_DELEGATED_AUTO;
+    self.client_delegated_config.scp.next = OGS_SBI_CLIENT_DELEGATED_AUTO;
+
     return OGS_OK;
 }
 
 static int ogs_sbi_context_validation(
         const char *local, const char *nrf, const char *scp)
 {
+#define MAX_MODE 3
+    int i;
+    ogs_sbi_client_delegated_mode_e mode[MAX_MODE];
+
+    ogs_assert(context_initialized == 1);
+
     /* If SMF is only used in 4G EPC, no SBI interface is required.  */
     if (local && strcmp(local, "smf") != 0 && ogs_sbi_server_first() == NULL) {
         ogs_error("No %s.sbi.address: in '%s'", local, ogs_app()->file);
         return OGS_ERROR;
     }
 
-    ogs_assert(context_initialized == 1);
-    switch (self.discovery_config.delegated) {
-    case OGS_SBI_DISCOVERY_DELEGATED_AUTO:
-        if (local && strcmp(local, "nrf") == 0) {
-            /* Skip NRF */
-        } else if (local && strcmp(local, "scp") == 0) {
-            /* Skip SCP */
-        } else if (local && strcmp(local, "smf") == 0) {
-            /* Skip SMF since SMF can run 4G */
-        } else {
-            if (NF_INSTANCE_CLIENT(self.nrf_instance) ||
-                NF_INSTANCE_CLIENT(self.scp_instance)) {
+    mode[0] = self.client_delegated_config.nrf.nfm;
+    mode[1] = self.client_delegated_config.nrf.disc;
+    mode[2] = self.client_delegated_config.scp.next;
+
+    for (i = 0; i < MAX_MODE; i++) {
+        switch (mode[i]) {
+        case OGS_SBI_CLIENT_DELEGATED_AUTO:
+            if (local && strcmp(local, "nrf") == 0) {
+                /* Skip NRF */
+            } else if (local && strcmp(local, "scp") == 0) {
+                /* Skip SCP */
+            } else if (local && strcmp(local, "smf") == 0) {
+                /* Skip SMF since SMF can run 4G */
             } else {
-                ogs_error("DELEGATED_AUTO - Both NRF and %s are unavailable",
-                        scp && strcmp(scp, "next_scp") == 0 ?
+                if (NF_INSTANCE_CLIENT(self.nrf_instance) ||
+                    NF_INSTANCE_CLIENT(self.scp_instance)) {
+                } else {
+                    ogs_error("[%d] DELEGATED_AUTO - "
+                            "Both NRF and %s are unavailable",
+                            i, scp && strcmp(scp, "next_scp") == 0 ?
+                                "Next-hop SCP" : "SCP");
+                    return OGS_ERROR;
+                }
+            }
+            break;
+        case OGS_SBI_CLIENT_DELEGATED_YES:
+            if (NF_INSTANCE_CLIENT(self.scp_instance) == NULL) {
+                ogs_error("[%d] DELEGATED_YES - no %s available",
+                        i, scp && strcmp(scp, "next_scp") == 0 ?
                             "Next-hop SCP" : "SCP");
                 return OGS_ERROR;
             }
+            break;
+        case OGS_SBI_CLIENT_DELEGATED_NO:
+            if (NF_INSTANCE_CLIENT(self.nrf_instance) == NULL) {
+                ogs_error("[%d] DELEGATED_NO - no NRF available", i);
+                return OGS_ERROR;
+            }
+            break;
+        default:
+            ogs_fatal("[%d] Invalid dicovery-config delegated [%d]",
+                    i, mode[i]);
+            ogs_assert_if_reached();
         }
-        break;
-    case OGS_SBI_DISCOVERY_DELEGATED_YES:
-        if (NF_INSTANCE_CLIENT(self.scp_instance) == NULL) {
-            ogs_error("DELEGATED_YES - no %s available",
-                    scp && strcmp(scp, "next_scp") == 0 ?
-                        "Next-hop SCP" : "SCP");
-            return OGS_ERROR;
-        }
-        break;
-    case OGS_SBI_DISCOVERY_DELEGATED_NO:
-        if (NF_INSTANCE_CLIENT(self.nrf_instance) == NULL) {
-            ogs_error("DELEGATED_NO - no NRF available");
-            return OGS_ERROR;
-        }
-        break;
-    default:
-        ogs_fatal("Invalid dicovery-config delegated [%d]",
-                    self.discovery_config.delegated);
-        ogs_assert_if_reached();
     }
 
     if (ogs_sbi_self()->tls.server.scheme == OpenAPI_uri_scheme_https) {
@@ -213,6 +230,7 @@ int ogs_sbi_context_parse_config(
     int rv;
     yaml_document_t *document = NULL;
     ogs_yaml_iter_t root_iter;
+    int idx = 0;
 
     document = ogs_app()->document;
     ogs_assert(document);
@@ -224,7 +242,8 @@ int ogs_sbi_context_parse_config(
     while (ogs_yaml_iter_next(&root_iter)) {
         const char *root_key = ogs_yaml_iter_key(&root_iter);
         ogs_assert(root_key);
-        if (local && !strcmp(root_key, local)) {
+        if (local && !strcmp(root_key, local) &&
+            idx++ == ogs_app()->config_section_id) {
             ogs_yaml_iter_t local_iter;
             ogs_yaml_iter_recurse(&root_iter, &local_iter);
             while (ogs_yaml_iter_next(&local_iter)) {
@@ -277,6 +296,11 @@ int ogs_sbi_context_parse_config(
                                         } else if (!strcmp(server_key,
                                                     "cert")) {
                                             self.tls.server.cert =
+                                                ogs_yaml_iter_value(
+                                                        &server_iter);
+                                        } else if (!strcmp(server_key,
+                                                    "sslkeylogfile")) {
+                                            self.tls.server.sslkeylog =
                                                 ogs_yaml_iter_value(
                                                         &server_iter);
                                         } else if (!strcmp(server_key,
@@ -338,6 +362,11 @@ int ogs_sbi_context_parse_config(
                                             self.tls.client.cert =
                                                 ogs_yaml_iter_value(
                                                         &client_iter);
+                                        } else if (!strcmp(client_key,
+                                                    "client_sslkeylogfile")) {
+                                            self.tls.client.sslkeylog =
+                                                ogs_yaml_iter_value(
+                                                        &client_iter);
                                         }
                                     }
                                 }
@@ -349,11 +378,13 @@ int ogs_sbi_context_parse_config(
         }
     }
 
+    idx = 0;
     ogs_yaml_iter_init(&root_iter, document);
     while (ogs_yaml_iter_next(&root_iter)) {
         const char *root_key = ogs_yaml_iter_key(&root_iter);
         ogs_assert(root_key);
-        if (local && !strcmp(root_key, local)) {
+        if (local && !strcmp(root_key, local) &&
+            idx++ == ogs_app()->config_section_id) {
             ogs_yaml_iter_t local_iter;
             ogs_yaml_iter_recurse(&root_iter, &local_iter);
             while (ogs_yaml_iter_next(&local_iter)) {
@@ -477,6 +508,115 @@ int ogs_sbi_context_parse_config(
                                     } while (ogs_yaml_iter_type(&scp_array) ==
                                             YAML_SEQUENCE_NODE);
                                 }
+                                /* Parse delegated section */
+                                else if (!strcmp(client_key, "delegated")) {
+                                    ogs_yaml_iter_t delegated_iter;
+                                    ogs_yaml_iter_recurse(&client_iter,
+                                                          &delegated_iter);
+
+                                    while (ogs_yaml_iter_next(
+                                               &delegated_iter)) {
+                                        const char *del_key =
+                                            ogs_yaml_iter_key(
+                                                &delegated_iter);
+                                        if (!strcmp(del_key, "nrf")) {
+                                            ogs_yaml_iter_t nrf_iter;
+                                            ogs_yaml_iter_recurse(
+                                                &delegated_iter, &nrf_iter);
+                                            while (ogs_yaml_iter_next(
+                                                       &nrf_iter)) {
+                                                const char *nrf_key =
+                                                    ogs_yaml_iter_key(
+                                                        &nrf_iter);
+                                                const char *nrf_val =
+                                                    ogs_yaml_iter_value(
+                                                        &nrf_iter);
+                                                ogs_assert(nrf_key);
+
+                                                if (!strcmp(nrf_key,"nfm")) {
+                                                    if (!strcmp(nrf_val,"no")) {
+                                                        self.client_delegated_config.nrf.nfm =
+                                                        OGS_SBI_CLIENT_DELEGATED_NO;
+                                                    } else if (!strcmp(
+                                                        nrf_val,"yes")) {
+                                                        self.client_delegated_config.nrf.nfm =
+                                                        OGS_SBI_CLIENT_DELEGATED_YES;
+                                                    } else if (!strcmp(
+                                                        nrf_val,"auto")) {
+                                                        self.client_delegated_config.nrf.nfm =
+                                                        OGS_SBI_CLIENT_DELEGATED_AUTO;
+                                                    } else {
+                                                        ogs_warn("unknown "
+                                                            "'nfm' `%s`",
+                                                            nrf_val);
+                                                    }
+                                                } else if (!strcmp(
+                                                           nrf_key,"disc")) {
+                                                    if (!strcmp(nrf_val,"no")) {
+                                                        self.client_delegated_config.nrf.disc =
+                                                        OGS_SBI_CLIENT_DELEGATED_NO;
+                                                    } else if (!strcmp(
+                                                        nrf_val,"yes")) {
+                                                        self.client_delegated_config.nrf.disc =
+                                                        OGS_SBI_CLIENT_DELEGATED_YES;
+                                                    } else if (!strcmp(
+                                                        nrf_val,"auto")) {
+                                                        self.client_delegated_config.nrf.disc =
+                                                        OGS_SBI_CLIENT_DELEGATED_AUTO;
+                                                    } else {
+                                                        ogs_warn("unknown "
+                                                            "'disc' `%s`",
+                                                            nrf_val);
+                                                    }
+                                                } else {
+                                                    ogs_warn("unknown nrf "
+                                                        "delegated key `%s`",
+                                                        nrf_key);
+                                                }
+                                            }
+                                        } else if (!strcmp(del_key, "scp")) {
+                                            ogs_yaml_iter_t scp_iter;
+                                            ogs_yaml_iter_recurse(
+                                                &delegated_iter, &scp_iter);
+                                            while (ogs_yaml_iter_next(
+                                                       &scp_iter)) {
+                                                const char *scp_key =
+                                                    ogs_yaml_iter_key(
+                                                        &scp_iter);
+                                                const char *scp_val =
+                                                    ogs_yaml_iter_value(
+                                                        &scp_iter);
+                                                ogs_assert(scp_key);
+
+                                                if (!strcmp(scp_key,"next")) {
+                                                    if (!strcmp(scp_val,"no")) {
+                                                        self.client_delegated_config.scp.next =
+                                                        OGS_SBI_CLIENT_DELEGATED_NO;
+                                                    } else if (!strcmp(
+                                                        scp_val,"yes")) {
+                                                        self.client_delegated_config.scp.next =
+                                                        OGS_SBI_CLIENT_DELEGATED_YES;
+                                                    } else if (!strcmp(
+                                                        scp_val,"auto")) {
+                                                        self.client_delegated_config.scp.next =
+                                                        OGS_SBI_CLIENT_DELEGATED_AUTO;
+                                                    } else {
+                                                        ogs_warn("unknown "
+                                                            "'next' `%s`",
+                                                            scp_val);
+                                                    }
+                                                } else {
+                                                    ogs_warn("unknown scp "
+                                                        "delegated key `%s`",
+                                                        scp_key);
+                                                }
+                                            }
+                                        } else {
+                                            ogs_warn("unknown delegated "
+                                                "key `%s`", del_key);
+                                        }
+                                    }
+                                }
                             }
                         } else
                             ogs_warn("unknown key `%s`", sbi_key);
@@ -503,52 +643,6 @@ int ogs_sbi_context_parse_config(
                     } while (ogs_yaml_iter_type(
                                 &service_name_iter) == YAML_SEQUENCE_NODE);
 
-                } else if (!strcmp(local_key, "discovery")) {
-                    ogs_yaml_iter_t discovery_iter;
-                    ogs_yaml_iter_recurse(&local_iter, &discovery_iter);
-                    while (ogs_yaml_iter_next(&discovery_iter)) {
-                        const char *discovery_key =
-                            ogs_yaml_iter_key(&discovery_iter);
-                        ogs_assert(discovery_key);
-                        if (!strcmp(discovery_key, "delegated")) {
-                            const char *delegated =
-                                ogs_yaml_iter_value(&discovery_iter);
-                            if (!strcmp(delegated, "auto"))
-                                self.discovery_config.delegated =
-                                    OGS_SBI_DISCOVERY_DELEGATED_AUTO;
-                            else if (!strcmp(delegated, "yes"))
-                                self.discovery_config.delegated =
-                                    OGS_SBI_DISCOVERY_DELEGATED_YES;
-                            else if (!strcmp(delegated, "no"))
-                                self.discovery_config.delegated =
-                                    OGS_SBI_DISCOVERY_DELEGATED_NO;
-                            else
-                                ogs_warn("unknown 'delegated' value `%s`",
-                                        delegated);
-                        } else if (!strcmp(discovery_key, "option")) {
-                            ogs_yaml_iter_t option_iter;
-                            ogs_yaml_iter_recurse(
-                                    &discovery_iter, &option_iter);
-
-                            while (ogs_yaml_iter_next(&option_iter)) {
-                                const char *option_key =
-                                    ogs_yaml_iter_key(&option_iter);
-                                ogs_assert(option_key);
-
-                                if (!strcmp(option_key, "no_service_names")) {
-                                    self.discovery_config.no_service_names =
-                                        ogs_yaml_iter_bool(&option_iter);
-                                } else if (!strcmp(option_key,
-                                        "prefer_requester_nf_instance_id")) {
-                                    self.discovery_config.
-                                        prefer_requester_nf_instance_id =
-                                            ogs_yaml_iter_bool(&option_iter);
-                                } else
-                                    ogs_warn("unknown key `%s`", option_key);
-                            }
-                        } else
-                            ogs_warn("unknown key `%s`", discovery_key);
-                    }
                 }
             }
         }
@@ -660,7 +754,7 @@ int ogs_sbi_context_parse_server_config(
         const char *dev = NULL;
         ogs_sockaddr_t *addr = NULL;
 
-        const char *private_key = NULL, *cert = NULL;
+        const char *private_key = NULL, *cert = NULL, *sslkeylog = NULL;
 
         bool verify_client = false;
         const char *verify_client_cacert = NULL;
@@ -755,6 +849,8 @@ int ogs_sbi_context_parse_server_config(
                 private_key = ogs_yaml_iter_value(&server_iter);
             } else if (!strcmp(server_key, "cert")) {
                 cert = ogs_yaml_iter_value(&server_iter);
+            } else if (!strcmp(server_key, "sslkeylogfile")) {
+                sslkeylog = ogs_yaml_iter_value(&server_iter);
             } else if (!strcmp(server_key, "verify_client")) {
                 verify_client = ogs_yaml_iter_bool(&server_iter);
             } else if (!strcmp(server_key, "verify_client_cacert")) {
@@ -807,9 +903,38 @@ int ogs_sbi_context_parse_server_config(
         }
 
         addr = NULL;
+        /* ----- Process advertise (Host+Port Parsing Logic) ----- */
         for (i = 0; i < num_of_advertise; i++) {
-            rv = ogs_addaddrinfo(&addr, family, advertise[i], port, 0);
+            uint16_t adv_port = port; /* Default to server's port */
+            char *hostbuf = NULL;
+            const char *colon_pos = strchr(advertise[i], ':');
+
+            if (colon_pos) {
+                /* If a colon exists, split host and port */
+                size_t host_len = colon_pos - advertise[i];
+
+                /* Allocate memory for the host part */
+                hostbuf = (char *)ogs_malloc(host_len + 1);
+                ogs_assert(hostbuf);
+
+                /* Copy the host part into hostbuf */
+                memcpy(hostbuf, advertise[i], host_len);
+                hostbuf[host_len] = '\0';
+
+                /* Parse the port part */
+                adv_port = (uint16_t)atoi(colon_pos + 1);
+            } else {
+                /* If no colon, treat the entire string as the host */
+                hostbuf = ogs_strdup(advertise[i]);
+                ogs_assert(hostbuf);
+            }
+
+            /* Add the parsed address info */
+            rv = ogs_addaddrinfo(&addr, family, hostbuf, adv_port, 0);
             ogs_assert(rv == OGS_OK);
+
+            /* Free the allocated memory */
+            ogs_free(hostbuf);
         }
 
         node = ogs_list_first(&list);
@@ -848,6 +973,12 @@ int ogs_sbi_context_parse_server_config(
                     ogs_free(server->cert);
                 server->cert = ogs_strdup(cert);
                 ogs_assert(server->cert);
+            }
+            if (sslkeylog) {
+                if (server->sslkeylog)
+                    ogs_free(server->sslkeylog);
+                server->sslkeylog = ogs_strdup(sslkeylog);
+                ogs_assert(server->sslkeylog);
             }
 
             if (scheme == OpenAPI_uri_scheme_https) {
@@ -898,6 +1029,12 @@ int ogs_sbi_context_parse_server_config(
                 server->cert = ogs_strdup(cert);
                 ogs_assert(server->cert);
             }
+            if (sslkeylog) {
+                if (server->sslkeylog)
+                    ogs_free(server->sslkeylog);
+                server->sslkeylog = ogs_strdup(sslkeylog);
+                ogs_assert(server->sslkeylog);
+            }
 
             if (scheme == OpenAPI_uri_scheme_https) {
                 if (!server->private_key) {
@@ -935,6 +1072,7 @@ ogs_sbi_client_t *ogs_sbi_context_parse_client_config(ogs_yaml_iter_t *iter)
 
     const char *client_private_key = NULL;
     const char *client_cert = NULL;
+    const char *client_sslkeylog = NULL;
 
     bool rc;
 
@@ -976,6 +1114,8 @@ ogs_sbi_client_t *ogs_sbi_context_parse_client_config(ogs_yaml_iter_t *iter)
             client_private_key = ogs_yaml_iter_value(iter);
         } else if (!strcmp(key, "client_cert")) {
             client_cert = ogs_yaml_iter_value(iter);
+        } else if (!strcmp(key, "client_sslkeylogfile")) {
+            client_sslkeylog = ogs_yaml_iter_value(iter);
         }
     }
 
@@ -1043,6 +1183,13 @@ ogs_sbi_client_t *ogs_sbi_context_parse_client_config(ogs_yaml_iter_t *iter)
             ogs_free(client->cert);
         client->cert = ogs_strdup(client_cert);
         ogs_assert(client->cert);
+    }
+
+    if (client_sslkeylog) {
+        if (client->sslkeylog)
+            ogs_free(client->sslkeylog);
+        client->sslkeylog = ogs_strdup(client_sslkeylog);
+        ogs_assert(client->sslkeylog);
     }
 
     if ((!client_private_key && client_cert) ||
@@ -1714,11 +1861,8 @@ void ogs_sbi_nf_instance_build_default(ogs_sbi_nf_instance_t *nf_instance)
         ogs_assert(advertise);
 
         /* First FQDN is selected */
-        if (!hostname) {
+        if (!hostname)
             hostname = ogs_gethostname(advertise);
-            if (hostname)
-                continue;
-        }
 
         if (nf_instance->num_of_ipv4 < OGS_SBI_MAX_NUM_OF_IP_ADDRESS) {
             ogs_sockaddr_t *addr = NULL;
@@ -1788,11 +1932,8 @@ ogs_sbi_nf_service_t *ogs_sbi_nf_service_build_default(
         ogs_assert(advertise);
 
         /* First FQDN is selected */
-        if (!hostname) {
+        if (!hostname)
             hostname = ogs_gethostname(advertise);
-            if (hostname)
-                continue;
-        }
 
         if (nf_service->num_of_addr < OGS_SBI_MAX_NUM_OF_IP_ADDRESS) {
             bool is_port = true;
@@ -1905,6 +2046,7 @@ static void nf_service_associate_client(ogs_sbi_nf_service_t *nf_service)
 {
     ogs_sbi_client_t *client = NULL;
     ogs_sockaddr_t *addr = NULL, *addr6 = NULL;
+    uint16_t port = 0;
 
     ogs_assert(nf_service->scheme);
 
@@ -1912,15 +2054,28 @@ static void nf_service_associate_client(ogs_sbi_nf_service_t *nf_service)
     if (nf_service->num_of_addr) {
         addr = nf_service->addr[0].ipv4;
         addr6 = nf_service->addr[0].ipv6;
+
+        /*
+         * Added support for using custom port numbers with FQDN.
+         *
+         * This code checks if a user-defined port number is provided in the
+         * NFService structure. If the is_port flag is set, the port is
+         * assigned the specified value.
+         *
+         * This ensures that services using non-default ports can be accessed
+         * correctly, regardless of whether TLS is enabled or not.
+         */
+        if (nf_service->addr[0].is_port)
+            port = nf_service->addr[0].port;
     }
 
     if (nf_service->fqdn || addr || addr6) {
         client = ogs_sbi_client_find(
-                nf_service->scheme, nf_service->fqdn, 0, addr, addr6);
+                nf_service->scheme, nf_service->fqdn, port, addr, addr6);
         if (!client) {
             ogs_debug("%s: ogs_sbi_client_add()", OGS_FUNC);
             client = ogs_sbi_client_add(
-                    nf_service->scheme, nf_service->fqdn, 0, addr, addr6);
+                    nf_service->scheme, nf_service->fqdn, port, addr, addr6);
             if (!client) {
                 ogs_error("%s: ogs_sbi_client_add() failed", OGS_FUNC);
                 return;
@@ -2257,6 +2412,7 @@ void ogs_sbi_object_free(ogs_sbi_object_t *sbi_object)
 }
 
 ogs_sbi_xact_t *ogs_sbi_xact_add(
+        ogs_pool_id_t sbi_object_id,
         ogs_sbi_object_t *sbi_object,
         ogs_sbi_service_type_e service_type,
         ogs_sbi_discovery_option_t *discovery_option,
@@ -2266,13 +2422,13 @@ ogs_sbi_xact_t *ogs_sbi_xact_add(
 
     ogs_assert(sbi_object);
 
-    ogs_pool_alloc(&xact_pool, &xact);
+    ogs_pool_id_calloc(&xact_pool, &xact);
     if (!xact) {
-        ogs_error("ogs_pool_alloc() failed");
+        ogs_error("ogs_pool_id_calloc() failed");
         return NULL;
     }
-    memset(xact, 0, sizeof(ogs_sbi_xact_t));
 
+    xact->sbi_object_id = sbi_object_id;
     xact->sbi_object = sbi_object;
     xact->service_type = service_type;
     xact->requester_nf_type = NF_INSTANCE_TYPE(ogs_sbi_self()->nf_instance);
@@ -2301,13 +2457,14 @@ ogs_sbi_xact_t *ogs_sbi_xact_add(
     xact->discovery_option = discovery_option;
 
     xact->t_response = ogs_timer_add(
-            ogs_app()->timer_mgr, ogs_timer_sbi_client_wait_expire, xact);
+            ogs_app()->timer_mgr, ogs_timer_sbi_client_wait_expire,
+            OGS_UINT_TO_POINTER(xact->id));
     if (!xact->t_response) {
         ogs_error("ogs_timer_add() failed");
 
         if (xact->discovery_option)
             ogs_sbi_discovery_option_free(xact->discovery_option);
-        ogs_pool_free(&xact_pool, xact);
+        ogs_pool_id_free(&xact_pool, xact);
 
         return NULL;
     }
@@ -2324,7 +2481,7 @@ ogs_sbi_xact_t *ogs_sbi_xact_add(
                 ogs_sbi_discovery_option_free(xact->discovery_option);
 
             ogs_timer_delete(xact->t_response);
-            ogs_pool_free(&xact_pool, xact);
+            ogs_pool_id_free(&xact_pool, xact);
 
             return NULL;
         }
@@ -2383,7 +2540,7 @@ void ogs_sbi_xact_remove(ogs_sbi_xact_t *xact)
         ogs_free(xact->target_apiroot);
 
     ogs_list_remove(&sbi_object->xact_list, xact);
-    ogs_pool_free(&xact_pool, xact);
+    ogs_pool_id_free(&xact_pool, xact);
 }
 
 void ogs_sbi_xact_remove_all(ogs_sbi_object_t *sbi_object)
@@ -2396,9 +2553,9 @@ void ogs_sbi_xact_remove_all(ogs_sbi_object_t *sbi_object)
         ogs_sbi_xact_remove(xact);
 }
 
-ogs_sbi_xact_t *ogs_sbi_xact_cycle(ogs_sbi_xact_t *xact)
+ogs_sbi_xact_t *ogs_sbi_xact_find_by_id(ogs_pool_id_t id)
 {
-    return ogs_pool_cycle(&xact_pool, xact);
+    return ogs_pool_find_by_id(&xact_pool, id);
 }
 
 ogs_sbi_subscription_spec_t *ogs_sbi_subscription_spec_add(
@@ -2508,6 +2665,9 @@ void ogs_sbi_subscription_data_remove(
 
     if (subscription_data->subscr_cond.service_name)
         ogs_free(subscription_data->subscr_cond.service_name);
+        
+    if (subscription_data->subscr_cond.nf_instance_id)
+        ogs_free(subscription_data->subscr_cond.nf_instance_id);
 
     if (subscription_data->t_validity)
         ogs_timer_delete(subscription_data->t_validity);
@@ -2659,4 +2819,30 @@ bool ogs_sbi_fqdn_in_vplmn(char *fqdn)
         return true;
 
     return false;
+}
+
+/* OpenSSL Key Log Callback */
+void ogs_sbi_keylog_callback(const SSL *ssl, const char *line)
+{
+    SSL_CTX *ctx = NULL;
+    FILE *file = NULL;
+    const char *sslkeylog_file = NULL;
+
+    ogs_assert(ssl);
+    ogs_assert(line);
+
+    /* Retrieve SSL_CTX from SSL object */
+    ctx = SSL_get_SSL_CTX(ssl);
+    ogs_assert(ctx);
+
+    sslkeylog_file = (const char *)SSL_CTX_get_app_data(ctx);
+    ogs_assert(sslkeylog_file);
+
+    file = fopen(sslkeylog_file, "a");
+    if (file) {
+        fprintf(file, "%s\n", line);
+        fclose(file);
+    } else {
+        ogs_error("Failed to open SSL key log file: %s", sslkeylog_file);
+    }
 }

@@ -20,6 +20,7 @@
 #include "ogs-dbi.h"
 #include "hss-context.h"
 #include "hss-event.h"
+#include "hss-fd-path.h"
 #include "hss-s6a-path.h"
 
 
@@ -144,6 +145,7 @@ static int hss_context_prepare(void)
 {
     self.diam_config->cnf_port = DIAMETER_PORT;
     self.diam_config->cnf_port_tls = DIAMETER_SECURE_PORT;
+    self.diam_config->stats.priv_stats_size = sizeof(hss_diam_stats_t);
 
     return OGS_OK;
 }
@@ -270,6 +272,7 @@ int hss_context_parse_config(void)
                                     const char *identity = NULL;
                                     const char *addr = NULL;
                                     uint16_t port = 0;
+                                    int tc_timer = 0;
 
                                     if (ogs_yaml_iter_type(&conn_array) ==
                                         YAML_MAPPING_NODE) {
@@ -304,6 +307,10 @@ int hss_context_parse_config(void)
                                             const char *v =
                                                 ogs_yaml_iter_value(&conn_iter);
                                             if (v) port = atoi(v);
+                                        } else if (!strcmp(conn_key, "tc_timer")) {
+                                            const char *v =
+                                                ogs_yaml_iter_value(&conn_iter);
+                                            if (v) tc_timer = atoi(v);
                                         } else
                                             ogs_warn("unknown key `%s`",
                                                     conn_key);
@@ -319,14 +326,23 @@ int hss_context_parse_config(void)
                                         self.diam_config->
                                             conn[self.diam_config->num_of_conn].
                                                 port = port;
+                                        self.diam_config->
+                                            conn[self.diam_config->num_of_conn].
+                                                tc_timer = tc_timer;
                                         self.diam_config->num_of_conn++;
                                     }
                                 } while (ogs_yaml_iter_type(&conn_array) ==
                                         YAML_SEQUENCE_NODE);
+                            } else if (!strcmp(fd_key, "tc_timer")) {
+                                const char *v = ogs_yaml_iter_value(&fd_iter);
+                                if (v) self.diam_config->cnf_timer_tc = atoi(v);
                             } else
                                 ogs_warn("unknown key `%s`", fd_key);
                         }
                     }
+                } else if (!strcmp(hss_key, "diameter_stats_interval")) {
+                    const char *v = ogs_yaml_iter_value(&hss_iter);
+                    if (v) self.diam_config->stats.interval_sec = atoi(v);
                 } else if (!strcmp(hss_key, "sms_over_ims")) {
                             self.sms_over_ims =
                                 ogs_yaml_iter_value(&hss_iter);

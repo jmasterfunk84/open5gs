@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019,2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -39,6 +39,9 @@ static bool server_send_response(
 
 static ogs_sbi_server_t *server_from_stream(ogs_sbi_stream_t *stream);
 
+static ogs_pool_id_t id_from_stream(ogs_sbi_stream_t *stream);
+static void *stream_find_by_id(ogs_pool_id_t id);
+
 const ogs_sbi_server_actions_t ogs_nghttp2_server_actions = {
     server_init,
     server_final,
@@ -50,6 +53,9 @@ const ogs_sbi_server_actions_t ogs_nghttp2_server_actions = {
     server_send_response,
 
     server_from_stream,
+
+    id_from_stream,
+    stream_find_by_id,
 };
 
 struct h2_settings {
@@ -80,6 +86,8 @@ typedef struct ogs_sbi_session_s {
 
 typedef struct ogs_sbi_stream_s {
     ogs_lnode_t             lnode;
+
+    ogs_pool_id_t           id;
 
     int32_t                 stream_id;
     ogs_sbi_request_t       *request;
@@ -188,7 +196,9 @@ static int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max)
 #endif /* OPENSSL_VERSION_NUMBER >= 0x1010000fL */
 }
 
-static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file)
+static SSL_CTX *create_ssl_ctx(
+        const char *key_file, const char *cert_file,
+        const char *sslkeylog_file)
 {
     SSL_CTX *ssl_ctx;
     uint64_t ssl_opts;
@@ -200,6 +210,16 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file)
     if (!ssl_ctx) {
         ogs_error("Could not create SSL/TLS context: %s", ERR_error_string(ERR_get_error(), NULL));
         return NULL;
+    }
+
+    /* Set key log files for each SSL_CTX */
+    if (sslkeylog_file) {
+        /* Ensure app data is set for SSL objects */
+        SSL_CTX_set_app_data(ssl_ctx, sslkeylog_file);
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        /* Set the SSL Key Log callback */
+        SSL_CTX_set_keylog_callback(ssl_ctx, ogs_sbi_keylog_callback);
+#endif
     }
 
     ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
@@ -314,7 +334,8 @@ static int server_start(ogs_sbi_server_t *server,
     /* Create SSL CTX */
     if (server->scheme == OpenAPI_uri_scheme_https) {
 
-        server->ssl_ctx = create_ssl_ctx(server->private_key, server->cert);
+        server->ssl_ctx = create_ssl_ctx(
+                server->private_key, server->cert, server->sslkeylog);
         if (!server->ssl_ctx) {
             ogs_error("Cannot create SSL CTX");
             return OGS_ERROR;
@@ -360,7 +381,9 @@ static int server_start(ogs_sbi_server_t *server,
                         SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                         verify_callback);
 
-            context = ogs_sbi_server_id_context(server);
+            ogs_assert(server->id >= OGS_MIN_POOL_ID &&
+                    server->id <= OGS_MAX_POOL_ID);
+            context = ogs_msprintf("%d", server->id);
             if (!context) {
                 ogs_error("ogs_sbi_server_id_context() failed");
 
@@ -580,12 +603,7 @@ static bool server_send_rspmem_persistent(
         return false;
     }
 
-    stream = ogs_pool_cycle(&stream_pool, stream);
-    if (!stream) {
-        ogs_error("stream has already been removed");
-        return true;
-    }
-
+    ogs_assert(stream);
     sbi_sess = stream->session;
     ogs_assert(sbi_sess);
     ogs_assert(sbi_sess->session);
@@ -706,17 +724,16 @@ static ogs_sbi_stream_t *stream_add(
 
     ogs_assert(sbi_sess);
 
-    ogs_pool_alloc(&stream_pool, &stream);
+    ogs_pool_id_calloc(&stream_pool, &stream);
     if (!stream) {
-        ogs_error("ogs_pool_alloc() failed");
+        ogs_error("ogs_pool_id_calloc() failed");
         return NULL;
     }
-    memset(stream, 0, sizeof(ogs_sbi_stream_t));
 
     stream->request = ogs_sbi_request_new();
     if (!stream->request) {
         ogs_error("ogs_sbi_request_new() failed");
-        ogs_pool_free(&stream_pool, stream);
+        ogs_pool_id_free(&stream_pool, stream);
         return NULL;
     }
 
@@ -743,7 +760,7 @@ static void stream_remove(ogs_sbi_stream_t *stream)
     ogs_assert(stream->request);
     ogs_sbi_request_free(stream->request);
 
-    ogs_pool_free(&stream_pool, stream);
+    ogs_pool_id_free(&stream_pool, stream);
 }
 
 static void stream_remove_all(ogs_sbi_session_t *sbi_sess)
@@ -754,6 +771,17 @@ static void stream_remove_all(ogs_sbi_session_t *sbi_sess)
 
     ogs_list_for_each_safe(&sbi_sess->stream_list, next_stream, stream)
         stream_remove(stream);
+}
+
+static ogs_pool_id_t id_from_stream(ogs_sbi_stream_t *stream)
+{
+    ogs_assert(stream);
+    return stream->id;
+}
+
+static void *stream_find_by_id(ogs_pool_id_t id)
+{
+    return ogs_pool_find_by_id(&stream_pool, id);
 }
 
 static ogs_sbi_session_t *session_add(
@@ -1169,7 +1197,8 @@ static int on_frame_recv(nghttp2_session *session,
                 break;
             }
 
-            if (server->cb(request, stream) != OGS_OK) {
+            if (server->cb(request,
+                        OGS_UINT_TO_POINTER(stream->id)) != OGS_OK) {
                 ogs_warn("server callback error");
                 ogs_assert(true ==
                     ogs_sbi_server_send_error(stream,

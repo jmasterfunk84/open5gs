@@ -94,9 +94,16 @@ char *ogs_supi_from_suci(char *suci)
         return NULL;
     }
 
+    /* Clang scan-build SA: Branch condition evaluates to a garbage value: If array "array" is not fully populated
+     * in the while loop below then later access in the following switch-case may check uninitialized values.
+     * Initialize "array" to NULL pointers to fix the issue. */
+    for (i = 0; i < MAX_SUCI_TOKEN; i++) {
+        array[i] = NULL;
+    }
+
     p = tmp;
     i = 0;
-    while((array[i++] = strsep(&p, "-"))) {
+    while((i < MAX_SUCI_TOKEN) && (array[i++] = strsep(&p, "-"))) {
         /* Empty Body */
     }
 
@@ -715,12 +722,12 @@ char *ogs_sbi_bitrate_to_string(uint64_t bitrate, int unit)
 uint64_t ogs_sbi_bitrate_from_string(char *str)
 {
     char *unit = NULL;
-    uint64_t bitrate = 0;
+    double bitrate = 0;
     ogs_assert(str);
     uint64_t mul = 1;
 
     unit = strrchr(str, ' ');
-    bitrate = atoll(str);
+    bitrate = atof(str);
 
     if (!unit) {
         ogs_error("No Unit [%s]", str);
@@ -748,7 +755,7 @@ uint64_t ogs_sbi_bitrate_from_string(char *str)
     else
         bitrate *= mul;
 
-    return bitrate;
+    return (uint64_t) bitrate;
 }
 
 #define MAX_TIMESTR_LEN 128
@@ -1196,6 +1203,35 @@ void ogs_sbi_free_plmn_list(OpenAPI_list_t *PlmnList)
             ogs_sbi_free_plmn_id(PlmnId);
     }
     OpenAPI_list_free(PlmnList);
+}
+
+/**
+ * Compares an ogs_plmn_id_t structure with an OpenAPI_plmn_id_t structure.
+ *
+ * @param plmn_list The PLMN-ID in ogs_plmn_id_t format.
+ * @param PlmnList The PLMN-ID in OpenAPI_plmn_id_t format.
+ * @return true if the PLMN-IDs are equal; otherwise, false.
+ */
+bool ogs_sbi_compare_plmn_list(
+        ogs_plmn_id_t *plmn_id, OpenAPI_plmn_id_t *PlmnId)
+{
+    ogs_plmn_id_t temp_plmn_id;
+
+    ogs_assert(plmn_id);
+    ogs_assert(PlmnId);
+    ogs_assert(PlmnId->mcc);
+    ogs_assert(PlmnId->mnc);
+
+    /* Convert OpenAPI_plmn_id_t to ogs_plmn_id_t */
+    ogs_sbi_parse_plmn_id(&temp_plmn_id, PlmnId);
+
+    /* Compare MCC and MNC values */
+    if (ogs_plmn_id_mcc(plmn_id) == ogs_plmn_id_mcc(&temp_plmn_id) &&
+        ogs_plmn_id_mnc(plmn_id) == ogs_plmn_id_mnc(&temp_plmn_id)) {
+        return true;
+    }
+
+    return false;
 }
 
 OpenAPI_plmn_id_nid_t *ogs_sbi_build_plmn_id_nid(ogs_plmn_id_t *plmn_id)

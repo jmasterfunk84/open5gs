@@ -283,7 +283,6 @@ ogs_pkbuf_t *s1ap_build_downlink_nas_transport(
     S1AP_NAS_PDU_t *NAS_PDU = NULL;
 
     ogs_assert(emmbuf);
-    enb_ue = enb_ue_cycle(enb_ue);
     ogs_assert(enb_ue);
 
     ogs_debug("DownlinkNASTransport");
@@ -427,9 +426,8 @@ ogs_pkbuf_t *s1ap_build_initial_context_setup_request(
     mme_sess_t *sess = NULL;
     mme_bearer_t *bearer = NULL;
 
-    mme_ue = mme_ue_cycle(mme_ue);
     ogs_assert(mme_ue);
-    enb_ue = enb_ue_cycle(mme_ue->enb_ue);
+    enb_ue = enb_ue_find_by_id(mme_ue->enb_ue_id);
     ogs_assert(enb_ue);
 
     ogs_debug("InitialContextSetupRequest");
@@ -621,7 +619,6 @@ ogs_pkbuf_t *s1ap_build_initial_context_setup_request(
     }
 
     if (!E_RABToBeSetupListCtxtSUReq->list.count) {
-        MME_UE_CHECK(OGS_LOG_ERROR, mme_ue);
         ogs_list_for_each(&mme_ue->sess_list, sess) {
             ogs_error("    APN[%s]",
                     sess->session ? sess->session->name : "Unknown");
@@ -695,7 +692,7 @@ ogs_pkbuf_t *s1ap_build_initial_context_setup_request(
     ogs_log_hexdump(OGS_LOG_DEBUG, SecurityKey->buf, SecurityKey->size);
 
     if (mme_ue->nas_eps.type == MME_EPS_TYPE_EXTENDED_SERVICE_REQUEST &&
-        MME_P_TMSI_IS_AVAILABLE(mme_ue)) {
+        MME_CURRENT_P_TMSI_IS_AVAILABLE(mme_ue)) {
 
         /* Set CS-Fallback */
         S1AP_CSFallbackIndicator_t *CSFallbackIndicator = NULL;
@@ -730,7 +727,7 @@ ogs_pkbuf_t *s1ap_build_initial_context_setup_request(
         ogs_s1ap_buffer_to_OCTET_STRING(
             &mme_ue->tai.plmn_id, sizeof(ogs_plmn_id_t), &LAI->pLMNidentity);
         ogs_assert(mme_ue->csmap);
-        ogs_assert(mme_ue->p_tmsi);
+        ogs_assert(mme_ue->current.p_tmsi);
         ogs_asn_uint16_to_OCTET_STRING(mme_ue->csmap->lai.lac, &LAI->lAC);
 
     }
@@ -847,9 +844,8 @@ ogs_pkbuf_t *s1ap_build_ue_context_modification_request(mme_ue_t *mme_ue)
 
     enb_ue_t *enb_ue = NULL;
 
-    mme_ue = mme_ue_cycle(mme_ue);
     ogs_assert(mme_ue);
-    enb_ue = enb_ue_cycle(mme_ue->enb_ue);
+    enb_ue = enb_ue_find_by_id(mme_ue->enb_ue_id);
     ogs_assert(enb_ue);
 
     ogs_debug("UEContextModificationRequest");
@@ -895,7 +891,7 @@ ogs_pkbuf_t *s1ap_build_ue_context_modification_request(mme_ue_t *mme_ue)
             enb_ue->enb_ue_s1ap_id, enb_ue->mme_ue_s1ap_id);
 
     if (mme_ue->nas_eps.type == MME_EPS_TYPE_EXTENDED_SERVICE_REQUEST &&
-        MME_P_TMSI_IS_AVAILABLE(mme_ue)) {
+        MME_CURRENT_P_TMSI_IS_AVAILABLE(mme_ue)) {
         ie = CALLOC(1, sizeof(S1AP_UEContextModificationRequestIEs_t));
         ASN_SEQUENCE_ADD(&UEContextModificationRequest->protocolIEs, ie);
 
@@ -923,7 +919,7 @@ ogs_pkbuf_t *s1ap_build_ue_context_modification_request(mme_ue_t *mme_ue)
         ogs_s1ap_buffer_to_OCTET_STRING(
             &mme_ue->tai.plmn_id, sizeof(ogs_plmn_id_t), &LAI->pLMNidentity);
         ogs_assert(mme_ue->csmap);
-        ogs_assert(mme_ue->p_tmsi);
+        ogs_assert(mme_ue->current.p_tmsi);
         ogs_asn_uint16_to_OCTET_STRING(mme_ue->csmap->lai.lac, &LAI->lAC);
 
     } else {
@@ -983,7 +979,6 @@ ogs_pkbuf_t *s1ap_build_ue_context_release_command(
     S1AP_UE_S1AP_IDs_t *UE_S1AP_IDs = NULL;
     S1AP_Cause_t *Cause = NULL;
 
-    enb_ue = enb_ue_cycle(enb_ue);
     ogs_assert(enb_ue);
 
     if (enb_ue->mme_ue_s1ap_id == 0) {
@@ -1069,9 +1064,9 @@ ogs_pkbuf_t *s1ap_build_e_rab_setup_request(
     ogs_assert(esmbuf);
     ogs_assert(bearer);
 
-    mme_ue = mme_ue_cycle(bearer->mme_ue);
+    mme_ue = mme_ue_find_by_id(bearer->mme_ue_id);
     ogs_assert(mme_ue);
-    enb_ue = enb_ue_cycle(mme_ue->enb_ue);
+    enb_ue = enb_ue_find_by_id(mme_ue->enb_ue_id);
     ogs_assert(enb_ue);
 
     ogs_debug("E-RABSetupRequest");
@@ -1202,9 +1197,9 @@ ogs_pkbuf_t *s1ap_build_e_rab_modify_request(
     ogs_assert(esmbuf);
     ogs_assert(bearer);
 
-    mme_ue = mme_ue_cycle(bearer->mme_ue);
+    mme_ue = mme_ue_find_by_id(bearer->mme_ue_id);
     ogs_assert(mme_ue);
-    enb_ue = enb_ue_cycle(mme_ue->enb_ue);
+    enb_ue = enb_ue_find_by_id(mme_ue->enb_ue_id);
     ogs_assert(enb_ue);
 
     ogs_debug("E-RABModifyRequest");
@@ -1330,9 +1325,9 @@ ogs_pkbuf_t *s1ap_build_e_rab_release_command(
     ogs_assert(esmbuf);
     ogs_assert(bearer);
 
-    mme_ue = mme_ue_cycle(bearer->mme_ue);
+    mme_ue = mme_ue_find_by_id(bearer->mme_ue_id);
     ogs_assert(mme_ue);
-    enb_ue = enb_ue_cycle(mme_ue->enb_ue);
+    enb_ue = enb_ue_find_by_id(mme_ue->enb_ue_id);
     ogs_assert(enb_ue);
 
     ogs_debug("E-RABReleaseCommand");
@@ -1451,9 +1446,8 @@ ogs_pkbuf_t *s1ap_build_e_rab_modification_confirm(mme_ue_t *mme_ue)
     mme_sess_t *sess = NULL;
     mme_bearer_t *bearer = NULL;
 
-    mme_ue = mme_ue_cycle(mme_ue);
     ogs_assert(mme_ue);
-    enb_ue = enb_ue_cycle(mme_ue->enb_ue);
+    enb_ue = enb_ue_find_by_id(mme_ue->enb_ue_id);
     ogs_assert(enb_ue);
 
     ogs_debug("E-RABModificationConfirm");
@@ -1553,7 +1547,6 @@ ogs_pkbuf_t *s1ap_build_paging(
     uint64_t ue_imsi_value = 0;
     int i = 0;
 
-    mme_ue = mme_ue_cycle(mme_ue);
     ogs_assert(mme_ue);
 
     ogs_debug("Paging");
@@ -1776,9 +1769,8 @@ ogs_pkbuf_t *s1ap_build_path_switch_ack(
     mme_bearer_t *bearer = NULL;
     enb_ue_t *enb_ue = NULL;
 
-    mme_ue = mme_ue_cycle(mme_ue);
     ogs_assert(mme_ue);
-    enb_ue = enb_ue_cycle(mme_ue->enb_ue);
+    enb_ue = enb_ue_find_by_id(mme_ue->enb_ue_id);
     ogs_assert(enb_ue);
 
     ogs_debug("PathSwitchAcknowledge");
@@ -1973,9 +1965,8 @@ ogs_pkbuf_t *s1ap_build_handover_command(enb_ue_t *source_ue)
     mme_sess_t *sess = NULL;
     mme_bearer_t *bearer = NULL;
 
-    source_ue = enb_ue_cycle(source_ue);
     ogs_assert(source_ue);
-    mme_ue = mme_ue_cycle(source_ue->mme_ue);
+    mme_ue = mme_ue_find_by_id(source_ue->mme_ue_id);
     ogs_assert(mme_ue);
 
     ogs_debug("HandoverCommand");
@@ -2132,7 +2123,6 @@ ogs_pkbuf_t *s1ap_build_handover_preparation_failure(
     S1AP_ENB_UE_S1AP_ID_t *ENB_UE_S1AP_ID = NULL;
     S1AP_Cause_t *Cause = NULL;
 
-    source_ue = enb_ue_cycle(source_ue);
     ogs_assert(source_ue);
     ogs_assert(group);
 
@@ -2225,9 +2215,8 @@ ogs_pkbuf_t *s1ap_build_handover_request(
     ogs_assert(cause);
     ogs_assert(source_totarget_transparentContainer);
 
-    target_ue = enb_ue_cycle(target_ue);
     ogs_assert(target_ue);
-    mme_ue = mme_ue_cycle(target_ue->mme_ue);
+    mme_ue = mme_ue_find_by_id(target_ue->mme_ue_id);
     ogs_assert(mme_ue);
 
     ogs_debug("HandoverRequest");
@@ -2460,7 +2449,6 @@ ogs_pkbuf_t *s1ap_build_handover_cancel_ack(enb_ue_t *source_ue)
     S1AP_MME_UE_S1AP_ID_t *MME_UE_S1AP_ID = NULL;
     S1AP_ENB_UE_S1AP_ID_t *ENB_UE_S1AP_ID = NULL;
 
-    source_ue = enb_ue_cycle(source_ue);
     ogs_assert(source_ue);
 
     ogs_debug("HandoverCancelAcknowledge");
@@ -2524,7 +2512,6 @@ ogs_pkbuf_t *s1ap_build_mme_status_transfer(
     S1AP_ENB_StatusTransfer_TransparentContainer_t
         *ENB_StatusTransfer_TransparentContainer = NULL;
 
-    target_ue = enb_ue_cycle(target_ue);
     ogs_assert(target_ue);
     ogs_assert(enb_statustransfer_transparentContainer);
 

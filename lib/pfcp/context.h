@@ -28,10 +28,10 @@
 extern "C" {
 #endif
 
-#define OGS_PFCP_DEFAULT_PDR_PRECEDENCE 255
-#define OGS_PFCP_INDIRECT_PDR_PRECEDENCE 1
-#define OGS_PFCP_UP2CP_PDR_PRECEDENCE 1
-#define OGS_PFCP_CP2UP_PDR_PRECEDENCE 1000
+#define OGS_PFCP_DEFAULT_PDR_PRECEDENCE 65535
+#define OGS_PFCP_INDIRECT_PDR_PRECEDENCE 4096
+#define OGS_PFCP_UP2CP_PDR_PRECEDENCE 255
+#define OGS_PFCP_CP2UP_PDR_PRECEDENCE 255
 
 #define OGS_PFCP_DEFAULT_CHOOSE_ID 5
 #define OGS_PFCP_INDIRECT_DATA_FORWARDING_CHOOSE_ID 10
@@ -84,10 +84,20 @@ typedef struct ogs_pfcp_context_s {
 typedef struct ogs_pfcp_node_s {
     ogs_lnode_t     lnode;          /* A node of list_t */
 
-    ogs_sockaddr_t  *sa_list;       /* Socket Address List Candidate */
+    ogs_sockaddr_t  *config_addr; /* Configured addresses */
+    ogs_pfcp_node_id_t node_id;     /* PFCP node ID */
 
-    ogs_sock_t      *sock;          /* Socket Instance */
-    ogs_sockaddr_t  addr;           /* Remote Address */
+    /* List of addresses:: final merged address list */
+    ogs_sockaddr_t  *addr_list;
+
+     /*
+     * Iterator for round-robin sendto operations.
+     * Points to the current address in the round-robin sequence.
+     */
+    ogs_sockaddr_t  *current_addr;
+
+    /* Timestamp of last DNS refresh for FQDN nodes. */
+    ogs_time_t      last_dns_refresh;
 
     ogs_list_t      local_list;
     ogs_list_t      remote_list;
@@ -155,6 +165,9 @@ typedef struct ogs_pfcp_pdr_s {
     ogs_pfcp_pdr_id_t       id;
     ogs_pfcp_precedence_t   precedence;
     ogs_pfcp_interface_t    src_if;
+
+    bool src_if_type_presence;
+    ogs_pfcp_3gpp_interface_type_t src_if_type;
 
     union {
         char *apn;
@@ -238,6 +251,10 @@ typedef struct ogs_pfcp_far_s {
     ogs_pfcp_far_id_t       id;
     ogs_pfcp_apply_action_t apply_action;
     ogs_pfcp_interface_t    dst_if;
+
+    bool dst_if_type_presence;
+    ogs_pfcp_3gpp_interface_type_t dst_if_type;
+
     ogs_pfcp_outer_header_creation_t outer_header_creation;
     int                     outer_header_creation_len;
 
@@ -392,16 +409,19 @@ void ogs_pfcp_context_final(void);
 ogs_pfcp_context_t *ogs_pfcp_self(void);
 int ogs_pfcp_context_parse_config(const char *local, const char *remote);
 
-ogs_pfcp_node_t *ogs_pfcp_node_new(ogs_sockaddr_t *sa_list);
-ogs_pfcp_node_t *ogs_pfcp_node_cycle(ogs_pfcp_node_t *node);
+ogs_pfcp_node_t *ogs_pfcp_node_new(ogs_sockaddr_t *config_addr);
 void ogs_pfcp_node_free(ogs_pfcp_node_t *node);
 
-ogs_pfcp_node_t *ogs_pfcp_node_add(
-        ogs_list_t *list, ogs_sockaddr_t *addr);
-ogs_pfcp_node_t *ogs_pfcp_node_find(
-        ogs_list_t *list, ogs_sockaddr_t *addr);
+ogs_pfcp_node_t *ogs_pfcp_node_add(ogs_list_t *list,
+    ogs_pfcp_node_id_t *node_id, ogs_sockaddr_t *from);
+ogs_pfcp_node_t *ogs_pfcp_node_find(ogs_list_t *list,
+    ogs_pfcp_node_id_t *node_id, ogs_sockaddr_t *from);
+int ogs_pfcp_node_merge(ogs_pfcp_node_t *node,
+    ogs_pfcp_node_id_t *node_id, ogs_sockaddr_t *from);
 void ogs_pfcp_node_remove(ogs_list_t *list, ogs_pfcp_node_t *node);
 void ogs_pfcp_node_remove_all(ogs_list_t *list);
+bool ogs_pfcp_node_id_compare(
+        const ogs_pfcp_node_id_t *id1, const ogs_pfcp_node_id_t *id2);
 
 ogs_gtpu_resource_t *ogs_pfcp_find_gtpu_resource(ogs_list_t *list,
         char *dnn, ogs_pfcp_interface_t source_interface);

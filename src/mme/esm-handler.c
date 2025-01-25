@@ -28,8 +28,10 @@
 #undef OGS_LOG_DOMAIN
 #define OGS_LOG_DOMAIN __esm_log_domain
 
-int esm_handle_pdn_connectivity_request(mme_bearer_t *bearer, 
-        ogs_nas_eps_pdn_connectivity_request_t *req, int create_action)
+int esm_handle_pdn_connectivity_request(
+        enb_ue_t *enb_ue, mme_bearer_t *bearer,
+        ogs_nas_eps_pdn_connectivity_request_t *req,
+        int create_action)
 {
     int r;
     mme_ue_t *mme_ue = NULL;
@@ -37,11 +39,11 @@ int esm_handle_pdn_connectivity_request(mme_bearer_t *bearer,
     uint8_t security_protected_required = 0;
 
     ogs_assert(bearer);
-    sess = bearer->sess;
+    sess = mme_sess_find_by_id(bearer->sess_id);
     ogs_assert(sess);
-    mme_ue = sess->mme_ue;
+    mme_ue = mme_ue_find_by_id(sess->mme_ue_id);
     ogs_assert(mme_ue);
-    MME_UE_CHECK(OGS_LOG_DEBUG, mme_ue);
+    ogs_assert(enb_ue);
 
     ogs_assert(req);
 
@@ -160,7 +162,7 @@ int esm_handle_pdn_connectivity_request(mme_bearer_t *bearer,
         }
 
         ogs_assert(OGS_OK ==
-            mme_gtp_send_create_session_request(sess, create_action));
+            mme_gtp_send_create_session_request(enb_ue, sess, create_action));
     } else {
         ogs_error("No APN");
         r = nas_eps_send_pdn_connectivity_reject(
@@ -173,16 +175,17 @@ int esm_handle_pdn_connectivity_request(mme_bearer_t *bearer,
     return OGS_OK;
 }
 
-int esm_handle_information_response(mme_sess_t *sess, 
+int esm_handle_information_response(
+        enb_ue_t *enb_ue, mme_sess_t *sess,
         ogs_nas_eps_esm_information_response_t *rsp)
 {
     int r;
     mme_ue_t *mme_ue = NULL;
 
     ogs_assert(sess);
-    mme_ue = sess->mme_ue;
+    mme_ue = mme_ue_find_by_id(sess->mme_ue_id);
     ogs_assert(mme_ue);
-    MME_UE_CHECK(OGS_LOG_DEBUG, mme_ue);
+    ogs_assert(enb_ue);
 
     ogs_assert(rsp);
 
@@ -251,7 +254,7 @@ int esm_handle_information_response(mme_sess_t *sess,
         } else {
             ogs_assert(OGS_OK ==
                 mme_gtp_send_create_session_request(
-                    sess, OGS_GTP_CREATE_IN_ATTACH_REQUEST));
+                    enb_ue, sess, OGS_GTP_CREATE_IN_ATTACH_REQUEST));
         }
     } else {
         if (rsp->access_point_name.length)
@@ -271,17 +274,18 @@ int esm_handle_information_response(mme_sess_t *sess,
 }
 
 int esm_handle_bearer_resource_allocation_request(
-        mme_bearer_t *bearer, ogs_nas_eps_message_t *message)
+        enb_ue_t *enb_ue, mme_bearer_t *bearer, ogs_nas_eps_message_t *message)
 {
     int r;
     mme_ue_t *mme_ue = NULL;
     mme_sess_t *sess = NULL;
 
     ogs_assert(bearer);
-    sess = bearer->sess;
+    sess = mme_sess_find_by_id(bearer->sess_id);
     ogs_assert(sess);
-    mme_ue = sess->mme_ue;
+    mme_ue = mme_ue_find_by_id(sess->mme_ue_id);
     ogs_assert(mme_ue);
+    ogs_assert(enb_ue);
 
     r = nas_eps_send_bearer_resource_allocation_reject(
             mme_ue, sess->pti, OGS_NAS_ESM_CAUSE_NETWORK_FAILURE);
@@ -292,13 +296,14 @@ int esm_handle_bearer_resource_allocation_request(
 }
 
 int esm_handle_bearer_resource_modification_request(
-        mme_bearer_t *bearer, ogs_nas_eps_message_t *message)
+        enb_ue_t *enb_ue, mme_bearer_t *bearer, ogs_nas_eps_message_t *message)
 {
     mme_ue_t *mme_ue = NULL;
 
     ogs_assert(bearer);
-    mme_ue = bearer->mme_ue;
+    mme_ue = mme_ue_find_by_id(bearer->mme_ue_id);
     ogs_assert(mme_ue);
+    ogs_assert(enb_ue);
 
     ogs_assert(OGS_OK ==
         mme_gtp_send_bearer_resource_command(bearer, message));

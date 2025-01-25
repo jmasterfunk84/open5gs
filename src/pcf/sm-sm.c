@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -42,6 +42,7 @@ void pcf_sm_state_operational(ogs_fsm_t *s, pcf_event_t *e)
     pcf_sess_t *sess = NULL;
 
     ogs_sbi_stream_t *stream = NULL;
+    ogs_pool_id_t stream_id;
     ogs_sbi_message_t *message = NULL;
 
     ogs_assert(s);
@@ -49,9 +50,9 @@ void pcf_sm_state_operational(ogs_fsm_t *s, pcf_event_t *e)
 
     pcf_sm_debug(e);
 
-    sess = e->sess;
+    sess = pcf_sess_find_by_id(e->sess_id);
     ogs_assert(sess);
-    pcf_ue = sess->pcf_ue;
+    pcf_ue = pcf_ue_find_by_id(sess->pcf_ue_id);
     ogs_assert(pcf_ue);
 
     switch (e->h.id) {
@@ -64,8 +65,16 @@ void pcf_sm_state_operational(ogs_fsm_t *s, pcf_event_t *e)
     case OGS_EVENT_SBI_SERVER:
         message = e->h.sbi.message;
         ogs_assert(message);
-        stream = e->h.sbi.data;
-        ogs_assert(stream);
+
+        stream_id = OGS_POINTER_TO_UINT(e->h.sbi.data);
+        ogs_assert(stream_id >= OGS_MIN_POOL_ID &&
+                stream_id <= OGS_MAX_POOL_ID);
+
+        stream = ogs_sbi_stream_find_by_id(stream_id);
+        if (!stream) {
+            ogs_error("STREAM has already been removed [%d]", stream_id);
+            break;
+        }
 
         SWITCH(message->h.service.name)
         CASE(OGS_SBI_SERVICE_NAME_NPCF_SMPOLICYCONTROL)
@@ -161,8 +170,16 @@ void pcf_sm_state_operational(ogs_fsm_t *s, pcf_event_t *e)
     case OGS_EVENT_SBI_CLIENT:
         message = e->h.sbi.message;
         ogs_assert(message);
-        stream = e->h.sbi.data;
-        ogs_assert(stream);
+
+        stream_id = OGS_POINTER_TO_UINT(e->h.sbi.data);
+        ogs_assert(stream_id >= OGS_MIN_POOL_ID &&
+                stream_id <= OGS_MAX_POOL_ID);
+
+        stream = ogs_sbi_stream_find_by_id(stream_id);
+        if (!stream) {
+            ogs_error("STREAM has already been removed [%d]", stream_id);
+            break;
+        }
 
         SWITCH(message->h.service.name)
         CASE(OGS_SBI_SERVICE_NAME_NUDR_DR)
@@ -274,8 +291,22 @@ void pcf_sm_state_operational(ogs_fsm_t *s, pcf_event_t *e)
                 } else {
                     SWITCH(message->h.method)
                     CASE(OGS_SBI_HTTP_METHOD_POST)
-                        pcf_nbsf_management_handle_register(
-                                sess, stream, message);
+                        if (message->res_status ==
+                                OGS_SBI_HTTP_STATUS_CREATED) {
+                            pcf_nbsf_management_handle_register(
+                                    sess, stream, message);
+                        } else {
+                            ogs_error("[%s:%d] HTTP response error [%d]",
+                                pcf_ue->supi, sess->psi, message->res_status);
+
+                            /*
+                             * Send Response
+                             * for SM Policy Association establishment
+                             */
+                            ogs_expect(true ==
+                                pcf_sbi_send_smpolicycontrol_create_response(
+                                    sess, stream));
+                        }
                         break;
                     DEFAULT
                         ogs_error("[%s:%d] Unknown method [%s]",
@@ -317,15 +348,14 @@ void pcf_sm_state_deleted(ogs_fsm_t *s, pcf_event_t *e)
 
     pcf_sm_debug(e);
 
-    sess = e->sess;
+    sess = pcf_sess_find_by_id(e->sess_id);
     ogs_assert(sess);
-    pcf_ue = sess->pcf_ue;
+    pcf_ue = pcf_ue_find_by_id(sess->pcf_ue_id);
     ogs_assert(pcf_ue);
 
     switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
-        ogs_assert(sess->pcf_ue);
-        pcf_metrics_inst_by_slice_add(&sess->pcf_ue->guami.plmn_id,
+        pcf_metrics_inst_by_slice_add(&pcf_ue->guami.plmn_id,
                 &sess->s_nssai, PCF_METR_GAUGE_PA_SESSIONNBR, -1);
         break;
 
@@ -349,15 +379,14 @@ void pcf_sm_state_exception(ogs_fsm_t *s, pcf_event_t *e)
 
     pcf_sm_debug(e);
 
-    sess = e->sess;
+    sess = pcf_sess_find_by_id(e->sess_id);
     ogs_assert(sess);
-    pcf_ue = sess->pcf_ue;
+    pcf_ue = pcf_ue_find_by_id(sess->pcf_ue_id);
     ogs_assert(pcf_ue);
 
     switch (e->h.id) {
     case OGS_FSM_ENTRY_SIG:
-        ogs_assert(sess->pcf_ue);
-        pcf_metrics_inst_by_slice_add(&sess->pcf_ue->guami.plmn_id,
+        pcf_metrics_inst_by_slice_add(&pcf_ue->guami.plmn_id,
                 &sess->s_nssai, PCF_METR_GAUGE_PA_SESSIONNBR, -1);
         break;
 
