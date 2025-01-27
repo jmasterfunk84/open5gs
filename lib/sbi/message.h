@@ -349,6 +349,7 @@ extern "C" {
 #define OGS_SBI_PARAM_SLICE_INFO_REQUEST_FOR_PDU_SESSION \
         "slice-info-request-for-pdu-session"
 #define OGS_SBI_PARAM_FIELDS                        "fields"
+#define OGS_SBI_PARAM_DATASET_NAMES                 "dataset-names"
 #define OGS_SBI_PARAM_IPV4ADDR                      "ipv4Addr"
 #define OGS_SBI_PARAM_IPV6PREFIX                    "ipv6Prefix"
 
@@ -487,6 +488,8 @@ typedef struct ogs_sbi_message_s {
         int limit;
         char *dnn;
         char *fields;
+        int num_of_dataset_names;
+        char *dataset_names[OGS_SBI_MAX_NUM_OF_DATASETNAMES];
 
         /* Shared memory */
         ogs_plmn_id_t plmn_id;
@@ -523,6 +526,7 @@ typedef struct ogs_sbi_message_s {
     OpenAPI_amf3_gpp_access_registration_t *Amf3GppAccessRegistration;
     OpenAPI_amf3_gpp_access_registration_modification_t
         *Amf3GppAccessRegistrationModification;
+    OpenAPI_provisioned_data_sets_t *ProvisionedDataSets;
     OpenAPI_nssai_t *Nssai;
     OpenAPI_access_and_mobility_subscription_data_t
         *AccessAndMobilitySubscriptionData;

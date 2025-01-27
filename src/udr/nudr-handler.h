@@ -36,6 +36,12 @@ bool udr_nudr_dr_handle_subscription_provisioned(
 bool udr_nudr_dr_handle_policy_data(
         ogs_sbi_stream_t *stream, ogs_sbi_message_t *message);
 
+bool udr_nudr_dr_build_smf_selection_subscription_data(
+        OpenAPI_smf_selection_subscription_data_t *SmfSelectionSubscriptionData,
+        ogs_subscription_data_t *subscription_data);
+void udr_nudr_dr_subscribed_snnsai_info_list_free(
+        OpenAPI_smf_selection_subscription_data_t *SmfSelectionSubscriptionData);
+
 #ifdef __cplusplus
 }
 #endif

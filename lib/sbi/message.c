@@ -63,6 +63,10 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
     if (message->param.discovery_option)
         ogs_sbi_discovery_option_free(message->param.discovery_option);
 
+
+    for (i = 0; i < message->param.num_of_dataset_names; i++)
+        ogs_free(message->param.dataset_names[i]);
+
     /* JSON Data */
     if (message->NFProfile)
         OpenAPI_nf_profile_free(message->NFProfile);
@@ -109,6 +113,8 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
                 message->Amf3GppAccessRegistrationModification);
     if (message->SmfRegistration)
         OpenAPI_smf_registration_free(message->SmfRegistration);
+    if (message->ProvisionedDataSets)
+        OpenAPI_provisioned_data_sets_free(message->ProvisionedDataSets);
     if (message->Nssai)
         OpenAPI_nssai_free(message->Nssai);
     if (message->AccessAndMobilitySubscriptionData)
@@ -658,6 +664,25 @@ ogs_sbi_request_t *ogs_sbi_build_request(ogs_sbi_message_t *message)
         ogs_sbi_header_set(request->http.params, OGS_SBI_PARAM_FIELDS,
             message->param.fields);
     }
+    if (message->param.num_of_dataset_names) {
+        char *dataset_names;
+
+        dataset_names = ogs_strdup(message->param.dataset_names[0]);
+        if (!dataset_names) {
+            ogs_error("ogs_strdup() failed");
+            return NULL;
+        }
+
+        for (i = 1; i < message->param.num_of_dataset_names; i++)
+            dataset_names = ogs_mstrcatf(
+                    dataset_names, ",%s", message->param.dataset_names[i]);
+
+        if (dataset_names) {
+            ogs_sbi_header_set(request->http.params,
+                    OGS_SBI_PARAM_DATASET_NAMES, dataset_names);
+            ogs_free(dataset_names);
+        }
+    }
     if (message->param.ipv4addr) {
         ogs_sbi_header_set(request->http.params,
                 OGS_SBI_PARAM_IPV4ADDR, message->param.ipv4addr);
@@ -965,6 +990,21 @@ int ogs_sbi_parse_request(
         } else if (!strcmp(ogs_hash_this_key(hi), OGS_SBI_PARAM_FIELDS)) {
             message->param.fields = ogs_hash_this_val(hi);
             message->param.fields_presence = true;
+        } else if (!strcmp(ogs_hash_this_key(hi),
+                OGS_SBI_PARAM_DATASET_NAMES)) {
+            char *v = ogs_hash_this_val(hi);
+            char *token = NULL;
+            char *saveptr = NULL;
+
+            token = ogs_strtok_r(v, ",", &saveptr);
+            while (token != NULL) {
+                message->param.dataset_names
+                    [message->param.num_of_dataset_names] = ogs_strdup(token);
+                ogs_assert(message->param.dataset_names
+                    [message->param.num_of_dataset_names]);
+                message->param.num_of_dataset_names++;
+                token = ogs_strtok_r(NULL, ",", &saveptr);
+            }
         } else if (!strcmp(ogs_hash_this_key(hi), OGS_SBI_PARAM_IPV4ADDR)) {
             message->param.ipv4addr = ogs_hash_this_val(hi);
         } else if (!strcmp(ogs_hash_this_key(hi), OGS_SBI_PARAM_IPV6PREFIX)) {
@@ -1230,6 +1270,9 @@ static char *build_json(ogs_sbi_message_t *message)
     } else if (message->SmfRegistration) {
         item = OpenAPI_smf_registration_convertToJSON(message->SmfRegistration);
         ogs_assert(item);
+    } else if (message->ProvisionedDataSets) {
+        item = OpenAPI_provisioned_data_sets_convertToJSON(
+                message->ProvisionedDataSets);
     } else if (message->Nssai) {
         item = OpenAPI_nssai_convertToJSON(message->Nssai);
         ogs_assert(item);
@@ -1874,6 +1917,20 @@ static int parse_json(ogs_sbi_message_t *message,
                 DEFAULT
                     SWITCH(message->h.resource.component[3])
                     CASE(OGS_SBI_RESOURCE_NAME_PROVISIONED_DATA)
+                        if (!message->h.resource.component[4]) {
+                            if (message->res_status < 300) {
+                                message->ProvisionedDataSets =
+                                    OpenAPI_provisioned_data_sets_parseFromJSON(item);
+                                if (!message->ProvisionedDataSets) {
+                                    rv = OGS_ERROR;
+                                    ogs_error("JSON parse error");
+                                }
+                            } else {
+                                ogs_error("HTTP ERROR Status : %d",
+                                        message->res_status);
+                            }
+                            break;
+                        }
                         SWITCH(message->h.resource.component[4])
                         CASE(OGS_SBI_RESOURCE_NAME_AM_DATA)
                             if (message->res_status < 300) {

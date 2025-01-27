@@ -276,6 +276,8 @@ typedef enum {
 const char *ogs_sbi_app_strerror(ogs_sbi_app_errno_e e);
 ogs_sbi_app_errno_e ogs_sbi_app_errno(const char *str);
 
+#define OGS_SBI_MAX_NUM_OF_DATASETNAMES                         8
+
 #ifdef __cplusplus
 }
 #endif
