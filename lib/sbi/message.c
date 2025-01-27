@@ -63,6 +63,10 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
     if (message->param.discovery_option)
         ogs_sbi_discovery_option_free(message->param.discovery_option);
 
+    /* Query parameters */
+    for (i = 0; i < message->param.num_of_fields; i++)
+        ogs_free(message->param.fields[i]);
+
     /* JSON Data */
     if (message->NFProfile)
         OpenAPI_nf_profile_free(message->NFProfile);
@@ -654,9 +658,25 @@ ogs_sbi_request_t *ogs_sbi_build_request(ogs_sbi_message_t *message)
         if (sNSSAI.sd)
             ogs_free(sNSSAI.sd);
     }
-    if (message->param.fields_presence) {
-        ogs_sbi_header_set(request->http.params, OGS_SBI_PARAM_FIELDS,
-            message->param.fields);
+    if (message->param.num_of_fields) {
+        char *fields;
+
+        fields = ogs_strdup(message->param.fields[0]);
+        if (!fields) {
+            ogs_error("ogs_strdup() failed");
+            return NULL;
+        }
+
+        for (i = 1; i < message->param.num_of_fields; i++)
+            fields = ogs_mstrcatf(
+                    fields, ",%s", message->param.fields[i]);
+
+        if (fields) {
+            ogs_sbi_header_set(request->http.params,
+                    OGS_SBI_PARAM_FIELDS, fields);
+            ogs_free(fields);
+        }
+
     }
     if (message->param.ipv4addr) {
         ogs_sbi_header_set(request->http.params,
@@ -963,8 +983,19 @@ int ogs_sbi_parse_request(
                 }
             }
         } else if (!strcmp(ogs_hash_this_key(hi), OGS_SBI_PARAM_FIELDS)) {
-            message->param.fields = ogs_hash_this_val(hi);
-            message->param.fields_presence = true;
+            char *v = ogs_hash_this_val(hi);
+            char *token = NULL;
+            char *saveptr = NULL;
+
+            token = ogs_strtok_r(v, ",", &saveptr);
+            while (token != NULL) {
+                message->param.fields
+                    [message->param.num_of_fields] = ogs_strdup(token);
+                ogs_assert(message->param.fields
+                    [message->param.num_of_fields]);
+                message->param.num_of_fields++;
+                token = ogs_strtok_r(NULL, ",", &saveptr);
+            }
         } else if (!strcmp(ogs_hash_this_key(hi), OGS_SBI_PARAM_IPV4ADDR)) {
             message->param.ipv4addr = ogs_hash_this_val(hi);
         } else if (!strcmp(ogs_hash_this_key(hi), OGS_SBI_PARAM_IPV6PREFIX)) {
