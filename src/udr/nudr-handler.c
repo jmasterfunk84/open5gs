@@ -588,7 +588,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         ogs_assert(response);
         ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
-        if (GpsiList->count) {
+        if (GpsiList) {
             OpenAPI_list_for_each(GpsiList, node) {
                 if (node->data) ogs_free(node->data);
             }
@@ -600,7 +600,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         if (SubscribedUeAmbr.downlink)
             ogs_free(SubscribedUeAmbr.downlink);
 
-        if (DefaultSingleNssaiList->count) {
+        if (DefaultSingleNssaiList) {
             OpenAPI_list_for_each(DefaultSingleNssaiList, node) {
                 OpenAPI_snssai_t *Snssai = node->data;
                 if (Snssai) {
@@ -611,7 +611,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             }
             OpenAPI_list_free(DefaultSingleNssaiList);
         }
-        if (SingleNssaiList->count) {
+        if (SingleNssaiList) {
             OpenAPI_list_for_each(SingleNssaiList, node) {
                 OpenAPI_snssai_t *Snssai = node->data;
                 if (Snssai) {
@@ -1007,11 +1007,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                     ogs_info("Building SM");
                     break;
                 DEFAULT
-                    // Maybe only die if there's nothing to return.
-                    strerror = ogs_msprintf("Invalid resource name [%s]",
+                    ogs_error("Unimplemented resource name [%s]",
                             recvmsg->param.dataset_names[i]);
-                    status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
-                    goto cleanup;
                 END
             }
 
