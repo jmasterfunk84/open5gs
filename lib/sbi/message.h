@@ -353,6 +353,19 @@ extern "C" {
 #define OGS_SBI_PARAM_IPV4ADDR                      "ipv4Addr"
 #define OGS_SBI_PARAM_IPV6PREFIX                    "ipv6Prefix"
 
+#define OGS_SBI_PARAM_FIELDS_GPSIS                       "gpsis"
+#define OGS_SBI_PARAM_FIELDS_SUBSCRIBED_UE_AMBR          "subscribedUeAmbr"
+#define OGS_SBI_PARAM_FIELDS_NSSAI                       "nssai"
+
+#define OGS_SBI_AM_DATA_FIELDS_NONE                      (0)
+#define OGS_SBI_AM_DATA_FIELDS_GPSIS                     (1)
+#define OGS_SBI_AM_DATA_FIELDS_SUBSCRIBED_UE_AMBR        (1 << 1)
+#define OGS_SBI_AM_DATA_FIELDS_NSSAI                     (1 << 2)
+#define OGS_SBI_AM_DATA_FIELDS_ALL                        0xFF
+#define OGS_SBI_MAX_NUM_OF_FIELDS                         8
+
+#define OGS_SBI_MAX_NUM_OF_DATASETNAMES                   8
+
 #define OGS_SBI_CONTENT_JSON_TYPE                   \
     OGS_SBI_APPLICATION_TYPE "/" OGS_SBI_APPLICATION_JSON_TYPE
 #define OGS_SBI_CONTENT_PROBLEM_TYPE                \
@@ -487,7 +500,8 @@ typedef struct ogs_sbi_message_s {
         OpenAPI_nf_type_e nf_type;
         int limit;
         char *dnn;
-        char *fields;
+        int num_of_fields;
+        char *fields[OGS_SBI_MAX_NUM_OF_FIELDS];
         int num_of_dataset_names;
         char *dataset_names[OGS_SBI_MAX_NUM_OF_DATASETNAMES];
 
@@ -499,7 +513,6 @@ typedef struct ogs_sbi_message_s {
         bool single_nssai_presence;
         bool snssai_presence;
         bool slice_info_request_for_pdu_session_presence;
-        bool fields_presence;
         OpenAPI_roaming_indication_e roaming_indication;
 
         char *ipv4addr;
