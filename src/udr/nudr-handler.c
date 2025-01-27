@@ -430,6 +430,37 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     ogs_subscription_data_t subscription_data;
     ogs_slice_data_t *slice_data = NULL;
 
+    OpenAPI_access_and_mobility_subscription_data_t
+        AccessAndMobilitySubscriptionData;
+    OpenAPI_session_management_subscription_data_t
+        SessionManagementSubscriptionData;
+    OpenAPI_smf_selection_subscription_data_t SmfSelectionSubscriptionData;
+
+    OpenAPI_list_t *GpsiList = NULL;
+    OpenAPI_ambr_rm_t SubscribedUeAmbr;
+    OpenAPI_list_t *DefaultSingleNssaiList = NULL;
+    OpenAPI_list_t *SingleNssaiList = NULL;
+    OpenAPI_nssai_t NSSAI;
+    OpenAPI_snssai_t *Snssai = NULL;
+
+    OpenAPI_list_t *SubscribedSnssaiInfoList = NULL;
+    OpenAPI_map_t *SubscribedSnssaiInfoMap = NULL;
+    OpenAPI_snssai_info_t *SubscribedSnssaiInfo = NULL;
+    OpenAPI_list_t *DnnInfoList = NULL;
+    OpenAPI_dnn_info_t *DnnInfo = NULL;
+
+    OpenAPI_snssai_t singleNSSAI;
+    OpenAPI_list_t *dnnConfigurationList = NULL;
+    OpenAPI_map_t *dnnConfigurationMap = NULL;
+    OpenAPI_dnn_configuration_t *dnnConfiguration = NULL;
+    OpenAPI_pdu_session_types_t *pduSessionTypeList = NULL;
+    OpenAPI_ssc_modes_t *sscModeList = NULL;
+    OpenAPI_subscribed_default_qos_t *_5gQoSProfile = NULL;
+    OpenAPI_ambr_t *sessionAmbr = NULL;
+    OpenAPI_list_t *staticIpAddress = NULL;
+    OpenAPI_ip_address_t *ipAddress = NULL;
+    OpenAPI_list_t *FrameRouteList = NULL;
+
     char *supi = NULL;
 
     ogs_assert(stream);
@@ -464,22 +495,60 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         goto cleanup;
     }
 
-    SWITCH(recvmsg->h.resource.component[4])
-    CASE(OGS_SBI_RESOURCE_NAME_AM_DATA)
+// Do something with this....  And I don't like the names.
+#define OGS_SBI_PARAM_DATASET_NAME_AM                       "AM"
+#define OGS_SBI_PARAM_DATASET_NAME_SMF_SEL             "SMF_SEL"
+#define OGS_SBI_PARAM_DATASET_NAME_SM                       "SM"
+
+#define OGS_SBI_PROV_DATASET_NAMES_NONE                        (0)
+#define OGS_SBI_PROV_DATASET_NAMES_AM_DATA                     (1)
+#define OGS_SBI_PROV_DATASET_NAMES_SMF_SEL                (1 << 1)
+#define OGS_SBI_PROV_DATASET_NAMES_SM                     (1 << 2)
+#define OGS_SBI_PROV_DATASET_NAMES_ALL                        0xFF
+
+    int datasetmask = OGS_SBI_PROV_DATASET_NAMES_NONE;
+
+    if (recvmsg->param.num_of_dataset_names) {
         int i;
+        for (i = 0; i < recvmsg->param.num_of_dataset_names; i++) {
+            SWITCH(recvmsg->param.dataset_names[i])
+            CASE(OGS_SBI_PARAM_DATASET_NAME_AM)
+                datasetmask = (datasetmask |
+                        OGS_SBI_PROV_DATASET_NAMES_AM_DATA);
+                break;
+            CASE(OGS_SBI_PARAM_DATASET_NAME_SMF_SEL)
+                datasetmask = (datasetmask |
+                        OGS_SBI_PROV_DATASET_NAMES_SMF_SEL);
+                break;
+            END
+        }
+        if (!datasetmask) {
+            strerror = ogs_msprintf("Invalid dataset-names [%s]", supi);
+            status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
+            goto cleanup;
+        }
+        // Need to handle if nothing was selected.
+    } else {
+        SWITCH(recvmsg->h.resource.component[4])
+        CASE(OGS_SBI_RESOURCE_NAME_AM_DATA)
+            datasetmask = (datasetmask | OGS_SBI_PROV_DATASET_NAMES_AM_DATA);
+            break;
+        CASE(OGS_SBI_RESOURCE_NAME_SMF_SELECTION_SUBSCRIPTION_DATA)
+            datasetmask = (datasetmask | OGS_SBI_PROV_DATASET_NAMES_SMF_SEL);
+            break;
+        CASE(OGS_SBI_RESOURCE_NAME_SM_DATA)
+            datasetmask = (datasetmask | OGS_SBI_PROV_DATASET_NAMES_SM);
+            break;
+        DEFAULT
+            strerror = ogs_msprintf("Invalid resource name [%s]",
+                    recvmsg->h.resource.component[3]);
+            status = OGS_SBI_HTTP_STATUS_METHOD_NOT_ALLOWED;
+            goto cleanup;
+        END
+    }
 
-        OpenAPI_access_and_mobility_subscription_data_t
-            AccessAndMobilitySubscriptionData;
-        OpenAPI_list_t *GpsiList = NULL;
-        OpenAPI_ambr_rm_t SubscribedUeAmbr;
-
-        OpenAPI_nssai_t NSSAI;
-        OpenAPI_list_t *DefaultSingleNssaiList = NULL;
-        OpenAPI_list_t *SingleNssaiList = NULL;
-        OpenAPI_snssai_t *Snssai = NULL;
-
-        OpenAPI_lnode_t *node = NULL;
-
+    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_AM_DATA) {
+        int i;
         int amdatamask = OGS_SBI_AM_DATA_FIELDS_ALL;
 
         memset(&AccessAndMobilitySubscriptionData, 0,
@@ -580,87 +649,98 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 AccessAndMobilitySubscriptionData.nssai = &NSSAI;
         }
 
-        memset(&sendmsg, 0, sizeof(sendmsg));
-        sendmsg.AccessAndMobilitySubscriptionData =
-            &AccessAndMobilitySubscriptionData;
+        if (!recvmsg->param.num_of_dataset_names) {
+            memset(&sendmsg, 0, sizeof(sendmsg));
+            sendmsg.AccessAndMobilitySubscriptionData =
+                &AccessAndMobilitySubscriptionData;
 
-        response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
-        ogs_assert(response);
-        ogs_assert(true == ogs_sbi_server_send_response(stream, response));
-
-        if (GpsiList) {
-            OpenAPI_list_for_each(GpsiList, node) {
-                if (node->data) ogs_free(node->data);
-            }
-            OpenAPI_list_free(GpsiList);
+            response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
         }
-
-        if (SubscribedUeAmbr.uplink)
-            ogs_free(SubscribedUeAmbr.uplink);
-        if (SubscribedUeAmbr.downlink)
-            ogs_free(SubscribedUeAmbr.downlink);
-
-        if (DefaultSingleNssaiList) {
-            OpenAPI_list_for_each(DefaultSingleNssaiList, node) {
-                OpenAPI_snssai_t *Snssai = node->data;
-                if (Snssai) {
-                    if (Snssai->sd)
-                        ogs_free(Snssai->sd);
-                    ogs_free(Snssai);
-                }
-            }
-            OpenAPI_list_free(DefaultSingleNssaiList);
-        }
-        if (SingleNssaiList) {
-            OpenAPI_list_for_each(SingleNssaiList, node) {
-                OpenAPI_snssai_t *Snssai = node->data;
-                if (Snssai) {
-                    if (Snssai->sd)
-                        ogs_free(Snssai->sd);
-                    ogs_free(Snssai);
-                }
-            }
-            OpenAPI_list_free(SingleNssaiList);
-        }
-        break;
-
-    CASE(OGS_SBI_RESOURCE_NAME_SMF_SELECTION_SUBSCRIPTION_DATA)
-        OpenAPI_smf_selection_subscription_data_t SmfSelectionSubscriptionData;
+    }
+    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_SMF_SEL) {
+        int i, j;
 
         memset(&SmfSelectionSubscriptionData, 0,
                 sizeof(SmfSelectionSubscriptionData));
 
-        udr_nudr_dr_build_smf_selection_subscription_data(
-                &SmfSelectionSubscriptionData, &subscription_data);
+        SubscribedSnssaiInfoList = OpenAPI_list_create();
+        ogs_assert(SubscribedSnssaiInfoList);
 
-        memset(&sendmsg, 0, sizeof(sendmsg));
-        sendmsg.SmfSelectionSubscriptionData = &SmfSelectionSubscriptionData;
+        for (i = 0; i < subscription_data.num_of_slice; i++) {
+            if (i >= OGS_MAX_NUM_OF_SLICE) {
+                ogs_warn("Ignore max slice count overflow [%d>=%d]",
+                    subscription_data.num_of_slice, OGS_MAX_NUM_OF_SLICE);
+                break;
+            }
+            slice_data = &subscription_data.slice[i];
 
-        response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
-        ogs_assert(response);
-        ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+            DnnInfoList = OpenAPI_list_create();
+            ogs_assert(DnnInfoList);
 
-        udr_nudr_dr_subscribed_snnsai_info_list_free(
-                &SmfSelectionSubscriptionData);
-        break;
+            for (j = 0; j < slice_data->num_of_session; j++) {
+                ogs_session_t *session = NULL;
 
-    CASE(OGS_SBI_RESOURCE_NAME_SM_DATA)
+                if (j >= OGS_MAX_NUM_OF_SESS) {
+                    ogs_warn("Ignore max session count overflow [%d>=%d]",
+                        slice_data->num_of_session, OGS_MAX_NUM_OF_SESS);
+                    break;
+                }
+
+                session = &slice_data->session[j];
+                ogs_assert(session);
+                ogs_assert(session->name);
+
+                DnnInfo = ogs_calloc(1, sizeof(*DnnInfo));
+                ogs_assert(DnnInfo);
+
+                DnnInfo->dnn = session->name;
+
+                /* 0-index DNN becomes the default DNN */
+                if (j == 0) {
+                    DnnInfo->is_default_dnn_indicator = true;
+                    DnnInfo->default_dnn_indicator = true;
+                }
+
+                OpenAPI_list_add(DnnInfoList, DnnInfo);
+            }
+
+            SubscribedSnssaiInfo = ogs_calloc(1, sizeof(*SubscribedSnssaiInfo));
+            ogs_assert(SubscribedSnssaiInfo);
+
+            if (DnnInfoList->count)
+                SubscribedSnssaiInfo->dnn_infos = DnnInfoList;
+            else
+                OpenAPI_list_free(DnnInfoList);
+
+            SubscribedSnssaiInfoMap = OpenAPI_map_create(
+                    ogs_sbi_s_nssai_to_string(&slice_data->s_nssai),
+                    SubscribedSnssaiInfo);
+            ogs_assert(SubscribedSnssaiInfoMap);
+            ogs_assert(SubscribedSnssaiInfoMap->key);
+
+            OpenAPI_list_add(SubscribedSnssaiInfoList, SubscribedSnssaiInfoMap);
+        }
+
+        if (SubscribedSnssaiInfoList->count)
+            SmfSelectionSubscriptionData.subscribed_snssai_infos =
+                SubscribedSnssaiInfoList;
+        else
+            OpenAPI_list_free(SubscribedSnssaiInfoList);
+
+        if (!recvmsg->param.num_of_dataset_names) {
+            memset(&sendmsg, 0, sizeof(sendmsg));
+            sendmsg.SmfSelectionSubscriptionData =
+                    &SmfSelectionSubscriptionData;
+
+            response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+        }
+    }
+    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_SM) {
         int i;
-
-        OpenAPI_session_management_subscription_data_t
-            SessionManagementSubscriptionData;
-        OpenAPI_snssai_t singleNSSAI;
-        OpenAPI_list_t *dnnConfigurationList = NULL;
-        OpenAPI_map_t *dnnConfigurationMap = NULL;
-        OpenAPI_dnn_configuration_t *dnnConfiguration = NULL;
-        OpenAPI_pdu_session_types_t *pduSessionTypeList = NULL;
-        OpenAPI_ssc_modes_t *sscModeList = NULL;
-        OpenAPI_subscribed_default_qos_t *_5gQoSProfile = NULL;
-        OpenAPI_ambr_t *sessionAmbr = NULL;
-        OpenAPI_list_t *staticIpAddress = NULL;
-        OpenAPI_ip_address_t *ipAddress = NULL;
-        OpenAPI_list_t *FrameRouteList = NULL;
-        OpenAPI_lnode_t *node = NULL, *node2 = NULL;
 
         if (!recvmsg->param.single_nssai_presence) {
             strerror = ogs_msprintf("[%s] No S_NSSAI", supi);
@@ -878,17 +958,115 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             SessionManagementSubscriptionData.dnn_configurations =
                 dnnConfigurationList;
 
-        memset(&sendmsg, 0, sizeof(sendmsg));
-        
-        sendmsg.SessionManagementSubscriptionDataList = OpenAPI_list_create();
-        ogs_assert(sendmsg.SessionManagementSubscriptionDataList);
+        if (!recvmsg->param.num_of_dataset_names) {
+            memset(&sendmsg, 0, sizeof(sendmsg));
+            
+            sendmsg.SessionManagementSubscriptionDataList =
+                    OpenAPI_list_create();
+            ogs_assert(sendmsg.SessionManagementSubscriptionDataList);
 
-        OpenAPI_list_add(sendmsg.SessionManagementSubscriptionDataList,
-            &SessionManagementSubscriptionData);
+            OpenAPI_list_add(sendmsg.SessionManagementSubscriptionDataList,
+                &SessionManagementSubscriptionData);
+
+            response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+        }
+    }
+
+    // Build Provisioned Data Sets
+    if (recvmsg->param.num_of_dataset_names) {
+        OpenAPI_provisioned_data_sets_t ProvisionedDataSets;
+
+        memset(&ProvisionedDataSets, 0,
+                sizeof(ProvisionedDataSets));
+
+        if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_AM_DATA) {
+            ProvisionedDataSets.am_data =
+                    &AccessAndMobilitySubscriptionData;
+        }
+        if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_SMF_SEL) {
+            ProvisionedDataSets.smf_sel_data =
+                    &SmfSelectionSubscriptionData;
+        }
+        memset(&sendmsg, 0, sizeof(sendmsg));
+        sendmsg.ProvisionedDataSets = &ProvisionedDataSets;
 
         response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
         ogs_assert(response);
         ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+    }
+
+    // Free resources used above
+    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_AM_DATA) {
+        OpenAPI_lnode_t *node = NULL;
+
+        if (GpsiList) {
+            OpenAPI_list_for_each(GpsiList, node) {
+                if (node->data) ogs_free(node->data);
+            }
+            OpenAPI_list_free(GpsiList);
+        }
+
+        if (SubscribedUeAmbr.uplink)
+            ogs_free(SubscribedUeAmbr.uplink);
+        if (SubscribedUeAmbr.downlink)
+            ogs_free(SubscribedUeAmbr.downlink);
+
+        if (DefaultSingleNssaiList) {
+            OpenAPI_list_for_each(DefaultSingleNssaiList, node) {
+                OpenAPI_snssai_t *Snssai = node->data;
+                if (Snssai) {
+                    if (Snssai->sd)
+                        ogs_free(Snssai->sd);
+                    ogs_free(Snssai);
+                }
+            }
+            OpenAPI_list_free(DefaultSingleNssaiList);
+        }
+        if (SingleNssaiList) {
+            OpenAPI_list_for_each(SingleNssaiList, node) {
+                OpenAPI_snssai_t *Snssai = node->data;
+                if (Snssai) {
+                    if (Snssai->sd)
+                        ogs_free(Snssai->sd);
+                    ogs_free(Snssai);
+                }
+            }
+            OpenAPI_list_free(SingleNssaiList);
+        }
+    }
+    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_SMF_SEL) {
+        OpenAPI_lnode_t *node = NULL, *node2 = NULL;
+
+        SubscribedSnssaiInfoList =
+            SmfSelectionSubscriptionData.subscribed_snssai_infos;
+        OpenAPI_list_for_each(SubscribedSnssaiInfoList, node) {
+            SubscribedSnssaiInfoMap = node->data;
+            if (SubscribedSnssaiInfoMap) {
+                SubscribedSnssaiInfo = SubscribedSnssaiInfoMap->value;
+                if (SubscribedSnssaiInfo) {
+                    DnnInfoList = SubscribedSnssaiInfo->dnn_infos;
+                    if (DnnInfoList) {
+                        OpenAPI_list_for_each(DnnInfoList, node2) {
+                            DnnInfo = node2->data;
+                            if (DnnInfo) {
+                                ogs_free(DnnInfo);
+                            }
+                        }
+                        OpenAPI_list_free(DnnInfoList);
+                    }
+                    ogs_free(SubscribedSnssaiInfo);
+                }
+                if (SubscribedSnssaiInfoMap->key)
+                    ogs_free(SubscribedSnssaiInfoMap->key);
+                ogs_free(SubscribedSnssaiInfoMap);
+            }
+        }
+        OpenAPI_list_free(SubscribedSnssaiInfoList);
+    }
+    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_SM) {
+        OpenAPI_lnode_t *node = NULL, *node2 = NULL;
 
         OpenAPI_list_free(sendmsg.SessionManagementSubscriptionDataList);
 
@@ -969,66 +1147,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         }
 
         OpenAPI_list_free(dnnConfigurationList);
-
-        break;
-
-    DEFAULT
-        // or make this first condition, and wrap the selects in the else.
-        if (recvmsg->param.num_of_dataset_names &&
-                !recvmsg->h.resource.component[4]) {
-            ogs_info("Yeah, return that crap");
-            int i;
-            OpenAPI_provisioned_data_sets_t ProvisionedDataSets;
-            OpenAPI_smf_selection_subscription_data_t
-                    SmfSelectionSubscriptionData;
-
-            memset(&ProvisionedDataSets, 0,
-                    sizeof(ProvisionedDataSets));
-
-            for (i = 0; i < recvmsg->param.num_of_dataset_names; i++) {
-                SWITCH(recvmsg->param.dataset_names[i])
-                //Translate these to a constant!
-                CASE("AM")
-                    ogs_info("Building AM");
-                    break;
-                CASE("SMF_SEL")
-                    ogs_info("Building SMF_SEL");
-
-                    memset(&SmfSelectionSubscriptionData, 0,
-                            sizeof(SmfSelectionSubscriptionData));
-
-                    udr_nudr_dr_build_smf_selection_subscription_data(
-                            &SmfSelectionSubscriptionData, &subscription_data);
-
-                    ProvisionedDataSets.smf_sel_data =
-                            &SmfSelectionSubscriptionData;
-                    break;
-                CASE("SM")
-                    ogs_info("Building SM");
-                    break;
-                DEFAULT
-                    ogs_error("Unimplemented resource name [%s]",
-                            recvmsg->param.dataset_names[i]);
-                END
-            }
-
-            memset(&sendmsg, 0, sizeof(sendmsg));
-            sendmsg.ProvisionedDataSets = &ProvisionedDataSets;
-
-            response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
-            ogs_assert(response);
-            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
-
-            udr_nudr_dr_subscribed_snnsai_info_list_free(
-                    &SmfSelectionSubscriptionData);
-
-        } else {
-            strerror = ogs_msprintf("Invalid resource name [%s]",
-                    recvmsg->h.resource.component[3]);
-            status = OGS_SBI_HTTP_STATUS_METHOD_NOT_ALLOWED;
-            goto cleanup;
-        }
-    END
+    }
 
     ogs_subscription_data_free(&subscription_data);
 
@@ -1300,125 +1419,4 @@ cleanup:
     ogs_subscription_data_free(&subscription_data);
 
     return false;
-}
-
-bool udr_nudr_dr_build_smf_selection_subscription_data(
-        OpenAPI_smf_selection_subscription_data_t *SmfSelectionSubscriptionData,
-        ogs_subscription_data_t *subscription_data)
-{
-    int i, j;
-    ogs_slice_data_t *slice_data = NULL;
-
-    OpenAPI_list_t *SubscribedSnssaiInfoList = NULL;
-    OpenAPI_map_t *SubscribedSnssaiInfoMap = NULL;
-    OpenAPI_snssai_info_t *SubscribedSnssaiInfo = NULL;
-
-    OpenAPI_list_t *DnnInfoList = NULL;
-    OpenAPI_dnn_info_t *DnnInfo = NULL;
-
-    SubscribedSnssaiInfoList = OpenAPI_list_create();
-    ogs_assert(SubscribedSnssaiInfoList);
-
-    for (i = 0; i < subscription_data->num_of_slice; i++) {
-        if (i >= OGS_MAX_NUM_OF_SLICE) {
-            ogs_warn("Ignore max slice count overflow [%d>=%d]",
-                subscription_data->num_of_slice, OGS_MAX_NUM_OF_SLICE);
-            break;
-        }
-        slice_data = &subscription_data->slice[i];
-
-        DnnInfoList = OpenAPI_list_create();
-        ogs_assert(DnnInfoList);
-
-        for (j = 0; j < slice_data->num_of_session; j++) {
-            ogs_session_t *session = NULL;
-
-            if (j >= OGS_MAX_NUM_OF_SESS) {
-                ogs_warn("Ignore max session count overflow [%d>=%d]",
-                    slice_data->num_of_session, OGS_MAX_NUM_OF_SESS);
-                break;
-            }
-
-            session = &slice_data->session[j];
-            ogs_assert(session);
-            ogs_assert(session->name);
-
-            DnnInfo = ogs_calloc(1, sizeof(*DnnInfo));
-            ogs_assert(DnnInfo);
-
-            DnnInfo->dnn = session->name;
-
-            /* 0-index DNN becomes the default DNN */
-            if (j == 0) {
-                DnnInfo->is_default_dnn_indicator = true;
-                DnnInfo->default_dnn_indicator = true;
-            }
-
-            OpenAPI_list_add(DnnInfoList, DnnInfo);
-        }
-
-        SubscribedSnssaiInfo = ogs_calloc(1, sizeof(*SubscribedSnssaiInfo));
-        ogs_assert(SubscribedSnssaiInfo);
-
-        if (DnnInfoList->count)
-            SubscribedSnssaiInfo->dnn_infos = DnnInfoList;
-        else
-            OpenAPI_list_free(DnnInfoList);
-
-        SubscribedSnssaiInfoMap = OpenAPI_map_create(
-                ogs_sbi_s_nssai_to_string(&slice_data->s_nssai),
-                SubscribedSnssaiInfo);
-        ogs_assert(SubscribedSnssaiInfoMap);
-        ogs_assert(SubscribedSnssaiInfoMap->key);
-
-        OpenAPI_list_add(SubscribedSnssaiInfoList, SubscribedSnssaiInfoMap);
-    }
-
-    if (SubscribedSnssaiInfoList->count)
-        SmfSelectionSubscriptionData->subscribed_snssai_infos =
-            SubscribedSnssaiInfoList;
-    else
-        OpenAPI_list_free(SubscribedSnssaiInfoList);
-
-    return true;
-}
-
-void udr_nudr_dr_subscribed_snnsai_info_list_free(
-        OpenAPI_smf_selection_subscription_data_t *SmfSelectionSubscriptionData)
-{
-    // Still a leaky leak somewhere here... 
-    OpenAPI_lnode_t *node = NULL, *node2 = NULL;
-
-    OpenAPI_list_t *SubscribedSnssaiInfoList = NULL;
-    OpenAPI_map_t *SubscribedSnssaiInfoMap = NULL;
-    OpenAPI_snssai_info_t *SubscribedSnssaiInfo = NULL;
-
-    OpenAPI_list_t *DnnInfoList = NULL;
-    OpenAPI_dnn_info_t *DnnInfo = NULL;
-
-    SubscribedSnssaiInfoList =
-        SmfSelectionSubscriptionData->subscribed_snssai_infos;
-    OpenAPI_list_for_each(SubscribedSnssaiInfoList, node) {
-        SubscribedSnssaiInfoMap = node->data;
-        if (SubscribedSnssaiInfoMap) {
-            SubscribedSnssaiInfo = SubscribedSnssaiInfoMap->value;
-            if (SubscribedSnssaiInfo) {
-                DnnInfoList = SubscribedSnssaiInfo->dnn_infos;
-                if (DnnInfoList) {
-                    OpenAPI_list_for_each(DnnInfoList, node2) {
-                        DnnInfo = node2->data;
-                        if (DnnInfo) {
-                            ogs_free(DnnInfo);
-                        }
-                    }
-                    OpenAPI_list_free(DnnInfoList);
-                }
-                ogs_free(SubscribedSnssaiInfo);
-            }
-            if (SubscribedSnssaiInfoMap->key)
-                ogs_free(SubscribedSnssaiInfoMap->key);
-            ogs_free(SubscribedSnssaiInfoMap);
-        }
-    }
-    OpenAPI_list_free(SubscribedSnssaiInfoList);
 }
