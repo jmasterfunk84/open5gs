@@ -527,6 +527,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                     subscription_data.ambr.downlink, OGS_SBI_BITRATE_KBPS);
             AccessAndMobilitySubscriptionData.subscribed_ue_ambr =
                 &SubscribedUeAmbr;
+        }
 
         if (amdatamask & OGS_SBI_AM_DATA_FIELDS_NSSAI) {
             memset(&NSSAI, 0, sizeof(NSSAI));
@@ -547,7 +548,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             if (DefaultSingleNssaiList->count) {
                 NSSAI.default_single_nssais = DefaultSingleNssaiList;
             }
- 
+
             SingleNssaiList = OpenAPI_list_create();
             for (i = 0; i < subscription_data.num_of_slice; i++) {
                 slice_data = &subscription_data.slice[i];
