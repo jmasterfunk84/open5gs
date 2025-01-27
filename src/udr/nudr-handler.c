@@ -498,7 +498,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                     amdatamask = (amdatamask |
                             OGS_SBI_AM_DATA_FIELDS_SUBSCRIBED_UE_AMBR);
                     break;
-                CASE(OGS_SBI_PARAM_FIELDS_NSSAI))
+                CASE(OGS_SBI_PARAM_FIELDS_NSSAI)
                     amdatamask = (amdatamask | OGS_SBI_AM_DATA_FIELDS_NSSAI);
                     break;
                 END
@@ -518,6 +518,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             if (GpsiList->count)
                 AccessAndMobilitySubscriptionData.gpsis = GpsiList;
         }
+
+        memset(&SubscribedUeAmbr, 0, sizeof(SubscribedUeAmbr));
 
         if (amdatamask & OGS_SBI_AM_DATA_FIELDS_SUBSCRIBED_UE_AMBR) {
             SubscribedUeAmbr.uplink = ogs_sbi_bitrate_to_string(

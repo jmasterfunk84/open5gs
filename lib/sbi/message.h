@@ -361,6 +361,7 @@ extern "C" {
 #define OGS_SBI_AM_DATA_FIELDS_SUBSCRIBED_UE_AMBR        (1 << 1)
 #define OGS_SBI_AM_DATA_FIELDS_NSSAI                     (1 << 2)
 #define OGS_SBI_AM_DATA_FIELDS_ALL                        0xFF
+#define OGS_SBI_MAX_NUM_OF_FIELDS                         8
 
 #define OGS_SBI_CONTENT_JSON_TYPE                   \
     OGS_SBI_APPLICATION_TYPE "/" OGS_SBI_APPLICATION_JSON_TYPE
