@@ -519,8 +519,6 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 AccessAndMobilitySubscriptionData.gpsis = GpsiList;
         }
 
-        memset(&SubscribedUeAmbr, 0, sizeof(SubscribedUeAmbr));
-
         if (amdatamask & OGS_SBI_AM_DATA_FIELDS_SUBSCRIBED_UE_AMBR) {
             SubscribedUeAmbr.uplink = ogs_sbi_bitrate_to_string(
                     subscription_data.ambr.uplink, OGS_SBI_BITRATE_KBPS);
@@ -591,40 +589,32 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         ogs_assert(response);
         ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
-        if (GpsiList->count) {
-            OpenAPI_list_for_each(GpsiList, node) {
-                if (node->data) ogs_free(node->data);
-            }
-            OpenAPI_list_free(GpsiList);
+        OpenAPI_list_for_each(GpsiList, node) {
+            if (node->data) ogs_free(node->data);
         }
+        OpenAPI_list_free(GpsiList);
 
-        if (SubscribedUeAmbr.uplink)
-            ogs_free(SubscribedUeAmbr.uplink);
-        if (SubscribedUeAmbr.downlink)
-            ogs_free(SubscribedUeAmbr.downlink);
+        ogs_free(SubscribedUeAmbr.uplink);
+        ogs_free(SubscribedUeAmbr.downlink);
 
-        if (DefaultSingleNssaiList->count) {
-            OpenAPI_list_for_each(DefaultSingleNssaiList, node) {
-                OpenAPI_snssai_t *Snssai = node->data;
-                if (Snssai) {
-                    if (Snssai->sd)
-                        ogs_free(Snssai->sd);
-                    ogs_free(Snssai);
-                }
+        OpenAPI_list_for_each(DefaultSingleNssaiList, node) {
+            OpenAPI_snssai_t *Snssai = node->data;
+            if (Snssai) {
+                if (Snssai->sd)
+                    ogs_free(Snssai->sd);
+                ogs_free(Snssai);
             }
-            OpenAPI_list_free(DefaultSingleNssaiList);
         }
-        if (SingleNssaiList->count) {
-            OpenAPI_list_for_each(SingleNssaiList, node) {
-                OpenAPI_snssai_t *Snssai = node->data;
-                if (Snssai) {
-                    if (Snssai->sd)
-                        ogs_free(Snssai->sd);
-                    ogs_free(Snssai);
-                }
+        OpenAPI_list_free(DefaultSingleNssaiList);
+        OpenAPI_list_for_each(SingleNssaiList, node) {
+            OpenAPI_snssai_t *Snssai = node->data;
+            if (Snssai) {
+                if (Snssai->sd)
+                    ogs_free(Snssai->sd);
+                ogs_free(Snssai);
             }
-            OpenAPI_list_free(SingleNssaiList);
         }
+        OpenAPI_list_free(SingleNssaiList);
         break;
 
     CASE(OGS_SBI_RESOURCE_NAME_SMF_SELECTION_SUBSCRIPTION_DATA)
