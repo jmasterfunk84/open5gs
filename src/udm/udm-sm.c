@@ -176,19 +176,16 @@ void udm_state_operational(ogs_fsm_t *s, udm_event_t *e)
                 udm_ue = udm_ue_find_by_suci_or_supi(
                         message.h.resource.component[0]);
                 if (!udm_ue) {
-                    SWITCH(message.h.method)
-                    CASE(OGS_SBI_HTTP_METHOD_POST)
-                    CASE(OGS_SBI_HTTP_METHOD_GET)
+                    if (!strcmp(message.h.method,
+                                OGS_SBI_HTTP_METHOD_POST)) {
                         udm_ue = udm_ue_add(message.h.resource.component[0]);
                         if (!udm_ue) {
                             ogs_error("Invalid Request [%s]",
                                     message.h.resource.component[0]);
                         }
-                        break;
-
-                    DEFAULT
+                    } else {
                         ogs_error("Invalid HTTP method [%s]", message.h.method);
-                    END
+                    }
                 }
             }
 
