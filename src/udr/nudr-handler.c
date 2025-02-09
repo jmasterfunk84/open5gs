@@ -745,6 +745,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     if (processSmData) {
         int i;
 
+// Can these jumps to cleanup work if we need to free from amdata above?
+
         if (!recvmsg->param.single_nssai_presence) {
             strerror = ogs_msprintf("[%s] No S_NSSAI", supi);
             status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
