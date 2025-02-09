@@ -429,6 +429,10 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     bool processSmfSel = false;
     bool processSmData = false;
 
+    bool processGpsi = false;
+    bool processUeAmbr = false;
+    bool processNssai = false;
+
     ogs_sbi_message_t sendmsg;
     ogs_sbi_response_t *response = NULL;
     ogs_subscription_data_t subscription_data;
@@ -499,6 +503,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         goto cleanup;
     }
 
+    // and check if comp[4] doesn't exist?
     if (recvmsg->param.num_of_dataset_names) {
         int i;
         for (i = 0; i < recvmsg->param.num_of_dataset_names; i++) {
@@ -542,11 +547,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     }
 
     if (processAmData) {
+        // Maybe just move i up in scope.
         int i;
-        bool processGpsi = false;
-        bool processUeAmbr = false;
-        bool processNssai = false;
-        int amdatamask = OGS_SBI_AM_DATA_FIELDS_ALL;
 
         memset(&AccessAndMobilitySubscriptionData, 0,
                 sizeof(AccessAndMobilitySubscriptionData));
@@ -740,7 +742,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             ogs_assert(true == ogs_sbi_server_send_response(stream, response));
         }
     }
-    if (processNssai) {
+    if (processSmData) {
         int i;
 
         if (!recvmsg->param.single_nssai_presence) {
