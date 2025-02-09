@@ -639,7 +639,7 @@ bool udm_nudr_dr_handle_subscription_provisioned(
         memset(&sendmsg, 0, sizeof(sendmsg));
 
         // Check if original request was for /nudm-sdm/v2/{supi}/nssai
-        if (state == UDM_UE_PROVISIONED_FIELDS) {
+        if (state == UDM_UE_PROVISIONED_NSSAI_ONLY) {
             OpenAPI_nssai_t *Nssai = NULL;
             Nssai = AccessAndMobilitySubscriptionData->nssai;
             if (!Nssai) {

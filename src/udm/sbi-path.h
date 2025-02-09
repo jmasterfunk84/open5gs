@@ -33,8 +33,7 @@ bool udm_sbi_send_request(
         ogs_sbi_nf_instance_t *nf_instance, ogs_sbi_xact_t *xact);
 
 #define UDM_UE_NO_STATE                                       0
-#define UDM_UE_PROVISIONED_FIELDS                             1
-#define UDM_UE_PROVISIONED_DATASETS                           2
+#define UDM_UE_PROVISIONED_NSSAI_ONLY                         1
 
 int udm_ue_sbi_discover_and_send(
         ogs_sbi_service_type_e service_type,
