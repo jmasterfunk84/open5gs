@@ -236,6 +236,7 @@ typedef struct ogs_sbi_xact_s {
     ogs_pool_id_t assoc_stream_id;
 
     int state;
+    char *resource;
     char *target_apiroot;
 
     ogs_sbi_object_t *sbi_object;

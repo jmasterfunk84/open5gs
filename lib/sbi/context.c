@@ -2536,6 +2536,9 @@ void ogs_sbi_xact_remove(ogs_sbi_xact_t *xact)
     if (xact->request)
         ogs_sbi_request_free(xact->request);
 
+    if (xact->resource)
+        ogs_free(xact->resource);
+
     if (xact->target_apiroot)
         ogs_free(xact->target_apiroot);
 

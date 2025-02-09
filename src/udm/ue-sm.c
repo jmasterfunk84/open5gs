@@ -197,7 +197,8 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
                     r = udm_ue_sbi_discover_and_send(
                             OGS_SBI_SERVICE_TYPE_NUDR_DR, NULL,
                             udm_nudr_dr_build_query_subscription_provisioned,
-                            udm_ue, stream, message);
+                            udm_ue, stream, message->h.resource.component[1],
+                            message);
                     ogs_expect(r == OGS_OK);
                     ogs_assert(r != OGS_ERROR);
                     break;
