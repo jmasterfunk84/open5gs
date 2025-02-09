@@ -425,6 +425,10 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     int rv, status = 0;
     char *strerror = NULL;
 
+    bool processAmData = false;
+    bool processSmfSel = false;
+    bool processSmData = false;
+
     ogs_sbi_message_t sendmsg;
     ogs_sbi_response_t *response = NULL;
     ogs_subscription_data_t subscription_data;
@@ -495,49 +499,39 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         goto cleanup;
     }
 
-// Do something with this....  And I don't like the names.
-#define OGS_SBI_PARAM_DATASET_NAME_AM                       "AM"
-#define OGS_SBI_PARAM_DATASET_NAME_SMF_SEL             "SMF_SEL"
-#define OGS_SBI_PARAM_DATASET_NAME_SM                       "SM"
-
-#define OGS_SBI_PROV_DATASET_NAMES_NONE                        (0)
-#define OGS_SBI_PROV_DATASET_NAMES_AM_DATA                     (1)
-#define OGS_SBI_PROV_DATASET_NAMES_SMF_SEL                (1 << 1)
-#define OGS_SBI_PROV_DATASET_NAMES_SM                     (1 << 2)
-#define OGS_SBI_PROV_DATASET_NAMES_ALL                        0xFF
-
-    int datasetmask = OGS_SBI_PROV_DATASET_NAMES_NONE;
-
     if (recvmsg->param.num_of_dataset_names) {
         int i;
         for (i = 0; i < recvmsg->param.num_of_dataset_names; i++) {
             SWITCH(recvmsg->param.dataset_names[i])
             CASE(OGS_SBI_PARAM_DATASET_NAME_AM)
-                datasetmask = (datasetmask |
-                        OGS_SBI_PROV_DATASET_NAMES_AM_DATA);
+                processAmData = true;
                 break;
             CASE(OGS_SBI_PARAM_DATASET_NAME_SMF_SEL)
-                datasetmask = (datasetmask |
-                        OGS_SBI_PROV_DATASET_NAMES_SMF_SEL);
+                processSmfSel = true;
                 break;
+            DEFAULT
+                ogs_error("Unexpected dataset-name! [%s]",
+                        recvmsg->param.dataset_names[i]);
             END
         }
+/*
         if (!datasetmask) {
             strerror = ogs_msprintf("Invalid dataset-names [%s]", supi);
             status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
             goto cleanup;
         }
+*/
         // Need to handle if nothing was selected.
     } else {
         SWITCH(recvmsg->h.resource.component[4])
         CASE(OGS_SBI_RESOURCE_NAME_AM_DATA)
-            datasetmask = (datasetmask | OGS_SBI_PROV_DATASET_NAMES_AM_DATA);
+            processAmData = true;
             break;
         CASE(OGS_SBI_RESOURCE_NAME_SMF_SELECTION_SUBSCRIPTION_DATA)
-            datasetmask = (datasetmask | OGS_SBI_PROV_DATASET_NAMES_SMF_SEL);
+            processSmfSel = true;
             break;
         CASE(OGS_SBI_RESOURCE_NAME_SM_DATA)
-            datasetmask = (datasetmask | OGS_SBI_PROV_DATASET_NAMES_SM);
+            processSmData = true;
             break;
         DEFAULT
             strerror = ogs_msprintf("Invalid resource name [%s]",
@@ -547,34 +541,41 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         END
     }
 
-    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_AM_DATA) {
+    if (processAmData) {
         int i;
+        bool processGpsi = false;
+        bool processUeAmbr = false;
+        bool processNssai = false;
         int amdatamask = OGS_SBI_AM_DATA_FIELDS_ALL;
 
         memset(&AccessAndMobilitySubscriptionData, 0,
                 sizeof(AccessAndMobilitySubscriptionData));
 
-        // Apply filtering based on fields query parameter
+        /* Apply filtering based on fields query parameter */
         if (recvmsg->param.num_of_fields) {
-            amdatamask = OGS_SBI_AM_DATA_FIELDS_NONE;
-            int i;
             for (i = 0; i < recvmsg->param.num_of_fields; i++) {
                 SWITCH(recvmsg->param.fields[i])
                 CASE(OGS_SBI_PARAM_FIELDS_GPSIS)
-                    amdatamask = (amdatamask | OGS_SBI_AM_DATA_FIELDS_GPSIS);
+                    processGpsi = true;
                     break;
                 CASE(OGS_SBI_PARAM_FIELDS_SUBSCRIBED_UE_AMBR)
-                    amdatamask = (amdatamask |
-                            OGS_SBI_AM_DATA_FIELDS_SUBSCRIBED_UE_AMBR);
+                    processUeAmbr = true;
                     break;
                 CASE(OGS_SBI_PARAM_FIELDS_NSSAI)
-                    amdatamask = (amdatamask | OGS_SBI_AM_DATA_FIELDS_NSSAI);
+                    processNssai = true;
                     break;
+                DEFAULT
+                    ogs_error("Unexpected field! [%s]",
+                            recvmsg->param.fields[i]);
                 END
             }
+        } else {
+            processGpsi = true;
+            processUeAmbr = true;
+            processNssai = true;
         }
 
-        if (amdatamask & OGS_SBI_AM_DATA_FIELDS_GPSIS) {
+        if (processGpsi) {
             GpsiList = OpenAPI_list_create();
             for (i = 0; i < subscription_data.num_of_msisdn; i++) {
                 char *gpsi = ogs_msprintf("%s-%s",
@@ -589,7 +590,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
 
         memset(&SubscribedUeAmbr, 0, sizeof(SubscribedUeAmbr));
 
-        if (amdatamask & OGS_SBI_AM_DATA_FIELDS_SUBSCRIBED_UE_AMBR) {
+        if (processUeAmbr) {
             SubscribedUeAmbr.uplink = ogs_sbi_bitrate_to_string(
                     subscription_data.ambr.uplink, OGS_SBI_BITRATE_KBPS);
             SubscribedUeAmbr.downlink = ogs_sbi_bitrate_to_string(
@@ -598,7 +599,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 &SubscribedUeAmbr;
         }
 
-        if (amdatamask & OGS_SBI_AM_DATA_FIELDS_NSSAI) {
+        if (processNssai) {
             memset(&NSSAI, 0, sizeof(NSSAI));
             DefaultSingleNssaiList = OpenAPI_list_create();
             for (i = 0; i < subscription_data.num_of_slice; i++) {
@@ -659,7 +660,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             ogs_assert(true == ogs_sbi_server_send_response(stream, response));
         }
     }
-    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_SMF_SEL) {
+    if (processSmfSel) {
         int i, j;
 
         memset(&SmfSelectionSubscriptionData, 0,
@@ -739,7 +740,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             ogs_assert(true == ogs_sbi_server_send_response(stream, response));
         }
     }
-    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_SM) {
+    if (processNssai) {
         int i;
 
         if (!recvmsg->param.single_nssai_presence) {
@@ -974,18 +975,19 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         }
     }
 
-    // Build Provisioned Data Sets
+    /* Build Provisioned Data Sets */
+    // maybe check that it was valid ds names?
     if (recvmsg->param.num_of_dataset_names) {
         OpenAPI_provisioned_data_sets_t ProvisionedDataSets;
 
         memset(&ProvisionedDataSets, 0,
                 sizeof(ProvisionedDataSets));
 
-        if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_AM_DATA) {
+        if (processAmData) {
             ProvisionedDataSets.am_data =
                     &AccessAndMobilitySubscriptionData;
         }
-        if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_SMF_SEL) {
+        if (processSmfSel) {
             ProvisionedDataSets.smf_sel_data =
                     &SmfSelectionSubscriptionData;
         }
@@ -998,45 +1000,39 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     }
 
     // Free resources used above
-    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_AM_DATA) {
+    if (processAmData) {
         OpenAPI_lnode_t *node = NULL;
 
-        if (GpsiList) {
-            OpenAPI_list_for_each(GpsiList, node) {
-                if (node->data) ogs_free(node->data);
-            }
-            OpenAPI_list_free(GpsiList);
+        OpenAPI_list_for_each(GpsiList, node) {
+            if (node->data) ogs_free(node->data);
         }
+        OpenAPI_list_free(GpsiList);
 
         if (SubscribedUeAmbr.uplink)
             ogs_free(SubscribedUeAmbr.uplink);
         if (SubscribedUeAmbr.downlink)
             ogs_free(SubscribedUeAmbr.downlink);
 
-        if (DefaultSingleNssaiList) {
-            OpenAPI_list_for_each(DefaultSingleNssaiList, node) {
-                OpenAPI_snssai_t *Snssai = node->data;
-                if (Snssai) {
-                    if (Snssai->sd)
-                        ogs_free(Snssai->sd);
-                    ogs_free(Snssai);
-                }
+        OpenAPI_list_for_each(DefaultSingleNssaiList, node) {
+            OpenAPI_snssai_t *Snssai = node->data;
+            if (Snssai) {
+                if (Snssai->sd)
+                    ogs_free(Snssai->sd);
+                ogs_free(Snssai);
             }
-            OpenAPI_list_free(DefaultSingleNssaiList);
         }
-        if (SingleNssaiList) {
-            OpenAPI_list_for_each(SingleNssaiList, node) {
-                OpenAPI_snssai_t *Snssai = node->data;
-                if (Snssai) {
-                    if (Snssai->sd)
-                        ogs_free(Snssai->sd);
-                    ogs_free(Snssai);
-                }
+        OpenAPI_list_free(DefaultSingleNssaiList);
+        OpenAPI_list_for_each(SingleNssaiList, node) {
+            OpenAPI_snssai_t *Snssai = node->data;
+            if (Snssai) {
+                if (Snssai->sd)
+                    ogs_free(Snssai->sd);
+                ogs_free(Snssai);
             }
-            OpenAPI_list_free(SingleNssaiList);
         }
+        OpenAPI_list_free(SingleNssaiList);
     }
-    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_SMF_SEL) {
+    if (processSmfSel) {
         OpenAPI_lnode_t *node = NULL, *node2 = NULL;
 
         SubscribedSnssaiInfoList =
@@ -1065,7 +1061,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         }
         OpenAPI_list_free(SubscribedSnssaiInfoList);
     }
-    if (datasetmask & OGS_SBI_PROV_DATASET_NAMES_SM) {
+    if (processSmData) {
         OpenAPI_lnode_t *node = NULL, *node2 = NULL;
 
         OpenAPI_list_free(sendmsg.SessionManagementSubscriptionDataList);

@@ -356,14 +356,11 @@ extern "C" {
 #define OGS_SBI_PARAM_FIELDS_GPSIS                       "gpsis"
 #define OGS_SBI_PARAM_FIELDS_SUBSCRIBED_UE_AMBR          "subscribedUeAmbr"
 #define OGS_SBI_PARAM_FIELDS_NSSAI                       "nssai"
-
-#define OGS_SBI_AM_DATA_FIELDS_NONE                      (0)
-#define OGS_SBI_AM_DATA_FIELDS_GPSIS                     (1)
-#define OGS_SBI_AM_DATA_FIELDS_SUBSCRIBED_UE_AMBR        (1 << 1)
-#define OGS_SBI_AM_DATA_FIELDS_NSSAI                     (1 << 2)
-#define OGS_SBI_AM_DATA_FIELDS_ALL                        0xFF
 #define OGS_SBI_MAX_NUM_OF_FIELDS                         8
 
+#define OGS_SBI_PARAM_DATASET_NAME_AM                    "AM"
+#define OGS_SBI_PARAM_DATASET_NAME_SMF_SEL               "SMF_SEL"
+#define OGS_SBI_PARAM_DATASET_NAME_SM                    "SM"
 #define OGS_SBI_MAX_NUM_OF_DATASETNAMES                   8
 
 #define OGS_SBI_CONTENT_JSON_TYPE                   \
