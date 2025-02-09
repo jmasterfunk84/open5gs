@@ -102,7 +102,7 @@ static int udm_sbi_discover_and_send(
         ogs_sbi_service_type_e service_type,
         ogs_sbi_discovery_option_t *discovery_option,
         ogs_sbi_build_f build,
-        void *context, ogs_sbi_stream_t *stream, char *resource, void *data)
+        void *context, ogs_sbi_stream_t *stream, int state, void *data)
 {
     ogs_sbi_xact_t *xact = NULL;
     int r;
@@ -123,7 +123,7 @@ static int udm_sbi_discover_and_send(
         return OGS_ERROR;
     }
 
-    xact->resource = ogs_str_dup(resource);
+    xact->state = state;
 
     if (stream) {
         xact->assoc_stream_id = ogs_sbi_id_from_stream(stream);
@@ -145,7 +145,7 @@ int udm_ue_sbi_discover_and_send(
         ogs_sbi_service_type_e service_type,
         ogs_sbi_discovery_option_t *discovery_option,
         ogs_sbi_request_t *(*build)(udm_ue_t *udm_ue, void *data),
-        udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, char *resource, void *data)
+        udm_ue_t *udm_ue, ogs_sbi_stream_t *stream, int state, void *data)
 {
     int r;
 
@@ -153,7 +153,7 @@ int udm_ue_sbi_discover_and_send(
 
     r = udm_sbi_discover_and_send(
             udm_ue->id, &udm_ue->sbi, service_type, discovery_option,
-            (ogs_sbi_build_f)build, udm_ue, stream, resource, data);
+            (ogs_sbi_build_f)build, udm_ue, stream, state, data);
     if (r != OGS_OK) {
         ogs_error("udm_ue_sbi_discover_and_send() failed");
         ogs_assert(true ==
