@@ -474,7 +474,12 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     ogs_assert(stream);
     ogs_assert(recvmsg);
 
+    memset(&AccessAndMobilitySubscriptionData, 0,
+            sizeof(AccessAndMobilitySubscriptionData));
+    memset(&SubscribedUeAmbr, 0, sizeof(SubscribedUeAmbr));
     memset(&subscription_data, 0, sizeof(ogs_subscription_data_t));
+    memset(&SmfSelectionSubscriptionData, 0,
+            sizeof(SmfSelectionSubscriptionData));
 
     supi = recvmsg->h.resource.component[1];
     if (!supi) {
@@ -549,9 +554,9 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     if (processAmData) {
         // Maybe just move i up in scope.
         int i;
-
-        memset(&AccessAndMobilitySubscriptionData, 0,
-                sizeof(AccessAndMobilitySubscriptionData));
+        bool processGpsi = false;
+        bool processUeAmbr = false;
+        bool processNssai = false;
 
         /* Apply filtering based on fields query parameter */
         if (recvmsg->param.num_of_fields) {
@@ -586,17 +591,17 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 ogs_assert(gpsi);
                 OpenAPI_list_add(GpsiList, gpsi);
             }
+
             if (GpsiList->count)
                 AccessAndMobilitySubscriptionData.gpsis = GpsiList;
         }
-
-        memset(&SubscribedUeAmbr, 0, sizeof(SubscribedUeAmbr));
 
         if (processUeAmbr) {
             SubscribedUeAmbr.uplink = ogs_sbi_bitrate_to_string(
                     subscription_data.ambr.uplink, OGS_SBI_BITRATE_KBPS);
             SubscribedUeAmbr.downlink = ogs_sbi_bitrate_to_string(
                     subscription_data.ambr.downlink, OGS_SBI_BITRATE_KBPS);
+
             AccessAndMobilitySubscriptionData.subscribed_ue_ambr =
                 &SubscribedUeAmbr;
         }
@@ -615,6 +620,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
 
                 Snssai->sst = slice_data->s_nssai.sst;
                 Snssai->sd = ogs_s_nssai_sd_to_string(slice_data->s_nssai.sd);
+
                 OpenAPI_list_add(DefaultSingleNssaiList, Snssai);
             }
             if (DefaultSingleNssaiList->count) {
@@ -664,9 +670,6 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     }
     if (processSmfSel) {
         int i, j;
-
-        memset(&SmfSelectionSubscriptionData, 0,
-                sizeof(SmfSelectionSubscriptionData));
 
         SubscribedSnssaiInfoList = OpenAPI_list_create();
         ogs_assert(SubscribedSnssaiInfoList);

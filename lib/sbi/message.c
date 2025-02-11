@@ -1006,9 +1006,12 @@ int ogs_sbi_parse_request(
                 }
             }
         } else if (!strcmp(ogs_hash_this_key(hi), OGS_SBI_PARAM_FIELDS)) {
-            char *v = ogs_hash_this_val(hi);
+            char *_v = ogs_hash_this_val(hi), *v = NULL;
             char *token = NULL;
             char *saveptr = NULL;
+
+            v = ogs_strdup(_v);
+            ogs_assert(v);
 
             token = ogs_strtok_r(v, ",", &saveptr);
             while (token != NULL) {
@@ -1024,11 +1027,16 @@ int ogs_sbi_parse_request(
                     break;
                 }
             }
+
+            ogs_free(v);
         } else if (!strcmp(ogs_hash_this_key(hi),
                 OGS_SBI_PARAM_DATASET_NAMES)) {
-            char *v = ogs_hash_this_val(hi);
+            char *_v = ogs_hash_this_val(hi), *v = NULL;
             char *token = NULL;
             char *saveptr = NULL;
+
+            v = ogs_strdup(_v);
+            ogs_assert(v);
 
             token = ogs_strtok_r(v, ",", &saveptr);
             while (token != NULL) {
@@ -1047,6 +1055,8 @@ int ogs_sbi_parse_request(
                     break;
                 }
             }
+
+            ogs_free(v);
         } else if (!strcmp(ogs_hash_this_key(hi), OGS_SBI_PARAM_IPV4ADDR)) {
             message->param.ipv4addr = ogs_hash_this_val(hi);
         } else if (!strcmp(ogs_hash_this_key(hi), OGS_SBI_PARAM_IPV6PREFIX)) {
@@ -1315,6 +1325,7 @@ static char *build_json(ogs_sbi_message_t *message)
     } else if (message->ProvisionedDataSets) {
         item = OpenAPI_provisioned_data_sets_convertToJSON(
                 message->ProvisionedDataSets);
+        ogs_assert(item);
     } else if (message->Nssai) {
         item = OpenAPI_nssai_convertToJSON(message->Nssai);
         ogs_assert(item);
