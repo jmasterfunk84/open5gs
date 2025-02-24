@@ -428,10 +428,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     bool processAmData = false;
     bool processSmfSel = false;
     bool processSmData = false;
-
-    bool processGpsi = false;
-    bool processUeAmbr = false;
-    bool processNssai = false;
+    bool returnProvisionedData = false;
 
     ogs_sbi_message_t sendmsg;
     ogs_sbi_response_t *response = NULL;
@@ -440,6 +437,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
 
     OpenAPI_access_and_mobility_subscription_data_t
         AccessAndMobilitySubscriptionData;
+    OpenAPI_list_t *SessionManagementSubscriptionDataList = NULL;
     OpenAPI_session_management_subscription_data_t
         SessionManagementSubscriptionData;
     OpenAPI_smf_selection_subscription_data_t SmfSelectionSubscriptionData;
@@ -468,6 +466,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     OpenAPI_list_t *staticIpAddress = NULL;
     OpenAPI_ip_address_t *ipAddress = NULL;
     OpenAPI_list_t *FrameRouteList = NULL;
+    OpenAPI_sm_subs_data_t smSubsData;
 
     char *supi = NULL;
 
@@ -508,31 +507,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         goto cleanup;
     }
 
-    // and check if comp[4] doesn't exist?
-    if (recvmsg->param.num_of_dataset_names) {
-        int i;
-        for (i = 0; i < recvmsg->param.num_of_dataset_names; i++) {
-            SWITCH(recvmsg->param.dataset_names[i])
-            CASE(OGS_SBI_PARAM_DATASET_NAME_AM)
-                processAmData = true;
-                break;
-            CASE(OGS_SBI_PARAM_DATASET_NAME_SMF_SEL)
-                processSmfSel = true;
-                break;
-            DEFAULT
-                ogs_error("Unexpected dataset-name! [%s]",
-                        recvmsg->param.dataset_names[i]);
-            END
-        }
-/*
-        if (!datasetmask) {
-            strerror = ogs_msprintf("Invalid dataset-names [%s]", supi);
-            status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
-            goto cleanup;
-        }
-*/
-        // Need to handle if nothing was selected.
-    } else {
+    if (recvmsg->h.resource.component[4]) {
         SWITCH(recvmsg->h.resource.component[4])
         CASE(OGS_SBI_RESOURCE_NAME_AM_DATA)
             processAmData = true;
@@ -549,10 +524,35 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             status = OGS_SBI_HTTP_STATUS_METHOD_NOT_ALLOWED;
             goto cleanup;
         END
+    } else {
+        returnProvisionedData = true;
+        if (recvmsg->param.num_of_dataset_names) {
+            int i;
+            for (i = 0; i < recvmsg->param.num_of_dataset_names; i++) {
+                SWITCH(recvmsg->param.dataset_names[i])
+                CASE(OGS_SBI_PARAM_DATASET_NAME_AM)
+                    processAmData = true;
+                    break;
+                CASE(OGS_SBI_PARAM_DATASET_NAME_SMF_SEL)
+                    processSmfSel = true;
+                    break;
+                CASE(OGS_SBI_PARAM_DATASET_NAME_SM)
+                    processSmData = true;
+                    break;
+                DEFAULT
+                    ogs_error("Unexpected dataset-name! [%s]",
+                            recvmsg->param.dataset_names[i]);
+                END
+                // What if nothing was selected here??
+            }
+        } else {
+            processAmData = true;
+            processSmfSel = true;
+            processSmData = true;
+        }
     }
 
     if (processAmData) {
-        // Maybe just move i up in scope.
         int i;
         bool processGpsi = false;
         bool processUeAmbr = false;
@@ -658,7 +658,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 AccessAndMobilitySubscriptionData.nssai = &NSSAI;
         }
 
-        if (!recvmsg->param.num_of_dataset_names) {
+        if (!returnProvisionedData) {
             memset(&sendmsg, 0, sizeof(sendmsg));
             sendmsg.AccessAndMobilitySubscriptionData =
                 &AccessAndMobilitySubscriptionData;
@@ -735,7 +735,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         else
             OpenAPI_list_free(SubscribedSnssaiInfoList);
 
-        if (!recvmsg->param.num_of_dataset_names) {
+        if (!returnProvisionedData) {
             memset(&sendmsg, 0, sizeof(sendmsg));
             sendmsg.SmfSelectionSubscriptionData =
                     &SmfSelectionSubscriptionData;
@@ -746,235 +746,266 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         }
     }
     if (processSmData) {
-        int i;
+        int i, j;
+
+        if (recvmsg->param.single_nssai_presence) {
+            slice_data = ogs_slice_find_by_s_nssai(
+                    subscription_data.slice, subscription_data.num_of_slice,
+                    &recvmsg->param.s_nssai);
+
+            if (!slice_data) {
+                strerror = ogs_msprintf("[%s] Cannot find S_NSSAI"
+                        "[SST:%d SD:0x%x]",
+                        supi,
+                        recvmsg->param.s_nssai.sst,
+                        recvmsg->param.s_nssai.sd.v);
+                status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
+                goto cleanup;
+            }
+        }
 
 // Can these jumps to cleanup work if we need to free from amdata above?
-
-        if (!recvmsg->param.single_nssai_presence) {
-            strerror = ogs_msprintf("[%s] No S_NSSAI", supi);
-            status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
-            goto cleanup;
-        };
-
-        ogs_assert(subscription_data.num_of_slice);
-        slice_data = ogs_slice_find_by_s_nssai(
-                subscription_data.slice, subscription_data.num_of_slice,
-                &recvmsg->param.s_nssai);
-
-        if (!slice_data) {
-            strerror = ogs_msprintf("[%s] Cannot find S_NSSAI[SST:%d SD:0x%x]",
-                    supi,
-                    recvmsg->param.s_nssai.sst,
-                    recvmsg->param.s_nssai.sd.v);
-            status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
-            goto cleanup;
-        }
-
-        singleNSSAI.sst = slice_data->s_nssai.sst;
-        singleNSSAI.sd = ogs_s_nssai_sd_to_string(slice_data->s_nssai.sd);
+// this can be filtered by singleNssai or dnn query params.
+// 29.503 6.1.3.8.3.1
+// This currently relies on us to ask for a specific slice AND dnn, but, we may want all the slices and all the DNN.
+// Maybe wrap this in a for of all the subscription data slices.. check for the slice and "continue" out if we don't hit it.
 
         dnnConfigurationList = OpenAPI_list_create();
+        ogs_assert(dnnConfigurationList);
 
-        for (i = 0; i < slice_data->num_of_session; i++) {
-            ogs_session_t *session = NULL;
+        SessionManagementSubscriptionDataList = OpenAPI_list_create();
+        ogs_assert(SessionManagementSubscriptionDataList);
 
-            if (i >= OGS_MAX_NUM_OF_SESS) {
-                ogs_warn("Ignore max session count overflow [%d>=%d]",
-                    slice_data->num_of_session, OGS_MAX_NUM_OF_SESS);
-                break;
-            }
+        ogs_assert(subscription_data.num_of_slice);
 
-            session = &slice_data->session[i];
-            ogs_assert(session);
-            ogs_assert(session->name);
+        for (j = 0; j < subscription_data.num_of_slice; j++) {
+            slice_data = &subscription_data.slice[j];
 
-            if (recvmsg->param.dnn &&
-                ogs_strcasecmp(recvmsg->param.dnn, session->name) != 0)
-                continue;
-
-            if (!session->qos.index) {
-                ogs_error("No 5QI");
-                continue;
-            }
-            if (!session->qos.arp.priority_level) {
-                ogs_error("No Priority Level");
+            if (!slice_data) {
                 continue;
             }
 
-            if (!session->ambr.uplink && !session->ambr.downlink) {
-                ogs_error("No Session-AMBR");
-                continue;
+            if (recvmsg->param.single_nssai_presence) {
+                if (slice_data->s_nssai.sst != recvmsg->param.s_nssai.sst &&
+                        slice_data->s_nssai.sd.v !=
+                        recvmsg->param.s_nssai.sd.v) {
+                    continue;
+                }
             }
 
-            dnnConfiguration = ogs_calloc(1, sizeof(*dnnConfiguration));
-            ogs_assert(dnnConfiguration);
+            singleNSSAI.sst = slice_data->s_nssai.sst;
+            singleNSSAI.sd = ogs_s_nssai_sd_to_string(slice_data->s_nssai.sd);
 
-            pduSessionTypeList = ogs_calloc(1, sizeof(*pduSessionTypeList));
-            ogs_assert(pduSessionTypeList);
-            pduSessionTypeList->default_session_type = session->session_type;
+            for (i = 0; i < slice_data->num_of_session; i++) {
+                ogs_session_t *session = NULL;
 
-            pduSessionTypeList->allowed_session_types = OpenAPI_list_create();
-            ogs_assert(pduSessionTypeList->allowed_session_types);
-            switch (pduSessionTypeList->default_session_type) {
-            case OpenAPI_pdu_session_type_IPV4:
-                OpenAPI_list_add(pduSessionTypeList->allowed_session_types,
-                        (void *)OpenAPI_pdu_session_type_IPV4);
-                break;
-            case OpenAPI_pdu_session_type_IPV6:
-                OpenAPI_list_add(pduSessionTypeList->allowed_session_types,
-                        (void *)OpenAPI_pdu_session_type_IPV6);
-                break;
-            case OpenAPI_pdu_session_type_IPV4V6:
-                OpenAPI_list_add(pduSessionTypeList->allowed_session_types,
-                        (void *)OpenAPI_pdu_session_type_IPV4);
-                OpenAPI_list_add(pduSessionTypeList->allowed_session_types,
-                        (void *)OpenAPI_pdu_session_type_IPV6);
-                OpenAPI_list_add(pduSessionTypeList->allowed_session_types,
-                        (void *)OpenAPI_pdu_session_type_IPV4V6);
-                break;
-            default:
-                ogs_fatal("Unsupported PDN_TYPE[%d]",
-                        pduSessionTypeList->default_session_type);
-                ogs_assert_if_reached();
-            }
+                if (i >= OGS_MAX_NUM_OF_SESS) {
+                    ogs_warn("Ignore max session count overflow [%d>=%d]",
+                        slice_data->num_of_session, OGS_MAX_NUM_OF_SESS);
+                    break;
+                }
 
-            dnnConfiguration->pdu_session_types = pduSessionTypeList;
+                session = &slice_data->session[i];
+                ogs_assert(session);
+                ogs_assert(session->name);
 
-            sscModeList = ogs_calloc(1, sizeof(*sscModeList));
-            ogs_assert(sscModeList);
-            sscModeList->default_ssc_mode = OpenAPI_ssc_mode_SSC_MODE_1;
+                if (recvmsg->param.dnn &&
+                    ogs_strcasecmp(recvmsg->param.dnn, session->name) != 0)
+                    continue;
 
-            sscModeList->allowed_ssc_modes = OpenAPI_list_create();
-            ogs_assert(sscModeList->allowed_ssc_modes);
-            OpenAPI_list_add(sscModeList->allowed_ssc_modes,
-                    (void *)OpenAPI_ssc_mode_SSC_MODE_1);
-            OpenAPI_list_add(sscModeList->allowed_ssc_modes,
-                    (void *)OpenAPI_ssc_mode_SSC_MODE_2);
-            OpenAPI_list_add(sscModeList->allowed_ssc_modes,
-                    (void *)OpenAPI_ssc_mode_SSC_MODE_3);
+                if (!session->qos.index) {
+                    ogs_error("No 5QI");
+                    continue;
+                }
+                if (!session->qos.arp.priority_level) {
+                    ogs_error("No Priority Level");
+                    continue;
+                }
 
-            dnnConfiguration->ssc_modes = sscModeList;
+                if (!session->ambr.uplink && !session->ambr.downlink) {
+                    ogs_error("No Session-AMBR");
+                    continue;
+                }
 
-            _5gQoSProfile = ogs_calloc(1, sizeof(*_5gQoSProfile));
-            ogs_assert(_5gQoSProfile);
-            _5gQoSProfile->_5qi = session->qos.index;
-            _5gQoSProfile->is_priority_level = true;
-            _5gQoSProfile->priority_level = session->qos.arp.priority_level;
-            _5gQoSProfile->arp = ogs_calloc(1, sizeof(OpenAPI_arp_t));
-            ogs_assert(_5gQoSProfile->arp);
-            _5gQoSProfile->arp->priority_level =
-                session->qos.arp.priority_level;
-            if (session->qos.arp.pre_emption_capability ==
+                dnnConfiguration = ogs_calloc(1, sizeof(*dnnConfiguration));
+                ogs_assert(dnnConfiguration);
+
+                pduSessionTypeList = ogs_calloc(1, sizeof(*pduSessionTypeList));
+                ogs_assert(pduSessionTypeList);
+                pduSessionTypeList->default_session_type =
+                        session->session_type;
+
+                pduSessionTypeList->allowed_session_types =
+                        OpenAPI_list_create();
+                ogs_assert(pduSessionTypeList->allowed_session_types);
+                switch (pduSessionTypeList->default_session_type) {
+                case OpenAPI_pdu_session_type_IPV4:
+                    OpenAPI_list_add(pduSessionTypeList->allowed_session_types,
+                            (void *)OpenAPI_pdu_session_type_IPV4);
+                    break;
+                case OpenAPI_pdu_session_type_IPV6:
+                    OpenAPI_list_add(pduSessionTypeList->allowed_session_types,
+                            (void *)OpenAPI_pdu_session_type_IPV6);
+                    break;
+                case OpenAPI_pdu_session_type_IPV4V6:
+                    OpenAPI_list_add(pduSessionTypeList->allowed_session_types,
+                            (void *)OpenAPI_pdu_session_type_IPV4);
+                    OpenAPI_list_add(pduSessionTypeList->allowed_session_types,
+                            (void *)OpenAPI_pdu_session_type_IPV6);
+                    OpenAPI_list_add(pduSessionTypeList->allowed_session_types,
+                            (void *)OpenAPI_pdu_session_type_IPV4V6);
+                    break;
+                default:
+                    ogs_fatal("Unsupported PDN_TYPE[%d]",
+                            pduSessionTypeList->default_session_type);
+                    ogs_assert_if_reached();
+                }
+
+                dnnConfiguration->pdu_session_types = pduSessionTypeList;
+
+                sscModeList = ogs_calloc(1, sizeof(*sscModeList));
+                ogs_assert(sscModeList);
+                sscModeList->default_ssc_mode = OpenAPI_ssc_mode_SSC_MODE_1;
+
+                sscModeList->allowed_ssc_modes = OpenAPI_list_create();
+                ogs_assert(sscModeList->allowed_ssc_modes);
+                OpenAPI_list_add(sscModeList->allowed_ssc_modes,
+                        (void *)OpenAPI_ssc_mode_SSC_MODE_1);
+                OpenAPI_list_add(sscModeList->allowed_ssc_modes,
+                        (void *)OpenAPI_ssc_mode_SSC_MODE_2);
+                OpenAPI_list_add(sscModeList->allowed_ssc_modes,
+                        (void *)OpenAPI_ssc_mode_SSC_MODE_3);
+
+                dnnConfiguration->ssc_modes = sscModeList;
+
+                _5gQoSProfile = ogs_calloc(1, sizeof(*_5gQoSProfile));
+                ogs_assert(_5gQoSProfile);
+                _5gQoSProfile->_5qi = session->qos.index;
+                _5gQoSProfile->is_priority_level = true;
+                _5gQoSProfile->priority_level = session->qos.arp.priority_level;
+                _5gQoSProfile->arp = ogs_calloc(1, sizeof(OpenAPI_arp_t));
+                ogs_assert(_5gQoSProfile->arp);
+                _5gQoSProfile->arp->priority_level =
+                    session->qos.arp.priority_level;
+                if (session->qos.arp.pre_emption_capability ==
+                        OGS_5GC_PRE_EMPTION_ENABLED)
+                    _5gQoSProfile->arp->preempt_cap =
+                            OpenAPI_preemption_capability_MAY_PREEMPT;
+                else if (session->qos.arp.pre_emption_capability ==
+                        OGS_5GC_PRE_EMPTION_DISABLED)
+                    _5gQoSProfile->arp->preempt_cap =
+                            OpenAPI_preemption_capability_NOT_PREEMPT;
+                ogs_assert(_5gQoSProfile->arp->preempt_cap);
+
+                if (session->qos.arp.pre_emption_vulnerability ==
                     OGS_5GC_PRE_EMPTION_ENABLED)
-                _5gQoSProfile->arp->preempt_cap =
-                        OpenAPI_preemption_capability_MAY_PREEMPT;
-            else if (session->qos.arp.pre_emption_capability ==
+                    _5gQoSProfile->arp->preempt_vuln =
+                        OpenAPI_preemption_vulnerability_PREEMPTABLE;
+                else if (session->qos.arp.pre_emption_vulnerability ==
                     OGS_5GC_PRE_EMPTION_DISABLED)
-                _5gQoSProfile->arp->preempt_cap =
-                        OpenAPI_preemption_capability_NOT_PREEMPT;
-            ogs_assert(_5gQoSProfile->arp->preempt_cap);
+                    _5gQoSProfile->arp->preempt_vuln =
+                        OpenAPI_preemption_vulnerability_NOT_PREEMPTABLE;
+                ogs_assert(_5gQoSProfile->arp->preempt_vuln);
 
-            if (session->qos.arp.pre_emption_vulnerability ==
-                OGS_5GC_PRE_EMPTION_ENABLED)
-                _5gQoSProfile->arp->preempt_vuln =
-                    OpenAPI_preemption_vulnerability_PREEMPTABLE;
-            else if (session->qos.arp.pre_emption_vulnerability ==
-                OGS_5GC_PRE_EMPTION_DISABLED)
-                _5gQoSProfile->arp->preempt_vuln =
-                    OpenAPI_preemption_vulnerability_NOT_PREEMPTABLE;
-            ogs_assert(_5gQoSProfile->arp->preempt_vuln);
+                dnnConfiguration->_5g_qos_profile = _5gQoSProfile;
 
-            dnnConfiguration->_5g_qos_profile = _5gQoSProfile;
+                ogs_assert(session->ambr.uplink || session->ambr.downlink);
+                sessionAmbr = ogs_calloc(1, sizeof(*sessionAmbr));
+                ogs_assert(sessionAmbr);
+                sessionAmbr->uplink = ogs_sbi_bitrate_to_string(
+                        session->ambr.uplink, OGS_SBI_BITRATE_KBPS);
+                sessionAmbr->downlink = ogs_sbi_bitrate_to_string(
+                        session->ambr.downlink, OGS_SBI_BITRATE_KBPS);
 
-            ogs_assert(session->ambr.uplink || session->ambr.downlink);
-            sessionAmbr = ogs_calloc(1, sizeof(*sessionAmbr));
-            ogs_assert(sessionAmbr);
-            sessionAmbr->uplink = ogs_sbi_bitrate_to_string(
-                    session->ambr.uplink, OGS_SBI_BITRATE_KBPS);
-            sessionAmbr->downlink = ogs_sbi_bitrate_to_string(
-                    session->ambr.downlink, OGS_SBI_BITRATE_KBPS);
+                dnnConfiguration->session_ambr = sessionAmbr;
 
-            dnnConfiguration->session_ambr = sessionAmbr;
+                staticIpAddress = OpenAPI_list_create();
+                ogs_assert(staticIpAddress);
 
-            staticIpAddress = OpenAPI_list_create();
-            ogs_assert(staticIpAddress);
+                if (session->ue_ip.ipv4 || session->ue_ip.ipv6) {
+                    ipAddress = ogs_calloc(1, sizeof(*ipAddress));
+                    ogs_assert(ipAddress);
 
-            if (session->ue_ip.ipv4 || session->ue_ip.ipv6) {
-                ipAddress = ogs_calloc(1, sizeof(*ipAddress));
-                ogs_assert(ipAddress);
+                    if (session->ue_ip.ipv4) {
+                        ipAddress->ipv4_addr =
+                            ogs_ipv4_to_string(session->ue_ip.addr);
+                        ogs_assert(ipAddress->ipv4_addr);
+                    }
+                    if (session->ue_ip.ipv6) {
+                        ipAddress->ipv6_addr =
+                            ogs_ipv6addr_to_string(session->ue_ip.addr6);
+                        ogs_assert(ipAddress->ipv6_addr);
+                    }
 
-                if (session->ue_ip.ipv4) {
-                    ipAddress->ipv4_addr =
-                        ogs_ipv4_to_string(session->ue_ip.addr);
-                    ogs_assert(ipAddress->ipv4_addr);
-                }
-                if (session->ue_ip.ipv6) {
-                    ipAddress->ipv6_addr =
-                        ogs_ipv6addr_to_string(session->ue_ip.addr6);
-                    ogs_assert(ipAddress->ipv6_addr);
+                    if (ipAddress->ipv4_addr || ipAddress->ipv6_addr)
+                        OpenAPI_list_add(staticIpAddress, ipAddress);
+                    else
+                        ogs_free(ipAddress);
                 }
 
-                if (ipAddress->ipv4_addr || ipAddress->ipv6_addr)
-                    OpenAPI_list_add(staticIpAddress, ipAddress);
+                if (staticIpAddress->count)
+                    dnnConfiguration->static_ip_address = staticIpAddress;
                 else
-                    ogs_free(ipAddress);
-            }
+                    OpenAPI_list_free(staticIpAddress);
 
-            if (staticIpAddress->count)
-                dnnConfiguration->static_ip_address = staticIpAddress;
-            else
-                OpenAPI_list_free(staticIpAddress);
+                dnnConfigurationMap = OpenAPI_map_create(
+                        session->name, dnnConfiguration);
+                ogs_assert(dnnConfigurationMap);
+                OpenAPI_list_add(dnnConfigurationList, dnnConfigurationMap);
 
-            dnnConfigurationMap = OpenAPI_map_create(
-                    session->name, dnnConfiguration);
-            ogs_assert(dnnConfigurationMap);
-            OpenAPI_list_add(dnnConfigurationList, dnnConfigurationMap);
+                if (session->ipv4_framed_routes) {
+                    int i;
+                    FrameRouteList = OpenAPI_list_create();
 
-            if (session->ipv4_framed_routes) {
-                int i;
-                FrameRouteList = OpenAPI_list_create();
-
-                for (i = 0; i < OGS_MAX_NUM_OF_FRAMED_ROUTES_IN_PDI; i++) {
-                    const char *route = session->ipv4_framed_routes[i];
-                    if (!route) break;
-                    OpenAPI_list_add(FrameRouteList,
-                                     OpenAPI_frame_route_info_create(
-                                             ogs_strdup(route), NULL));
+                    for (i = 0; i < OGS_MAX_NUM_OF_FRAMED_ROUTES_IN_PDI; i++) {
+                        const char *route = session->ipv4_framed_routes[i];
+                        if (!route) break;
+                        OpenAPI_list_add(FrameRouteList,
+                                        OpenAPI_frame_route_info_create(
+                                                ogs_strdup(route), NULL));
+                    }
+                    dnnConfiguration->ipv4_frame_route_list = FrameRouteList;
                 }
-                dnnConfiguration->ipv4_frame_route_list = FrameRouteList;
-            }
 
-            if (session->ipv6_framed_routes) {
-                int i;
-                FrameRouteList = OpenAPI_list_create();
+                if (session->ipv6_framed_routes) {
+                    int i;
+                    FrameRouteList = OpenAPI_list_create();
 
-                for (i = 0; i < OGS_MAX_NUM_OF_FRAMED_ROUTES_IN_PDI; i++) {
-                    const char *route = session->ipv6_framed_routes[i];
-                    if (!route) break;
-                    OpenAPI_list_add(FrameRouteList,
-                                     OpenAPI_frame_route_info_create(
-                                             NULL, ogs_strdup(route)));
+                    for (i = 0; i < OGS_MAX_NUM_OF_FRAMED_ROUTES_IN_PDI; i++) {
+                        const char *route = session->ipv6_framed_routes[i];
+                        if (!route) break;
+                        OpenAPI_list_add(FrameRouteList,
+                                        OpenAPI_frame_route_info_create(
+                                                NULL, ogs_strdup(route)));
+                    }
+                    dnnConfiguration->ipv6_frame_route_list = FrameRouteList;
                 }
-                dnnConfiguration->ipv6_frame_route_list = FrameRouteList;
             }
+
+            memset(&SessionManagementSubscriptionData, 0,
+                    sizeof(SessionManagementSubscriptionData));
+            SessionManagementSubscriptionData.single_nssai = &singleNSSAI;
+            if (dnnConfigurationList->count)
+                SessionManagementSubscriptionData.dnn_configurations =
+                    dnnConfigurationList;
+
+            OpenAPI_list_add(SessionManagementSubscriptionDataList,
+                &SessionManagementSubscriptionData);
         }
 
-        memset(&SessionManagementSubscriptionData, 0,
-                sizeof(SessionManagementSubscriptionData));
-        SessionManagementSubscriptionData.single_nssai = &singleNSSAI;
-        if (dnnConfigurationList->count)
-            SessionManagementSubscriptionData.dnn_configurations =
-                dnnConfigurationList;
+/* should we error if nothing is found in our list? */
 
-        if (!recvmsg->param.num_of_dataset_names) {
+        memset(&smSubsData, 0, sizeof(smSubsData));
+        smSubsData.session_management_subscription_data_list = 
+            SessionManagementSubscriptionDataList;
+
+        if (!returnProvisionedData) {
             memset(&sendmsg, 0, sizeof(sendmsg));
-            
-            sendmsg.SessionManagementSubscriptionDataList =
-                    OpenAPI_list_create();
-            ogs_assert(sendmsg.SessionManagementSubscriptionDataList);
 
-            OpenAPI_list_add(sendmsg.SessionManagementSubscriptionDataList,
-                &SessionManagementSubscriptionData);
+/* I think we need to make a copy for sendmsg.  check the updated commit from last time*/
+            sendmsg.SessionManagementSubscriptionDataList =
+                    SessionManagementSubscriptionDataList;
+            ogs_assert(sendmsg.SessionManagementSubscriptionDataList);
 
             response = ogs_sbi_build_response(&sendmsg, OGS_SBI_HTTP_STATUS_OK);
             ogs_assert(response);
@@ -983,20 +1014,21 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     }
 
     /* Build Provisioned Data Sets */
-    // maybe check that it was valid ds names?
-    if (recvmsg->param.num_of_dataset_names) {
+    // send data_not_found, not nothing...
+    if (returnProvisionedData) {
         OpenAPI_provisioned_data_sets_t ProvisionedDataSets;
 
         memset(&ProvisionedDataSets, 0,
                 sizeof(ProvisionedDataSets));
 
         if (processAmData) {
-            ProvisionedDataSets.am_data =
-                    &AccessAndMobilitySubscriptionData;
+            ProvisionedDataSets.am_data = &AccessAndMobilitySubscriptionData;
         }
         if (processSmfSel) {
-            ProvisionedDataSets.smf_sel_data =
-                    &SmfSelectionSubscriptionData;
+            ProvisionedDataSets.smf_sel_data = &SmfSelectionSubscriptionData;
+        }
+        if (processSmData) {
+            ProvisionedDataSets.sm_data = &smSubsData;
         }
         memset(&sendmsg, 0, sizeof(sendmsg));
         sendmsg.ProvisionedDataSets = &ProvisionedDataSets;
@@ -1071,7 +1103,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     if (processSmData) {
         OpenAPI_lnode_t *node = NULL, *node2 = NULL;
 
-        OpenAPI_list_free(sendmsg.SessionManagementSubscriptionDataList);
+        OpenAPI_list_free(SessionManagementSubscriptionDataList);
 
         if (singleNSSAI.sd)
             ogs_free(singleNSSAI.sd);
@@ -1155,6 +1187,9 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     ogs_subscription_data_free(&subscription_data);
 
     return true;
+
+//Wrap this below in an if(status).  put cleanup anchor above cleanup routines?
+// Put cleanup routines in reverse, and jump to specific cleanups?
 
 cleanup:
     ogs_assert(strerror);

@@ -632,9 +632,6 @@ bool udm_nudr_dr_handle_subscription_provisioned(
                     udm_ue->supi, NULL));
             return false;
         }
-        // I question this line...  is it clearing recvmsg?
-        memset(&ProvisionedDataSets, 0,
-                sizeof(ProvisionedDataSets));
 
         memset(&sendmsg, 0, sizeof(sendmsg));
 
