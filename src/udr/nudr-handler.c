@@ -520,7 +520,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             break;
         DEFAULT
             strerror = ogs_msprintf("Invalid resource name [%s]",
-                    recvmsg->h.resource.component[3]);
+                    recvmsg->h.resource.component[4]);
             status = OGS_SBI_HTTP_STATUS_METHOD_NOT_ALLOWED;
             goto cleanup;
         END
@@ -802,7 +802,6 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             ogs_assert(dnnConfigurationList);
 
             singleNSSAI->sst = slice_data->s_nssai.sst;
-// Might be missing a free.
             singleNSSAI->sd = ogs_s_nssai_sd_to_string(slice_data->s_nssai.sd);
 
             for (i = 0; i < slice_data->num_of_session; i++) {
@@ -995,9 +994,13 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                     sizeof(*SessionManagementSubscriptionData));
             ogs_assert(SessionManagementSubscriptionData);
             SessionManagementSubscriptionData->single_nssai = singleNSSAI;
-            if (dnnConfigurationList->count)
+            if (dnnConfigurationList->count) {
                 SessionManagementSubscriptionData->dnn_configurations =
                     dnnConfigurationList;
+                // Should we only include singleNSSAI if there's DNNs matching?
+            } else {
+                OpenAPI_list_free(dnnConfigurationList);
+            }
 
             OpenAPI_list_add(SessionManagementSubscriptionDataList,
                 SessionManagementSubscriptionData);
@@ -1122,7 +1125,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 ogs_free(singleNSSAI);
             }
 
-            if (SessionManagementSubscriptionData) {
+            if (SessionManagementSubscriptionData->dnn_configurations) {
                 dnnConfigurationList = SessionManagementSubscriptionData->dnn_configurations;
                 OpenAPI_list_for_each(dnnConfigurationList, node2) {
                     dnnConfigurationMap = node2->data;
