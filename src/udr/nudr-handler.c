@@ -439,7 +439,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         AccessAndMobilitySubscriptionData;
     OpenAPI_list_t *SessionManagementSubscriptionDataList = NULL;
     OpenAPI_session_management_subscription_data_t
-        SessionManagementSubscriptionData;
+        *SessionManagementSubscriptionData = NULL;
     OpenAPI_smf_selection_subscription_data_t SmfSelectionSubscriptionData;
 
     OpenAPI_list_t *GpsiList = NULL;
@@ -455,7 +455,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     OpenAPI_list_t *DnnInfoList = NULL;
     OpenAPI_dnn_info_t *DnnInfo = NULL;
 
-    OpenAPI_snssai_t singleNSSAI;
+    OpenAPI_snssai_t *singleNSSAI = NULL;
     OpenAPI_list_t *dnnConfigurationList = NULL;
     OpenAPI_map_t *dnnConfigurationMap = NULL;
     OpenAPI_dnn_configuration_t *dnnConfiguration = NULL;
@@ -770,8 +770,10 @@ bool udr_nudr_dr_handle_subscription_provisioned(
 // This currently relies on us to ask for a specific slice AND dnn, but, we may want all the slices and all the DNN.
 // Maybe wrap this in a for of all the subscription data slices.. check for the slice and "continue" out if we don't hit it.
 
+        /*
         dnnConfigurationList = OpenAPI_list_create();
         ogs_assert(dnnConfigurationList);
+        */
 
         SessionManagementSubscriptionDataList = OpenAPI_list_create();
         ogs_assert(SessionManagementSubscriptionDataList);
@@ -793,8 +795,15 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 }
             }
 
-            singleNSSAI.sst = slice_data->s_nssai.sst;
-            singleNSSAI.sd = ogs_s_nssai_sd_to_string(slice_data->s_nssai.sd);
+            singleNSSAI = ogs_calloc(1, sizeof(*singleNSSAI));
+            ogs_assert(singleNSSAI);
+            
+            dnnConfigurationList = ogs_calloc(1, sizeof(*dnnConfigurationList));
+            ogs_assert(dnnConfigurationList);
+
+            singleNSSAI->sst = slice_data->s_nssai.sst;
+// Might be missing a free.
+            singleNSSAI->sd = ogs_s_nssai_sd_to_string(slice_data->s_nssai.sd);
 
             for (i = 0; i < slice_data->num_of_session; i++) {
                 ogs_session_t *session = NULL;
@@ -982,15 +991,16 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 }
             }
 
-            memset(&SessionManagementSubscriptionData, 0,
-                    sizeof(SessionManagementSubscriptionData));
-            SessionManagementSubscriptionData.single_nssai = &singleNSSAI;
+            SessionManagementSubscriptionData = ogs_calloc(1,
+                    sizeof(*SessionManagementSubscriptionData));
+            ogs_assert(SessionManagementSubscriptionData);
+            SessionManagementSubscriptionData->single_nssai = singleNSSAI;
             if (dnnConfigurationList->count)
-                SessionManagementSubscriptionData.dnn_configurations =
+                SessionManagementSubscriptionData->dnn_configurations =
                     dnnConfigurationList;
 
             OpenAPI_list_add(SessionManagementSubscriptionDataList,
-                &SessionManagementSubscriptionData);
+                SessionManagementSubscriptionData);
         }
 
 /* should we error if nothing is found in our list? */
@@ -1101,87 +1111,96 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         OpenAPI_list_free(SubscribedSnssaiInfoList);
     }
     if (processSmData) {
-        OpenAPI_lnode_t *node = NULL, *node2 = NULL;
+        OpenAPI_lnode_t *node = NULL, *node2 = NULL, *node3 = NULL;
 
-        OpenAPI_list_free(SessionManagementSubscriptionDataList);
-
-        if (singleNSSAI.sd)
-            ogs_free(singleNSSAI.sd);
-
-        OpenAPI_list_for_each(dnnConfigurationList, node) {
-            dnnConfigurationMap = node->data;
-            if (dnnConfigurationMap) {
-                dnnConfiguration = dnnConfigurationMap->value;
-                if (dnnConfiguration) {
-                    pduSessionTypeList = dnnConfiguration->pdu_session_types;
-                    if (pduSessionTypeList) {
-                        if (pduSessionTypeList->allowed_session_types)
-                            OpenAPI_list_free(
-                                    pduSessionTypeList->allowed_session_types);
-                        ogs_free(pduSessionTypeList);
-                    }
-                    sscModeList = dnnConfiguration->ssc_modes;;
-                    if (sscModeList) {
-                        if (sscModeList->allowed_ssc_modes)
-                            OpenAPI_list_free(sscModeList->allowed_ssc_modes);
-                        ogs_free(sscModeList);
-                    }
-                    _5gQoSProfile = dnnConfiguration->_5g_qos_profile;
-                    if (_5gQoSProfile) {
-                        if (_5gQoSProfile->arp)
-                            ogs_free(_5gQoSProfile->arp);
-                        ogs_free(_5gQoSProfile);
-                    }
-
-                    sessionAmbr = dnnConfiguration->session_ambr;
-                    if (sessionAmbr) {
-                        if (sessionAmbr->uplink)
-                            ogs_free(sessionAmbr->uplink);
-                        if (sessionAmbr->downlink)
-                            ogs_free(sessionAmbr->downlink);
-                        ogs_free(sessionAmbr);
-                    }
-
-                    staticIpAddress = dnnConfiguration->static_ip_address;
-                    if (staticIpAddress) {
-                        OpenAPI_list_for_each(staticIpAddress, node2) {
-                            if (node2->data) {
-                                ipAddress = node2->data;
-                                if (ipAddress) {
-                                    if (ipAddress->ipv4_addr)
-                                        ogs_free(ipAddress->ipv4_addr);
-                                    if (ipAddress->ipv6_addr)
-                                        ogs_free(ipAddress->ipv6_addr);
-                                    ogs_free(ipAddress);
-                                }
-                            }
-                        }
-                        OpenAPI_list_free(staticIpAddress);
-                    }
-
-                    FrameRouteList = dnnConfiguration->ipv4_frame_route_list;
-                    OpenAPI_list_for_each(FrameRouteList, node2) {
-                        OpenAPI_frame_route_info_t *frame = node2->data;
-                        if (frame)
-                            ogs_free(frame);
-                    }
-                    OpenAPI_list_free(FrameRouteList);
-
-                    FrameRouteList = dnnConfiguration->ipv6_frame_route_list;
-                    OpenAPI_list_for_each(FrameRouteList, node2) {
-                        OpenAPI_frame_route_info_t *frame = node2->data;
-                        if (frame)
-                            ogs_free(frame);
-                    }
-                    OpenAPI_list_free(FrameRouteList);
-
-                    ogs_free(dnnConfiguration);
-                }
-                ogs_free(dnnConfigurationMap);
+        OpenAPI_list_for_each(SessionManagementSubscriptionDataList, node) {
+            SessionManagementSubscriptionData = node->data;
+            if (SessionManagementSubscriptionData->single_nssai) {
+                singleNSSAI = SessionManagementSubscriptionData->single_nssai;
+                if (singleNSSAI->sd)
+                    ogs_free(singleNSSAI->sd);
+                ogs_free(singleNSSAI);
             }
-        }
 
-        OpenAPI_list_free(dnnConfigurationList);
+            if (SessionManagementSubscriptionData) {
+                dnnConfigurationList = SessionManagementSubscriptionData->dnn_configurations;
+                OpenAPI_list_for_each(dnnConfigurationList, node2) {
+                    dnnConfigurationMap = node2->data;
+                    if (dnnConfigurationMap) {
+                        dnnConfiguration = dnnConfigurationMap->value;
+                        if (dnnConfiguration) {
+                            pduSessionTypeList = dnnConfiguration->pdu_session_types;
+                            if (pduSessionTypeList) {
+                                if (pduSessionTypeList->allowed_session_types)
+                                    OpenAPI_list_free(
+                                            pduSessionTypeList->allowed_session_types);
+                                ogs_free(pduSessionTypeList);
+                            }
+                            sscModeList = dnnConfiguration->ssc_modes;;
+                            if (sscModeList) {
+                                if (sscModeList->allowed_ssc_modes)
+                                    OpenAPI_list_free(sscModeList->allowed_ssc_modes);
+                                ogs_free(sscModeList);
+                            }
+                            _5gQoSProfile = dnnConfiguration->_5g_qos_profile;
+                            if (_5gQoSProfile) {
+                                if (_5gQoSProfile->arp)
+                                    ogs_free(_5gQoSProfile->arp);
+                                ogs_free(_5gQoSProfile);
+                            }
+
+                            sessionAmbr = dnnConfiguration->session_ambr;
+                            if (sessionAmbr) {
+                                if (sessionAmbr->uplink)
+                                    ogs_free(sessionAmbr->uplink);
+                                if (sessionAmbr->downlink)
+                                    ogs_free(sessionAmbr->downlink);
+                                ogs_free(sessionAmbr);
+                            }
+
+                            staticIpAddress = dnnConfiguration->static_ip_address;
+                            if (staticIpAddress) {
+                                OpenAPI_list_for_each(staticIpAddress, node3) {
+                                    if (node3->data) {
+                                        ipAddress = node3->data;
+                                        if (ipAddress) {
+                                            if (ipAddress->ipv4_addr)
+                                                ogs_free(ipAddress->ipv4_addr);
+                                            if (ipAddress->ipv6_addr)
+                                                ogs_free(ipAddress->ipv6_addr);
+                                            ogs_free(ipAddress);
+                                        }
+                                    }
+                                }
+                                OpenAPI_list_free(staticIpAddress);
+                            }
+
+                            FrameRouteList = dnnConfiguration->ipv4_frame_route_list;
+                            OpenAPI_list_for_each(FrameRouteList, node3) {
+                                OpenAPI_frame_route_info_t *frame = node3->data;
+                                if (frame)
+                                    ogs_free(frame);
+                            }
+                            OpenAPI_list_free(FrameRouteList);
+
+                            FrameRouteList = dnnConfiguration->ipv6_frame_route_list;
+                            OpenAPI_list_for_each(FrameRouteList, node3) {
+                                OpenAPI_frame_route_info_t *frame = node3->data;
+                                if (frame)
+                                    ogs_free(frame);
+                            }
+                            OpenAPI_list_free(FrameRouteList);
+
+                            ogs_free(dnnConfiguration);
+                        }
+                        ogs_free(dnnConfigurationMap);
+                    }
+                }
+                OpenAPI_list_free(dnnConfigurationList);
+            }
+            ogs_free(SessionManagementSubscriptionData);
+        }
+        OpenAPI_list_free(SessionManagementSubscriptionDataList);
     }
 
     ogs_subscription_data_free(&subscription_data);
