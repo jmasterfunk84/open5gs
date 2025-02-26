@@ -476,6 +476,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     memset(&AccessAndMobilitySubscriptionData, 0,
             sizeof(AccessAndMobilitySubscriptionData));
     memset(&SubscribedUeAmbr, 0, sizeof(SubscribedUeAmbr));
+    memset(&NSSAI, 0, sizeof(NSSAI));
     memset(&subscription_data, 0, sizeof(ogs_subscription_data_t));
     memset(&SmfSelectionSubscriptionData, 0,
             sizeof(SmfSelectionSubscriptionData));
@@ -527,23 +528,30 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     } else {
         returnProvisionedData = true;
         if (recvmsg->param.num_of_dataset_names) {
-            int i;
+            int i, validParams = false;
             for (i = 0; i < recvmsg->param.num_of_dataset_names; i++) {
                 SWITCH(recvmsg->param.dataset_names[i])
                 CASE(OGS_SBI_PARAM_DATASET_NAME_AM)
                     processAmData = true;
+                    validParams = true;
                     break;
                 CASE(OGS_SBI_PARAM_DATASET_NAME_SMF_SEL)
                     processSmfSel = true;
+                    validParams = true;
                     break;
                 CASE(OGS_SBI_PARAM_DATASET_NAME_SM)
                     processSmData = true;
+                    validParams = true;
                     break;
                 DEFAULT
                     ogs_error("Unexpected dataset-name! [%s]",
                             recvmsg->param.dataset_names[i]);
                 END
-                // What if nothing was selected here??
+            }
+            if (!validParams) {
+                strerror = ogs_msprintf("No valid dataset-names");
+                status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
+                goto cleanup;
             }
         } else {
             processAmData = true;
@@ -607,7 +615,6 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         }
 
         if (processNssai) {
-            memset(&NSSAI, 0, sizeof(NSSAI));
             DefaultSingleNssaiList = OpenAPI_list_create();
             for (i = 0; i < subscription_data.num_of_slice; i++) {
                 slice_data = &subscription_data.slice[i];
@@ -748,7 +755,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     if (processSmData) {
         int i, j;
 
-        if (recvmsg->param.single_nssai_presence) {
+        if (recvmsg->param.single_nssai_presence && !returnProvisionedData) {
             slice_data = ogs_slice_find_by_s_nssai(
                     subscription_data.slice, subscription_data.num_of_slice,
                     &recvmsg->param.s_nssai);
@@ -759,20 +766,14 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                         supi,
                         recvmsg->param.s_nssai.sst,
                         recvmsg->param.s_nssai.sd.v);
-                status = OGS_SBI_HTTP_STATUS_BAD_REQUEST;
+                status = OGS_SBI_HTTP_STATUS_NOT_FOUND;
                 goto cleanup;
             }
         }
 
-// Can these jumps to cleanup work if we need to free from amdata above?
-// this can be filtered by singleNssai or dnn query params.
-// 29.503 6.1.3.8.3.1
-// This currently relies on us to ask for a specific slice AND dnn, but, we may want all the slices and all the DNN.
-// Maybe wrap this in a for of all the subscription data slices.. check for the slice and "continue" out if we don't hit it.
-
-        /*
-        dnnConfigurationList = OpenAPI_list_create();
-        ogs_assert(dnnConfigurationList);
+        /* According to 29.503 6.1.3.8.3.1
+        * sm-data can be filtered by singleNssai or dnn query params.
+        * If there is no filtering, then all NSSAIs and all DNNs are returned.
         */
 
         SessionManagementSubscriptionDataList = OpenAPI_list_create();
@@ -787,8 +788,9 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 continue;
             }
 
-            if (recvmsg->param.single_nssai_presence) {
-                if (slice_data->s_nssai.sst != recvmsg->param.s_nssai.sst &&
+            if (recvmsg->param.single_nssai_presence
+                    && !returnProvisionedData) {
+                if (slice_data->s_nssai.sst != recvmsg->param.s_nssai.sst ||
                         slice_data->s_nssai.sd.v !=
                         recvmsg->param.s_nssai.sd.v) {
                     continue;
@@ -818,7 +820,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 ogs_assert(session->name);
 
                 if (recvmsg->param.dnn &&
-                    ogs_strcasecmp(recvmsg->param.dnn, session->name) != 0)
+                    ogs_strcasecmp(recvmsg->param.dnn, session->name) != 0 &&
+                    !returnProvisionedData)
                     continue;
 
                 if (!session->qos.index) {
@@ -993,29 +996,37 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             SessionManagementSubscriptionData = ogs_calloc(1,
                     sizeof(*SessionManagementSubscriptionData));
             ogs_assert(SessionManagementSubscriptionData);
-            SessionManagementSubscriptionData->single_nssai = singleNSSAI;
             if (dnnConfigurationList->count) {
+                SessionManagementSubscriptionData->single_nssai = singleNSSAI;
                 SessionManagementSubscriptionData->dnn_configurations =
                     dnnConfigurationList;
-                // Should we only include singleNSSAI if there's DNNs matching?
+                OpenAPI_list_add(SessionManagementSubscriptionDataList,
+                    SessionManagementSubscriptionData);
             } else {
+                if (singleNSSAI->sd)
+                    ogs_free(singleNSSAI->sd);
+                ogs_free(singleNSSAI);
                 OpenAPI_list_free(dnnConfigurationList);
             }
-
-            OpenAPI_list_add(SessionManagementSubscriptionDataList,
-                SessionManagementSubscriptionData);
         }
-
-/* should we error if nothing is found in our list? */
 
         memset(&smSubsData, 0, sizeof(smSubsData));
         smSubsData.session_management_subscription_data_list = 
             SessionManagementSubscriptionDataList;
 
         if (!returnProvisionedData) {
+            if (!SessionManagementSubscriptionDataList->count) {
+                strerror = ogs_msprintf("[%s] Cannot find S_NSSAI with DNN"
+                        "[SST:%d SD:0x%x, DNN:%s]",
+                        supi,
+                        recvmsg->param.s_nssai.sst,
+                        recvmsg->param.s_nssai.sd.v,
+                        recvmsg->param.dnn);
+                status = OGS_SBI_HTTP_STATUS_NOT_FOUND;
+                goto cleanup;
+            }
             memset(&sendmsg, 0, sizeof(sendmsg));
 
-/* I think we need to make a copy for sendmsg.  check the updated commit from last time*/
             sendmsg.SessionManagementSubscriptionDataList =
                     SessionManagementSubscriptionDataList;
             ogs_assert(sendmsg.SessionManagementSubscriptionDataList);
@@ -1027,7 +1038,6 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     }
 
     /* Build Provisioned Data Sets */
-    // send data_not_found, not nothing...
     if (returnProvisionedData) {
         OpenAPI_provisioned_data_sets_t ProvisionedDataSets;
 
@@ -1051,7 +1061,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         ogs_assert(true == ogs_sbi_server_send_response(stream, response));
     }
 
-    // Free resources used above
+    /* Free resources used above */
     if (processAmData) {
         OpenAPI_lnode_t *node = NULL;
 
@@ -1126,13 +1136,15 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             }
 
             if (SessionManagementSubscriptionData->dnn_configurations) {
-                dnnConfigurationList = SessionManagementSubscriptionData->dnn_configurations;
+                dnnConfigurationList =
+                        SessionManagementSubscriptionData->dnn_configurations;
                 OpenAPI_list_for_each(dnnConfigurationList, node2) {
                     dnnConfigurationMap = node2->data;
                     if (dnnConfigurationMap) {
                         dnnConfiguration = dnnConfigurationMap->value;
                         if (dnnConfiguration) {
-                            pduSessionTypeList = dnnConfiguration->pdu_session_types;
+                            pduSessionTypeList =
+                                    dnnConfiguration->pdu_session_types;
                             if (pduSessionTypeList) {
                                 if (pduSessionTypeList->allowed_session_types)
                                     OpenAPI_list_free(
@@ -1142,7 +1154,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                             sscModeList = dnnConfiguration->ssc_modes;;
                             if (sscModeList) {
                                 if (sscModeList->allowed_ssc_modes)
-                                    OpenAPI_list_free(sscModeList->allowed_ssc_modes);
+                                    OpenAPI_list_free(
+                                            sscModeList->allowed_ssc_modes);
                                 ogs_free(sscModeList);
                             }
                             _5gQoSProfile = dnnConfiguration->_5g_qos_profile;
@@ -1161,7 +1174,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                                 ogs_free(sessionAmbr);
                             }
 
-                            staticIpAddress = dnnConfiguration->static_ip_address;
+                            staticIpAddress =
+                                    dnnConfiguration->static_ip_address;
                             if (staticIpAddress) {
                                 OpenAPI_list_for_each(staticIpAddress, node3) {
                                     if (node3->data) {
@@ -1178,7 +1192,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                                 OpenAPI_list_free(staticIpAddress);
                             }
 
-                            FrameRouteList = dnnConfiguration->ipv4_frame_route_list;
+                            FrameRouteList =
+                                    dnnConfiguration->ipv4_frame_route_list;
                             OpenAPI_list_for_each(FrameRouteList, node3) {
                                 OpenAPI_frame_route_info_t *frame = node3->data;
                                 if (frame)
@@ -1186,7 +1201,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                             }
                             OpenAPI_list_free(FrameRouteList);
 
-                            FrameRouteList = dnnConfiguration->ipv6_frame_route_list;
+                            FrameRouteList =
+                                    dnnConfiguration->ipv6_frame_route_list;
                             OpenAPI_list_for_each(FrameRouteList, node3) {
                                 OpenAPI_frame_route_info_t *frame = node3->data;
                                 if (frame)
@@ -1209,9 +1225,6 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     ogs_subscription_data_free(&subscription_data);
 
     return true;
-
-//Wrap this below in an if(status).  put cleanup anchor above cleanup routines?
-// Put cleanup routines in reverse, and jump to specific cleanups?
 
 cleanup:
     ogs_assert(strerror);
