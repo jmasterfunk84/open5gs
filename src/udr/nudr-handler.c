@@ -993,10 +993,10 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                 }
             }
 
-            SessionManagementSubscriptionData = ogs_calloc(1,
-                    sizeof(*SessionManagementSubscriptionData));
-            ogs_assert(SessionManagementSubscriptionData);
             if (dnnConfigurationList->count) {
+                SessionManagementSubscriptionData = ogs_calloc(1,
+                        sizeof(*SessionManagementSubscriptionData));
+                ogs_assert(SessionManagementSubscriptionData);
                 SessionManagementSubscriptionData->single_nssai = singleNSSAI;
                 SessionManagementSubscriptionData->dnn_configurations =
                     dnnConfigurationList;
@@ -1016,6 +1016,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
 
         if (!returnProvisionedData) {
             if (!SessionManagementSubscriptionDataList->count) {
+                OpenAPI_list_free(SessionManagementSubscriptionDataList);
+
                 strerror = ogs_msprintf("[%s] Cannot find S_NSSAI with DNN"
                         "[SST:%d SD:0x%x, DNN:%s]",
                         supi,
