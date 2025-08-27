@@ -700,18 +700,6 @@ static int hss_s6a_avp_add_subscription_data(
                 ret = fd_msg_avp_add(apn_configuration,
                         MSG_BRW_LAST_CHILD, pdn_gw_allocation_type);
                 ogs_assert(ret == 0);
-            } else {
-                ret = fd_msg_avp_new(ogs_diam_s6a_pdn_gw_allocation_type, 0,
-                            &pdn_gw_allocation_type);
-                ogs_assert(ret == 0);
-
-                val.u32 = OGS_DIAM_S6A_PDN_GW_ALLOCATION_DYNAMIC;
-                ret = fd_msg_avp_setvalue(pdn_gw_allocation_type, &val);
-                ogs_assert(ret == 0);
-
-                ret = fd_msg_avp_add(apn_configuration,
-                        MSG_BRW_LAST_CHILD, pdn_gw_allocation_type);
-                ogs_assert(ret == 0);
             }
 
             /* Set VPLMN-Dynamic-Address-Allowed */
