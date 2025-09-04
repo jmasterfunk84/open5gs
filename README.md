@@ -9,6 +9,16 @@ Please follow the [documentation](https://open5gs.org/open5gs/docs/) at [open5gs
 If you find Open5GS useful for work, please consider supporting this Open Source project by [Becoming a sponsor](https://github.com/sponsors/acetcom). To manage the funding transactions transparently, you can donate through [OpenCollective](https://opencollective.com/open5gs).
 
 <p align="center">
+  <h3 align="center">Special Sponsor</h3>
+</p>
+
+<p align="center">
+  <a target="_blank" href="https://mobi.com">
+  <img alt="special sponsor mobi" src="https://open5gs.org/assets/img/mobi-open5GS.png" width="400">
+  </a>
+</p>
+
+<p align="center">
   <a target="_blank" href="https://open5gs.org/#sponsors">
       <img alt="sponsors" src="https://open5gs.org/assets/img/sponsors.svg">
   </a>
@@ -27,4 +37,8 @@ If you're contributing through a pull request to Open5GS project on GitHub, plea
 ## License
 
 - Open5GS Open Source files are made available under the terms of the GNU Affero General Public License ([GNU AGPL v3.0](https://www.gnu.org/licenses/agpl-3.0.html)).
-- [Commercial licenses](https://open5gs.org/open5gs/support/) are also available from [NeoPlane](https://neoplane.io/)
+- [Commercial licenses](https://open5gs.org/open5gs/support/) are also available from [NewPlane](https://newplane.io/) at [sales@newplane.io](mailto:sales@newplane.io).
+
+## Support
+
+Technical support and customized services for Open5GS are provided by [NewPlane](https://newplane.io/) at [support@newplane.io](mailto:support@newplane.io).

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2025 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -56,11 +56,9 @@ extern "C" {
 typedef struct ogs_pfcp_xact_s ogs_pfcp_xact_t;
 
 ogs_sock_t *ogs_pfcp_server(ogs_socknode_t *node);
-int ogs_pfcp_connect(
-    ogs_sock_t *ipv4, ogs_sock_t *ipv6, ogs_pfcp_node_t *node);
-
-int ogs_pfcp_send(ogs_pfcp_node_t *node, ogs_pkbuf_t *pkbuf);
 int ogs_pfcp_sendto(ogs_pfcp_node_t *node, ogs_pkbuf_t *pkbuf);
+
+ogs_pkbuf_t *ogs_pfcp_recvfrom(ogs_socket_t fd, ogs_sockaddr_t *from);
 
 ogs_pkbuf_t *ogs_pfcp_handle_echo_req(ogs_pkbuf_t *pkt);
 
@@ -78,12 +76,10 @@ int ogs_pfcp_up_send_association_setup_request(ogs_pfcp_node_t *node,
 int ogs_pfcp_up_send_association_setup_response(ogs_pfcp_xact_t *xact,
         uint8_t cause);
 
-void ogs_pfcp_send_g_pdu(
-        ogs_pfcp_pdr_t *pdr,
-        ogs_gtp2_header_desc_t *sendhdr, ogs_pkbuf_t *sendbuf);
-int ogs_pfcp_send_end_marker(ogs_pfcp_pdr_t *pdr);
+void ogs_pfcp_send_gtpu(ogs_pfcp_pdr_t *pdr, ogs_pkbuf_t *sendbuf);
+void ogs_pfcp_send_buffered_gtpu(ogs_pfcp_pdr_t *pdr);
 
-void ogs_pfcp_send_buffered_packet(ogs_pfcp_pdr_t *pdr);
+int ogs_pfcp_send_end_marker(ogs_pfcp_pdr_t *pdr);
 
 void ogs_pfcp_send_error_message(
     ogs_pfcp_xact_t *xact, uint64_t seid, uint8_t type,

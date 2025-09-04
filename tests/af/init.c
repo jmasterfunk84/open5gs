@@ -37,6 +37,10 @@ int af_initialize(void)
     ogs_sbi_context_init(OpenAPI_nf_type_AF);
     af_context_init();
 
+    rv = ogs_log_config_domain(
+            ogs_app()->logger.domain, ogs_app()->logger.level);
+    if (rv != OGS_OK) return rv;
+
     no_scp = ogs_global_conf()->parameter.no_scp;
     no_nrf = ogs_global_conf()->parameter.no_nrf;
 
@@ -50,10 +54,6 @@ int af_initialize(void)
     ogs_global_conf()->parameter.no_nrf = no_nrf;
 
     rv = af_context_parse_config();
-    if (rv != OGS_OK) return rv;
-
-    rv = ogs_log_config_domain(
-            ogs_app()->logger.domain, ogs_app()->logger.level);
     if (rv != OGS_OK) return rv;
 
     rv = af_sbi_open();
@@ -73,7 +73,7 @@ static void event_termination(void)
 {
     ogs_sbi_nf_instance_t *nf_instance = NULL;
 
-    /* Sending NF Instance De-registeration to NRF */
+    /* Sending NF Instance De-registration to NRF */
     ogs_list_for_each(&ogs_sbi_self()->nf_instance_list, nf_instance)
         ogs_sbi_nf_fsm_fini(nf_instance);
 
@@ -117,7 +117,7 @@ static void af_main(void *data)
         /*
          * After ogs_pollset_poll(), ogs_timer_mgr_expire() must be called.
          *
-         * The reason is why ogs_timer_mgr_next() can get the corrent value
+         * The reason is why ogs_timer_mgr_next() can get the current value
          * when ogs_timer_stop() is called internally in ogs_timer_mgr_expire().
          *
          * You should not use event-queue before ogs_timer_mgr_expire().

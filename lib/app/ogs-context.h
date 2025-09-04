@@ -37,9 +37,14 @@ typedef struct ogs_app_context_s {
     const char *db_uri;
 
     struct {
+        ogs_log_ts_e timestamp;
+    } logger_default;
+
+    struct {
         const char *file;
         const char *level;
         const char *domain;
+        ogs_log_ts_e timestamp;
     } logger;
 
     ogs_queue_t *queue;
@@ -51,7 +56,7 @@ typedef struct ogs_app_context_s {
     } usrsctp;
 
     struct {
-        uint64_t packet;
+        uint64_t gtpu;
 
         uint64_t sess;
         uint64_t bearer;
@@ -79,6 +84,8 @@ typedef struct ogs_app_context_s {
     struct metrics {
         uint64_t max_specs;
     } metrics;
+
+    int config_section_id;
 
 } ogs_app_context_t;
 

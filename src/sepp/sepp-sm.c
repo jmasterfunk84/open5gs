@@ -42,6 +42,7 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
     sepp_node_t *sepp_node = NULL;
 
     ogs_sbi_stream_t *stream = NULL;
+    ogs_pool_id_t stream_id = OGS_INVALID_POOL_ID;
     ogs_sbi_request_t *request = NULL;
     ogs_sbi_server_t *server = NULL;
 
@@ -64,8 +65,17 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
     case OGS_EVENT_SBI_SERVER:
         request = e->h.sbi.request;
         ogs_assert(request);
-        stream = e->h.sbi.data;
-        ogs_assert(stream);
+
+        stream_id = OGS_POINTER_TO_UINT(e->h.sbi.data);
+        ogs_assert(stream_id >= OGS_MIN_POOL_ID &&
+                stream_id <= OGS_MAX_POOL_ID);
+
+        stream = ogs_sbi_stream_find_by_id(stream_id);
+        if (!stream) {
+            ogs_error("STREAM has already been removed [%d]", stream_id);
+            break;
+        }
+
         server = ogs_sbi_server_from_stream(stream);
         ogs_assert(server);
 
@@ -76,7 +86,7 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
             ogs_assert(true ==
                 ogs_sbi_server_send_error(
                     stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    NULL, "cannot parse HTTP sbi_message", NULL));
+                    NULL, "cannot parse HTTP sbi_message", NULL, NULL));
             break;
         }
 
@@ -85,7 +95,7 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
             ogs_assert(true ==
                 ogs_sbi_server_send_error(
                     stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    &message, "Not supported version", NULL));
+                    &message, "Not supported version", NULL, NULL));
             ogs_sbi_message_free(&message);
             break;
         }
@@ -111,7 +121,7 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
                     ogs_assert(true ==
                         ogs_sbi_server_send_error(stream,
                             OGS_SBI_HTTP_STATUS_FORBIDDEN, &message,
-                            "Invalid HTTP method", message.h.method));
+                            "Invalid HTTP method", message.h.method, NULL));
                 END
                 break;
 
@@ -122,7 +132,7 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
                     ogs_sbi_server_send_error(stream,
                         OGS_SBI_HTTP_STATUS_BAD_REQUEST, &message,
                         "Invalid resource name",
-                        message.h.resource.component[0]));
+                        message.h.resource.component[0], NULL));
             END
             break;
 
@@ -157,7 +167,7 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
                     ogs_assert(true ==
                         ogs_sbi_server_send_error(stream,
                             OGS_SBI_HTTP_STATUS_FORBIDDEN, &message,
-                            "Invalid HTTP method", message.h.method));
+                            "Invalid HTTP method", message.h.method, NULL));
                 END
                 break;
 
@@ -168,7 +178,7 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
                     ogs_sbi_server_send_error(stream,
                         OGS_SBI_HTTP_STATUS_BAD_REQUEST, &message,
                         "Invalid resource name",
-                        message.h.resource.component[0]));
+                        message.h.resource.component[0], NULL));
             END
 
             if (!sepp_node) {
@@ -176,7 +186,7 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
                 ogs_assert(true ==
                     ogs_sbi_server_send_error(
                         stream, OGS_SBI_HTTP_STATUS_NOT_FOUND,
-                        &message, "Not found", message.h.method));
+                        &message, "Not found", message.h.method, NULL));
                 break;
             }
 
@@ -194,7 +204,7 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream,
                     OGS_SBI_HTTP_STATUS_BAD_REQUEST, &message,
-                    "Invalid API name", message.h.service.name));
+                    "Invalid API name", message.h.service.name, NULL));
         END
 
         /* In lib/sbi/server.c, notify_completed() releases 'request' buffer. */
@@ -231,11 +241,32 @@ void sepp_state_operational(ogs_fsm_t *s, sepp_event_t *e)
                 nf_instance = e->h.sbi.data;
                 ogs_assert(nf_instance);
 
+    /*
+     * Guard against dispatching to an FSM that may have been finalized
+     * by an asynchronous shutdown triggered by SIGTERM.
+     *
+     * In init.c’s event_termination(), which can be invoked asynchronously
+     * when the process receives SIGTERM, we iterate over all NF instances:
+     *     ogs_list_for_each(&ogs_sbi_self()->nf_instance_list, nf_instance)
+     *         ogs_sbi_nf_fsm_fini(nf_instance);
+     * and call ogs_fsm_fini() on each instance’s FSM. That finalizes the FSM
+     * and its state is reset to zero.
+     *
+     * After event_termination(), any incoming SBI response—such as an NRF
+     * client callback arriving after deregistration—would otherwise be
+     * dispatched into a dead FSM and trigger an assertion failure.
+     *
+     * To avoid this, we check OGS_FSM_STATE(&nf_instance->sm):
+     *   - If non-zero, the FSM is still active and can safely handle the event.
+     *   - If zero, the FSM has already been finalized by event_termination(),
+     *     so we log and drop the event to allow graceful shutdown.
+     */
                 old_state = OGS_FSM_STATE(&nf_instance->sm);
-                ogs_assert(old_state);
-
-                e->h.sbi.message = &message;
-                ogs_fsm_dispatch(&nf_instance->sm, e);
+                if (old_state) {
+                    e->h.sbi.message = &message;
+                    ogs_fsm_dispatch(&nf_instance->sm, e);
+                } else
+                    ogs_error("NF instance FSM has been finalized");
 
             /*
              * The SEPP on the H-PLMN should send a n32c-handshake message

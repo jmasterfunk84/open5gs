@@ -30,7 +30,7 @@
 extern "C" {
 #endif
 
-/* The Packet Buffer(ogs_pkbuf_t) for NAS message MUST make a HEADROOM. 
+/* The Packet Buffer(ogs_pkbuf_t) for NAS message MUST make a HEADROOM.
  * When calculating AES_CMAC, we need to use the headroom of the packet. */
 #define OGS_NAS_HEADROOM 16
 
@@ -41,8 +41,6 @@ extern "C" {
 #define OGS_NAS_SECURITY_HEADER_INTEGRITY_PROTECTED_AND_CIPHTERD_WITH_NEW_INTEGRITY_CONTEXT 4
 #define OGS_NAS_SECURITY_HEADER_INTEGRITY_PROTECTED_AND_PARTICALLY_CIPHTERD 5
 #define OGS_NAS_SECURITY_HEADER_FOR_SERVICE_REQUEST_MESSAGE 12
-
-#define OGS_NAS_PROCEDURE_TRANSACTION_IDENTITY_UNASSIGNED 0
 
 #define OGS_NAS_CLEAR_DATA(__dATA) \
     do { \

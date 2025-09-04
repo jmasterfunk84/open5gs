@@ -24,11 +24,15 @@
 
 static int sess_fill_mm_context_decoded(mme_sess_t *sess, ogs_gtp1_mm_context_decoded_t *mmctx_dec)
 {
-    mme_ue_t *mme_ue = sess->mme_ue;
+    mme_ue_t *mme_ue = NULL;
+
+    ogs_assert(sess);
+    mme_ue = mme_ue_find_by_id(sess->mme_ue_id);
+    ogs_assert(mme_ue);
     *mmctx_dec = (ogs_gtp1_mm_context_decoded_t) {
         .gupii = 1, /* Integrity Protection not required */
         .ugipai = 1, /* Ignore "Used GPRS integrity protection algorithm" field" */
-        .ksi = mme_ue->nas_eps.ksi,
+        .ksi = mme_ue->nas_eps.mme.ksi,
         .sec_mode = OGS_GTP1_SEC_MODE_UMTS_KEY_AND_QUINTUPLETS,
         .num_vectors = 0, /* TODO: figure out how to fill the quintuplets */
         .drx_param = {
@@ -55,8 +59,13 @@ static int sess_fill_mm_context_decoded(mme_sess_t *sess, ogs_gtp1_mm_context_de
 static void build_qos_profile_from_session(ogs_gtp1_qos_profile_decoded_t *qos_pdec,
         const mme_sess_t *sess, const mme_bearer_t *bearer)
 {
-    const mme_ue_t *mme_ue = sess->mme_ue;
+    mme_ue_t *mme_ue = NULL;
     const ogs_session_t *session = sess->session;
+
+    ogs_assert(sess);
+    mme_ue = mme_ue_find_by_id(sess->mme_ue_id);
+    ogs_assert(mme_ue);
+
     /* FIXME: Initialize with defaults: */
     memset(qos_pdec, 0, sizeof(*qos_pdec));
 
@@ -140,6 +149,7 @@ static void build_qos_profile_from_session(ogs_gtp1_qos_profile_decoded_t *qos_p
 static int sess_fill_pdp_context_decoded(mme_sess_t *sess, ogs_gtp1_pdp_context_decoded_t *pdpctx_dec)
 {
     mme_bearer_t *bearer = NULL;
+    int rv;
 
     *pdpctx_dec = (ogs_gtp1_pdp_context_decoded_t){
         .ea = OGS_GTP1_PDPCTX_EXT_EUA_NO,
@@ -147,7 +157,7 @@ static int sess_fill_pdp_context_decoded(mme_sess_t *sess, ogs_gtp1_pdp_context_
         .asi = OGS_GTP1_PDPCTX_ACTIVITY_STATUS_IND_NO,
         .order = OGS_GTP1_PDPCTX_REORDERING_REQUIRED_NO,
         /* 3GPP TS 23.401 Annex D3.5.5 2b.:
-         * "The GTP equence numbers received from the old 3G-SGSN are only relevant if
+         * "The GTP sequence numbers received from the old 3G-SGSN are only relevant if
          * delivery order is required for the PDP context (QoS profile)."
          * NOTE 4: "The GTP and PDCP sequence numbers are not relevant" */
         .snd = 0,
@@ -156,16 +166,19 @@ static int sess_fill_pdp_context_decoded(mme_sess_t *sess, ogs_gtp1_pdp_context_
         .receive_npdu_nr = 0,
         .ul_teic = sess->pgw_s5c_teid,
         .pdp_type_org = OGS_PDP_EUA_ORG_IETF,
-        .pdp_type_num = {sess->session->session_type, },
-        .pdp_address = {sess->session->ue_ip, },
+        .pdp_type_num = {sess->paa.session_type, },
         .ggsn_address_c = sess->pgw_s5c_ip,
         .trans_id = sess->pti,
     };
 
     ogs_cpystrn(pdpctx_dec->apn, sess->session->name, sizeof(pdpctx_dec->apn));
 
+    rv = ogs_paa_to_ip(&sess->paa, &pdpctx_dec->pdp_address[0]);
+    if (rv != OGS_OK)
+        return rv;
+
     ogs_list_for_each(&sess->bearer_list, bearer) {
-        pdpctx_dec->nsapi  = bearer->ebi;
+        pdpctx_dec->nsapi = bearer->ebi; /* 3GPP TS 23.401 5.2.1, TS 23.060 14.4 */
         pdpctx_dec->sapi = 3; /* FIXME. Using 3 = default for now. Maybe use 0 = UNASSIGNED ?*/
         build_qos_profile_from_session(&pdpctx_dec->qos_sub, sess, bearer);
         //FIXME: sort out where to get each one:
@@ -184,13 +197,12 @@ static int sess_fill_pdp_context_decoded(mme_sess_t *sess, ogs_gtp1_pdp_context_
 
 /* 3GPP TS 29.060 7.5.3 SGSN Context Request */
 ogs_pkbuf_t *mme_gn_build_sgsn_context_request(
-                mme_ue_t *mme_ue)
+                mme_ue_t *mme_ue, const ogs_nas_p_tmsi_signature_t *ptmsi_sig)
 {
     ogs_gtp1_message_t gtp1_message;
     ogs_gtp1_sgsn_context_request_t *req = NULL;
     ogs_nas_rai_t rai;
     mme_p_tmsi_t ptmsi;
-    uint32_t ptmsi_sig;
     ogs_gtp1_gsn_addr_t mme_gnc_gsnaddr, mme_gnc_alt_gsnaddr;
     int gsn_len;
     int rv;
@@ -202,21 +214,25 @@ ogs_pkbuf_t *mme_gn_build_sgsn_context_request(
     req = &gtp1_message.sgsn_context_request;
     memset(&gtp1_message, 0, sizeof(ogs_gtp1_message_t));
 
-    guti_to_rai_ptmsi(&mme_ue->next.guti, &rai, &ptmsi, &ptmsi_sig);
+    guti_to_rai_ptmsi(&mme_ue->next.guti, &rai, &ptmsi);
 
     req->imsi.presence = 0;
 
     req->routeing_area_identity.presence = 1;
+    /* Needs to be big-endian */
+    rai.lai.lac = htons(rai.lai.lac);
     req->routeing_area_identity.data = &rai;
     req->routeing_area_identity.len = sizeof(ogs_nas_rai_t);
 
     req->temporary_logical_link_identifier.presence = 0;
 
     req->packet_tmsi.presence = 1;
-    req->packet_tmsi.u32 = be32toh(ptmsi);
+    req->packet_tmsi.u32 = ptmsi;
 
-    req->p_tmsi_signature.presence = 1;
-    req->p_tmsi_signature.u24 = ptmsi_sig;
+    if (ptmsi_sig) {
+        req->p_tmsi_signature.presence = 1;
+        req->p_tmsi_signature.u24 = *ptmsi_sig >> 8;
+    }
 
     req->ms_validated.presence = 0;
 

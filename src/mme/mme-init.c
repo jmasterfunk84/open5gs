@@ -52,6 +52,10 @@ int mme_initialize(void)
     rv = ogs_gtp_xact_init();
     if (rv != OGS_OK) return rv;
 
+    rv = ogs_log_config_domain(
+            ogs_app()->logger.domain, ogs_app()->logger.level);
+    if (rv != OGS_OK) return rv;
+
     rv = ogs_gtp_context_parse_config(APP_NAME, "sgwc");
     if (rv != OGS_OK) return rv;
 
@@ -59,10 +63,6 @@ int mme_initialize(void)
     if (rv != OGS_OK) return rv;
 
     rv = mme_context_parse_config();
-    if (rv != OGS_OK) return rv;
-
-    rv = ogs_log_config_domain(
-            ogs_app()->logger.domain, ogs_app()->logger.level);
     if (rv != OGS_OK) return rv;
 
     ogs_metrics_context_open(ogs_metrics_self());
@@ -126,7 +126,7 @@ static void mme_main(void *data)
         /*
          * After ogs_pollset_poll(), ogs_timer_mgr_expire() must be called.
          *
-         * The reason is why ogs_timer_mgr_next() can get the corrent value
+         * The reason is why ogs_timer_mgr_next() can get the current value
          * when ogs_timer_stop() is called internally in ogs_timer_mgr_expire().
          *
          * You should not use event-queue before ogs_timer_mgr_expire().

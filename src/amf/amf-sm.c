@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -64,9 +64,12 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
     amf_sess_t *sess = NULL;
 
     ogs_sbi_object_t *sbi_object = NULL;
+    ogs_pool_id_t sbi_object_id = OGS_INVALID_POOL_ID;
     ogs_sbi_xact_t *sbi_xact = NULL;
+    ogs_pool_id_t sbi_xact_id = OGS_INVALID_POOL_ID;
     int state = AMF_CREATE_SM_CONTEXT_NO_STATE;
     ogs_sbi_stream_t *stream = NULL;
+    ogs_pool_id_t stream_id = OGS_INVALID_POOL_ID;
     ogs_sbi_request_t *sbi_request = NULL;
     ogs_sbi_service_type_e service_type = OGS_SBI_SERVICE_TYPE_NULL;
 
@@ -74,6 +77,9 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
     ogs_sbi_subscription_data_t *subscription_data = NULL;
     ogs_sbi_response_t *sbi_response = NULL;
     ogs_sbi_message_t sbi_message;
+
+    OpenAPI_nf_type_e requester_nf_type = OpenAPI_nf_type_NULL;
+    ogs_sbi_discovery_option_t *discovery_option = NULL;
 
     amf_sm_debug(e);
 
@@ -89,8 +95,16 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
     case OGS_EVENT_SBI_SERVER:
         sbi_request = e->h.sbi.request;
         ogs_assert(sbi_request);
-        stream = e->h.sbi.data;
-        ogs_assert(stream);
+
+        stream_id = OGS_POINTER_TO_UINT(e->h.sbi.data);
+        ogs_assert(stream_id >= OGS_MIN_POOL_ID &&
+                stream_id <= OGS_MAX_POOL_ID);
+
+        stream = ogs_sbi_stream_find_by_id(stream_id);
+        if (!stream) {
+            ogs_error("STREAM has already been removed [%d]", stream_id);
+            break;
+        }
 
         rv = ogs_sbi_parse_request(&sbi_message, sbi_request);
         if (rv != OGS_OK) {
@@ -99,7 +113,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
             ogs_assert(true ==
                 ogs_sbi_server_send_error(
                     stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    NULL, "cannot parse HTTP sbi_message", NULL));
+                    NULL, "cannot parse HTTP sbi_message", NULL, NULL));
             break;
         }
 
@@ -117,7 +131,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
             ogs_assert(true ==
                 ogs_sbi_server_send_error(
                     stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    &sbi_message, "Not supported version", NULL));
+                    &sbi_message, "Not supported version", NULL, NULL));
             ogs_sbi_message_free(&sbi_message);
             break;
         }
@@ -137,7 +151,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                     ogs_assert(true ==
                         ogs_sbi_server_send_error(stream,
                             OGS_SBI_HTTP_STATUS_FORBIDDEN, &sbi_message,
-                            "Invalid HTTP method", sbi_message.h.method));
+                            "Invalid HTTP method", sbi_message.h.method, NULL));
                 END
                 break;
 
@@ -148,7 +162,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                     ogs_sbi_server_send_error(stream,
                         OGS_SBI_HTTP_STATUS_BAD_REQUEST, &sbi_message,
                         "Invalid resource name",
-                        sbi_message.h.resource.component[0]));
+                        sbi_message.h.resource.component[0], NULL));
             END
             break;
 
@@ -166,7 +180,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                                 ogs_sbi_server_send_error(stream,
                                     OGS_SBI_HTTP_STATUS_BAD_REQUEST,
                                     &sbi_message,
-                                    "No N1N2MessageTransferReqData", NULL));
+                                    "No N1N2MessageTransferReqData", NULL, NULL));
                         }
                         break;
 
@@ -176,7 +190,42 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                         ogs_assert(true ==
                             ogs_sbi_server_send_error(stream,
                                 OGS_SBI_HTTP_STATUS_FORBIDDEN, &sbi_message,
-                                "Invalid HTTP method", sbi_message.h.method));
+                                "Invalid HTTP method", sbi_message.h.method,
+                                NULL));
+                    END
+                    break;
+
+                CASE(OGS_SBI_RESOURCE_NAME_TRANSFER)
+                    SWITCH(sbi_message.h.method)
+                    CASE(OGS_SBI_HTTP_METHOD_POST)
+                        amf_namf_comm_handle_ue_context_transfer_request(
+                                stream, &sbi_message);
+                        break;
+                    DEFAULT
+                        ogs_error("Invalid HTTP method [%s]",
+                                sbi_message.h.method);
+                        ogs_assert(true ==
+                            ogs_sbi_server_send_error(stream,
+                                OGS_SBI_HTTP_STATUS_FORBIDDEN, &sbi_message,
+                                "Invalid HTTP method", sbi_message.h.method,
+                                NULL));
+                    END
+                    break;
+
+                CASE(OGS_SBI_RESOURCE_NAME_TRANSFER_UPDATE)
+                    SWITCH(sbi_message.h.method)
+                    CASE(OGS_SBI_HTTP_METHOD_POST)
+                        amf_namf_comm_handle_registration_status_update_request(
+                                stream, &sbi_message);
+                        break;
+                    DEFAULT
+                        ogs_error("Invalid HTTP method [%s]",
+                                sbi_message.h.method);
+                        ogs_assert(true ==
+                            ogs_sbi_server_send_error(stream,
+                                OGS_SBI_HTTP_STATUS_FORBIDDEN, &sbi_message,
+                                "Invalid HTTP method", sbi_message.h.method,
+                                NULL));
                     END
                     break;
 
@@ -187,7 +236,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                         ogs_sbi_server_send_error(stream,
                             OGS_SBI_HTTP_STATUS_BAD_REQUEST, &sbi_message,
                             "Invalid resource name",
-                            sbi_message.h.resource.component[2]));
+                            sbi_message.h.resource.component[2], NULL));
                 END
                 break;
 
@@ -198,7 +247,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                     ogs_sbi_server_send_error(stream,
                         OGS_SBI_HTTP_STATUS_BAD_REQUEST, &sbi_message,
                         "Invalid resource name",
-                        sbi_message.h.resource.component[0]));
+                        sbi_message.h.resource.component[0], NULL));
             END
             break;
 
@@ -229,7 +278,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                     ogs_sbi_server_send_error(stream,
                         OGS_SBI_HTTP_STATUS_BAD_REQUEST, &sbi_message,
                         "Invalid resource name",
-                        sbi_message.h.resource.component[1]));
+                        sbi_message.h.resource.component[1], NULL));
             END
             break;
 
@@ -238,7 +287,8 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream,
                     OGS_SBI_HTTP_STATUS_BAD_REQUEST, &sbi_message,
-                    "Invalid API name", sbi_message.h.resource.component[0]));
+                    "Invalid API name", sbi_message.h.resource.component[0],
+                    NULL));
         END
 
         /* In lib/sbi/server.c, notify_completed() releases 'request' buffer. */
@@ -282,10 +332,33 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
             CASE(OGS_SBI_RESOURCE_NAME_NF_INSTANCES)
                 nf_instance = e->h.sbi.data;
                 ogs_assert(nf_instance);
-                ogs_assert(OGS_FSM_STATE(&nf_instance->sm));
 
-                e->h.sbi.message = &sbi_message;
-                ogs_fsm_dispatch(&nf_instance->sm, e);
+    /*
+     * Guard against dispatching to an FSM that may have been finalized
+     * by an asynchronous shutdown triggered by SIGTERM.
+     *
+     * In init.c’s event_termination(), which can be invoked asynchronously
+     * when the process receives SIGTERM, we iterate over all NF instances:
+     *     ogs_list_for_each(&ogs_sbi_self()->nf_instance_list, nf_instance)
+     *         ogs_sbi_nf_fsm_fini(nf_instance);
+     * and call ogs_fsm_fini() on each instance’s FSM. That finalizes the FSM
+     * and its state is reset to zero.
+     *
+     * After event_termination(), any incoming SBI response—such as an NRF
+     * client callback arriving after deregistration—would otherwise be
+     * dispatched into a dead FSM and trigger an assertion failure.
+     *
+     * To avoid this, we check OGS_FSM_STATE(&nf_instance->sm):
+     *   - If non-zero, the FSM is still active and can safely handle the event.
+     *   - If zero, the FSM has already been finalized by event_termination(),
+     *     so we log and drop the event to allow graceful shutdown.
+     */
+                if (OGS_FSM_STATE(&nf_instance->sm)) {
+                    e->h.sbi.message = &sbi_message;
+                    ogs_fsm_dispatch(&nf_instance->sm, e);
+                } else
+                    ogs_error("NF instance FSM has been finalized");
+
                 break;
 
             CASE(OGS_SBI_RESOURCE_NAME_SUBSCRIPTIONS)
@@ -346,16 +419,28 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         CASE(OGS_SBI_SERVICE_NAME_NNRF_DISC)
             SWITCH(sbi_message.h.resource.component[0])
             CASE(OGS_SBI_RESOURCE_NAME_NF_INSTANCES)
-                sbi_xact = e->h.sbi.data;
-                ogs_assert(sbi_xact);
+                sbi_xact_id = OGS_POINTER_TO_UINT(e->h.sbi.data);
+                ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID &&
+                        sbi_xact_id <= OGS_MAX_POOL_ID);
+
+                sbi_xact = ogs_sbi_xact_find_by_id(sbi_xact_id);
+                if (!sbi_xact) {
+                    /* CLIENT_WAIT timer could remove SBI transaction
+                     * before receiving SBI message */
+                    ogs_error("SBI transaction has already been removed [%d]",
+                            sbi_xact_id);
+                    break;
+                }
 
                 SWITCH(sbi_message.h.method)
                 CASE(OGS_SBI_HTTP_METHOD_GET)
                     if (sbi_message.res_status == OGS_SBI_HTTP_STATUS_OK)
                         amf_nnrf_handle_nf_discover(sbi_xact, &sbi_message);
-                    else
+                    else {
                         ogs_error("HTTP response error [%d]",
                                 sbi_message.res_status);
+                        amf_nnrf_handle_failed_amf_discovery(sbi_xact);
+                    }
                     break;
 
                 DEFAULT
@@ -375,25 +460,29 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         CASE(OGS_SBI_SERVICE_NAME_NUDM_UECM)
         CASE(OGS_SBI_SERVICE_NAME_NUDM_SDM)
         CASE(OGS_SBI_SERVICE_NAME_NPCF_AM_POLICY_CONTROL)
-            sbi_xact = e->h.sbi.data;
-            ogs_assert(sbi_xact);
+        CASE(OGS_SBI_SERVICE_NAME_NAMF_COMM)
+            sbi_xact_id = OGS_POINTER_TO_UINT(e->h.sbi.data);
+            ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID &&
+                    sbi_xact_id <= OGS_MAX_POOL_ID);
 
-            sbi_xact = ogs_sbi_xact_cycle(sbi_xact);
+            sbi_xact = ogs_sbi_xact_find_by_id(sbi_xact_id);
             if (!sbi_xact) {
                 /* CLIENT_WAIT timer could remove SBI transaction
                  * before receiving SBI message */
-                ogs_error("SBI transaction has already been removed");
+                ogs_error("SBI transaction has already been removed [%d]",
+                        sbi_xact_id);
                 break;
             }
 
             state = sbi_xact->state;
 
-            amf_ue = (amf_ue_t *)sbi_xact->sbi_object;
-            ogs_assert(amf_ue);
+            sbi_object_id = sbi_xact->sbi_object_id;
+            ogs_assert(sbi_object_id >= OGS_MIN_POOL_ID &&
+                    sbi_object_id <= OGS_MAX_POOL_ID);
 
             ogs_sbi_xact_remove(sbi_xact);
 
-            amf_ue = amf_ue_cycle(amf_ue);
+            amf_ue = amf_ue_find_by_id(sbi_object_id);
             if (!amf_ue) {
                 ogs_error("UE(amf_ue) Context has already been removed");
                 break;
@@ -401,7 +490,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
 
             ogs_assert(OGS_FSM_STATE(&amf_ue->sm));
 
-            e->amf_ue = amf_ue;
+            e->amf_ue_id = amf_ue->id;
             e->h.sbi.message = &sbi_message;;
             e->h.sbi.state = state;
 
@@ -409,25 +498,28 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
             break;
 
         CASE(OGS_SBI_SERVICE_NAME_NSMF_PDUSESSION)
-            sbi_xact = e->h.sbi.data;
-            ogs_assert(sbi_xact);
+            sbi_xact_id = OGS_POINTER_TO_UINT(e->h.sbi.data);
+            ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID &&
+                    sbi_xact_id <= OGS_MAX_POOL_ID);
 
-            sbi_xact = ogs_sbi_xact_cycle(sbi_xact);
+            sbi_xact = ogs_sbi_xact_find_by_id(sbi_xact_id);
             if (!sbi_xact) {
                 /* CLIENT_WAIT timer could remove SBI transaction
                  * before receiving SBI message */
-                ogs_error("SBI transaction has already been removed");
+                ogs_error("SBI transaction has already been removed [%d]",
+                        sbi_xact_id);
                 break;
             }
 
             state = sbi_xact->state;
 
-            sess = (amf_sess_t *)sbi_xact->sbi_object;
-            ogs_assert(sess);
+            sbi_object_id = sbi_xact->sbi_object_id;
+            ogs_assert(sbi_object_id >= OGS_MIN_POOL_ID &&
+                    sbi_object_id <= OGS_MAX_POOL_ID);
 
             ogs_sbi_xact_remove(sbi_xact);
 
-            sess = amf_sess_cycle(sess);
+            sess = amf_sess_find_by_id(sbi_object_id);
             if (!sess) {
             /*
              * 1. If AMF-UE context is duplicated in Identity-Response,
@@ -465,15 +557,16 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                 break;
             }
 
-            amf_ue = sess->amf_ue;
-            ogs_assert(amf_ue);
-            amf_ue = amf_ue_cycle(amf_ue);
-            ogs_assert(amf_ue);
+            amf_ue = amf_ue_find_by_id(sess->amf_ue_id);
+            if (!amf_ue) {
+                ogs_error("UE(amf-ue) context has already been removed");
+                break;
+            }
 
             ogs_assert(OGS_FSM_STATE(&amf_ue->sm));
 
-            e->amf_ue = amf_ue;
-            e->sess = sess;
+            e->amf_ue_id = amf_ue->id;
+            e->sess_id = sess->id;
             e->h.sbi.message = &sbi_message;;
 
             SWITCH(sbi_message.h.resource.component[2])
@@ -525,43 +618,47 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
             break;
 
         CASE(OGS_SBI_SERVICE_NAME_NNSSF_NSSELECTION)
-            sbi_xact = e->h.sbi.data;
-            ogs_assert(sbi_xact);
+            sbi_xact_id = OGS_POINTER_TO_UINT(e->h.sbi.data);
+            ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID &&
+                    sbi_xact_id <= OGS_MAX_POOL_ID);
 
-            sbi_xact = ogs_sbi_xact_cycle(sbi_xact);
+            sbi_xact = ogs_sbi_xact_find_by_id(sbi_xact_id);
             if (!sbi_xact) {
                 /* CLIENT_WAIT timer could remove SBI transaction
                  * before receiving SBI message */
-                ogs_error("SBI transaction has already been removed");
+                ogs_error("SBI transaction has already been removed [%d]",
+                        sbi_xact_id);
                 break;
             }
 
-            sess = (amf_sess_t *)sbi_xact->sbi_object;
-            ogs_assert(sess);
+            sbi_object_id = sbi_xact->sbi_object_id;
+            ogs_assert(sbi_object_id >= OGS_MIN_POOL_ID &&
+                    sbi_object_id <= OGS_MAX_POOL_ID);
 
             state = sbi_xact->state;
 
             ogs_sbi_xact_remove(sbi_xact);
 
-            sess = amf_sess_cycle(sess);
+            sess = amf_sess_find_by_id(sbi_object_id);
             if (!sess) {
                 ogs_error("Session has already been removed");
                 break;
             }
 
-            amf_ue = sess->amf_ue;
-            ogs_assert(amf_ue);
-            amf_ue = amf_ue_cycle(amf_ue);
-            ogs_assert(amf_ue);
+            amf_ue = amf_ue_find_by_id(sess->amf_ue_id);
+            if (!amf_ue) {
+                ogs_error("UE(amf-ue) context has already been removed");
+                break;
+            }
 
             ogs_assert(OGS_FSM_STATE(&amf_ue->sm));
 
-            e->amf_ue = amf_ue;
-            e->sess = sess;
+            e->amf_ue_id = amf_ue->id;
+            e->sess_id = sess->id;
             e->h.sbi.message = &sbi_message;;
             e->h.sbi.state = state;
 
-            amf_nnssf_nsselection_handle_get(sess, &sbi_message);
+            amf_nnssf_nsselection_handle_get(sess, state, &sbi_message);
             break;
 
         DEFAULT
@@ -647,18 +744,29 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
              * 4. timer expiration event is processed. (double-free SBI xact)
              *
              * To avoid double-free SBI xact,
-             * we need to check ogs_sbi_xact_cycle()
+             * we need to check ogs_sbi_xact_find_by_id()
              */
-            sbi_xact = ogs_sbi_xact_cycle(e->h.sbi.data);
+            sbi_xact_id = OGS_POINTER_TO_UINT(e->h.sbi.data);
+            ogs_assert(sbi_xact_id >= OGS_MIN_POOL_ID &&
+                    sbi_xact_id <= OGS_MAX_POOL_ID);
+
+            sbi_xact = ogs_sbi_xact_find_by_id(sbi_xact_id);
             if (!sbi_xact) {
-                ogs_error("SBI transaction has already been removed");
+                ogs_error("SBI transaction has already been removed [%d]",
+                        sbi_xact_id);
                 break;
             }
 
             sbi_object = sbi_xact->sbi_object;
             ogs_assert(sbi_object);
 
+            sbi_object_id = sbi_xact->sbi_object_id;
+            ogs_assert(sbi_object_id >= OGS_MIN_POOL_ID &&
+                    sbi_object_id <= OGS_MAX_POOL_ID);
+
             service_type = sbi_xact->service_type;
+            requester_nf_type = sbi_xact->requester_nf_type;
+            discovery_option = sbi_xact->discovery_option;
 
             ogs_sbi_xact_remove(sbi_xact);
 
@@ -667,15 +775,41 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
 
             switch(sbi_object->type) {
             case OGS_SBI_OBJ_UE_TYPE:
-                amf_ue = (amf_ue_t *)sbi_object;
-                ogs_assert(amf_ue);
-                amf_ue = amf_ue_cycle(amf_ue);
+                amf_ue = amf_ue_find_by_id(sbi_object_id);
                 if (!amf_ue) {
                     ogs_error("UE(amf_ue) Context has already been removed");
                     break;
                 }
 
-                ogs_error("[%s] Cannot receive SBI message", amf_ue->suci);
+                ogs_error("[%s:%s] Cannot receive SBI message",
+                        amf_ue->supi, amf_ue->suci);
+
+                /*
+                * TS 23.502
+                * 4.2.2.2.2 General Registration
+                * If the SUCI is not provided by the UE nor retrieved from the old AMF the Identity Request
+                * procedure is initiated by AMF sending an Identity Request message to the UE requesting the SUCI.
+                */
+
+                if (amf_ue->nas.message_type == OGS_NAS_5GS_REGISTRATION_REQUEST &&
+                        amf_ue->nas.registration.value == OGS_NAS_5GS_REGISTRATION_TYPE_INITIAL &&
+                        requester_nf_type == OpenAPI_nf_type_AMF &&
+                        discovery_option->guami_presence) {
+
+                    amf_ue->amf_ue_context_transfer_state =
+                            UE_CONTEXT_INITIAL_STATE;
+
+                    if (!(AMF_UE_HAVE_SUCI(amf_ue) ||
+                            AMF_UE_HAVE_SUPI(amf_ue))) {
+                            CLEAR_AMF_UE_TIMER(amf_ue->t3570);
+                        rv = nas_5gs_send_identity_request(amf_ue);
+                        ogs_expect(rv == OGS_OK);
+                        ogs_assert(rv != OGS_ERROR);
+
+                        break;
+                    }
+                }
+
                 r = nas_5gs_send_gmm_reject_from_sbi(amf_ue,
                         OGS_SBI_HTTP_STATUS_GATEWAY_TIMEOUT);
                 ogs_expect(r == OGS_OK);
@@ -683,30 +817,53 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                 break;
 
             case OGS_SBI_OBJ_SESS_TYPE:
-                sess = (amf_sess_t *)sbi_object;
-                ogs_assert(sess);
-                sess = amf_sess_cycle(sess);
+                sess = amf_sess_find_by_id(sbi_object_id);
                 if (!sess) {
                     ogs_error("Session has already been removed");
                     break;
                 }
 
-                amf_ue = amf_ue_cycle(sess->amf_ue);
+                amf_ue = amf_ue_find_by_id(sess->amf_ue_id);
                 if (!amf_ue) {
                     ogs_error("UE(amf_ue) Context has already been removed");
                     break;
                 }
 
-                ogs_error("[%d:%d] Cannot receive SBI message",
-                        sess->psi, sess->pti);
+                ogs_error("[%s:%s:%d:%d] Cannot receive SBI message",
+                        amf_ue->supi, amf_ue->suci, sess->psi, sess->pti);
+
+                ran_ue = ran_ue_find_by_id(sess->ran_ue_id);
+                if (!ran_ue) {
+                    ogs_error("[%s:%s:%d:%d] "
+                            "NG Context has already been removed",
+                            amf_ue->supi, amf_ue->suci, sess->psi, sess->pti);
+                    break;
+                }
+
+                if (ran_ue->amf_ue_id == OGS_INVALID_POOL_ID) {
+                    ogs_error("[%s:%s:%d:%d] "
+                            "RAN-UE has already been deassociated",
+                            amf_ue->supi, amf_ue->suci, sess->psi, sess->pti);
+                    break;
+                }
+
+                if (amf_ue->id != ran_ue->amf_ue_id) {
+                    ogs_error("[%s:%s:%d:%d] AMF-UE mismatched [%d!=%d]",
+                            amf_ue->supi, amf_ue->suci, sess->psi, sess->pti,
+                            amf_ue->id, ran_ue->amf_ue_id);
+                    break;
+                }
+
                 if (sess->payload_container_type) {
-                    r = nas_5gs_send_back_gsm_message(sess->ran_ue, sess,
+                    r = nas_5gs_send_back_gsm_message(
+                            ran_ue_find_by_id(sess->ran_ue_id), sess,
                             OGS_5GMM_CAUSE_PAYLOAD_WAS_NOT_FORWARDED,
                             AMF_NAS_BACKOFF_TIME);
                     ogs_expect(r == OGS_OK);
                     ogs_assert(r != OGS_ERROR);
                 } else {
-                    r = ngap_send_error_indication2(sess->ran_ue,
+                    r = ngap_send_error_indication2(
+                            ran_ue_find_by_id(sess->ran_ue_id),
                             NGAP_Cause_PR_transport,
                             NGAP_CauseTransport_transport_resource_unavailable);
                     ogs_expect(r == OGS_OK);
@@ -740,7 +897,11 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         gnb = amf_gnb_find_by_addr(addr);
         if (!gnb) {
             gnb = amf_gnb_add(sock, addr);
-            ogs_assert(gnb);
+            if (!gnb) {
+                ogs_error("amf_gnb_add() failed");
+                ogs_sock_destroy(sock);
+                ogs_free(addr);
+            }
         } else {
             ogs_warn("gNB context duplicated with IP-address [%s]!!!",
                     OGS_ADDR(addr, buf));
@@ -762,7 +923,11 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         gnb = amf_gnb_find_by_addr(addr);
         if (!gnb) {
             gnb = amf_gnb_add(sock, addr);
-            ogs_assert(gnb);
+            if (!gnb) {
+                ogs_error("amf_gnb_add() failed");
+                ogs_free(addr);
+                break;
+            }
         } else {
             ogs_free(addr);
         }
@@ -813,7 +978,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
 
         rc = ogs_ngap_decode(&ngap_message, pkbuf);
         if (rc == OGS_OK) {
-            e->gnb = gnb;
+            e->gnb_id = gnb->id;
             e->ngap.message = &ngap_message;
             ogs_fsm_dispatch(&gnb->sm, e);
         } else {
@@ -830,13 +995,14 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         break;
 
     case AMF_EVENT_NGAP_TIMER:
-        ran_ue = e->ran_ue;
-        ogs_assert(ran_ue);
+        ran_ue = ran_ue_find_by_id(e->ran_ue_id);
+        if (!ran_ue) {
+            ogs_error("NG Context has already been removed");
+            break;
+        }
 
         switch (e->h.timer_id) {
         case AMF_TIMER_NG_DELAYED_SEND:
-            gnb = e->gnb;
-            ogs_assert(gnb);
             pkbuf = e->pkbuf;
             ogs_assert(pkbuf);
 
@@ -847,8 +1013,8 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
             break;
         case AMF_TIMER_NG_HOLDING:
             ogs_warn("Implicit NG release");
-            ogs_warn("    RAN_UE_NGAP_ID[%d] AMF_UE_NGAP_ID[%lld]",
-                  ran_ue->ran_ue_ngap_id,
+            ogs_warn("    RAN_UE_NGAP_ID[%lld] AMF_UE_NGAP_ID[%lld]",
+                  (long long)ran_ue->ran_ue_ngap_id,
                   (long long)ran_ue->amf_ue_ngap_id);
             ngap_handle_ue_context_release_action(ran_ue);
             break;
@@ -860,10 +1026,14 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         break;
 
     case AMF_EVENT_5GMM_MESSAGE:
-        ran_ue = e->ran_ue;
-        ogs_assert(ran_ue);
         pkbuf = e->pkbuf;
         ogs_assert(pkbuf);
+
+        ran_ue = ran_ue_find_by_id(e->ran_ue_id);
+        if (!ran_ue) {
+            ogs_error("NG Context has already been removed");
+            break;
+        }
 
         if (ogs_nas_5gmm_decode(&nas_message, pkbuf) != OGS_OK) {
             ogs_error("ogs_nas_5gmm_decode() failed");
@@ -871,7 +1041,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
             break;
         }
 
-        amf_ue = ran_ue->amf_ue;
+        amf_ue = amf_ue_find_by_id(ran_ue->amf_ue_id);
         if (!amf_ue) {
             amf_ue = amf_ue_find_by_message(&nas_message);
             if (!amf_ue) {
@@ -966,7 +1136,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         ogs_assert(amf_ue);
         ogs_assert(OGS_FSM_STATE(&amf_ue->sm));
 
-        e->amf_ue = amf_ue;
+        e->amf_ue_id = amf_ue->id;
         e->nas.message = &nas_message;
 
         ogs_fsm_dispatch(&amf_ue->sm, e);
@@ -975,7 +1145,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         break;
 
     case AMF_EVENT_5GMM_TIMER:
-        amf_ue = amf_ue_cycle(e->amf_ue);
+        amf_ue = amf_ue_find_by_id(e->amf_ue_id);
         if (!amf_ue) {
             ogs_error("UE(amf_ue) Context has already been removed");
             break;

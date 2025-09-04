@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019,2020 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -21,6 +21,7 @@
 #define GMM_HANDLER_H
 
 #include "context.h"
+#include "namf-handler.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,13 +30,17 @@ extern "C" {
 ogs_nas_5gmm_cause_t gmm_handle_registration_request(amf_ue_t *amf_ue,
         ogs_nas_security_header_type_t h, NGAP_ProcedureCode_t ngap_code,
         ogs_nas_5gs_registration_request_t *registration_request);
-ogs_nas_5gmm_cause_t gmm_handle_registration_update(amf_ue_t *amf_ue,
+ogs_nas_5gmm_cause_t gmm_handle_registration_update(
+        ran_ue_t *ran_ue, amf_ue_t *amf_ue,
+        ogs_nas_5gs_registration_request_t *registration_request);
+bool gmm_registration_request_from_old_amf(amf_ue_t *amf_ue,
         ogs_nas_5gs_registration_request_t *registration_request);
 
 ogs_nas_5gmm_cause_t gmm_handle_service_request(amf_ue_t *amf_ue,
         ogs_nas_security_header_type_t h, NGAP_ProcedureCode_t ngap_code,
         ogs_nas_5gs_service_request_t *service_request);
-ogs_nas_5gmm_cause_t gmm_handle_service_update(amf_ue_t *amf_ue,
+ogs_nas_5gmm_cause_t gmm_handle_service_update(
+        ran_ue_t *ran_ue, amf_ue_t *amf_ue,
         ogs_nas_5gs_service_request_t *service_request);
 
 int gmm_handle_deregistration_request(amf_ue_t *amf_ue,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -19,7 +19,8 @@
 
 #include "ogs-dbi.h"
 
-int ogs_dbi_session_data(char *supi, ogs_s_nssai_t *s_nssai, char *dnn,
+int ogs_dbi_session_data(
+        const char *supi, const ogs_s_nssai_t *s_nssai, const char *dnn,
         ogs_session_data_t *session_data)
 {
     int rv = OGS_OK;
@@ -50,7 +51,7 @@ int ogs_dbi_session_data(char *supi, ogs_s_nssai_t *s_nssai, char *dnn,
     ogs_assert(supi_id);
 
     query = BCON_NEW(supi_type, BCON_UTF8(supi_id));
-#if MONGOC_MAJOR_VERSION >= 1 && MONGOC_MINOR_VERSION >= 5
+#if MONGOC_CHECK_VERSION(1, 5, 0)
     cursor = mongoc_collection_find_with_opts(
             ogs_mongoc()->collection.subscriber, query, NULL, NULL);
 #else
@@ -85,6 +86,7 @@ int ogs_dbi_session_data(char *supi, ogs_s_nssai_t *s_nssai, char *dnn,
         if (!strcmp(key, OGS_SLICE_STRING) && BSON_ITER_HOLDS_ARRAY(&iter)) {
             bson_iter_recurse(&iter, &child1_iter);
             while (bson_iter_next(&child1_iter)) {
+                bool sst_presence = false;
                 uint8_t sst;
                 ogs_uint24_t sd;
 
@@ -97,6 +99,7 @@ int ogs_dbi_session_data(char *supi, ogs_s_nssai_t *s_nssai, char *dnn,
 
                     if (!strcmp(child2_key, OGS_SST_STRING) &&
                         BSON_ITER_HOLDS_INT32(&child2_iter)) {
+                        sst_presence = true;
                         sst = bson_iter_int32(&child2_iter);
                     } else if (!strcmp(child2_key, OGS_SD_STRING) &&
                         BSON_ITER_HOLDS_UTF8(&child2_iter)) {
@@ -109,7 +112,7 @@ int ogs_dbi_session_data(char *supi, ogs_s_nssai_t *s_nssai, char *dnn,
                     }
                 }
 
-                if (!sst) {
+                if (!sst_presence) {
                     ogs_error("No SST");
                     continue;
                 }
@@ -166,6 +169,9 @@ done:
         } else if (!strcmp(child4_key, OGS_TYPE_STRING) &&
             BSON_ITER_HOLDS_INT32(&child4_iter)) {
             session->session_type = bson_iter_int32(&child4_iter);
+        } else if (!strcmp(child4_key, OGS_LBO_ROAMING_ALLOWED_STRING) &&
+            BSON_ITER_HOLDS_BOOL(&child4_iter)) {
+            session->lbo_roaming_allowed = bson_iter_bool(&child4_iter);
         } else if (!strcmp(child4_key, OGS_QOS_STRING) &&
             BSON_ITER_HOLDS_DOCUMENT(&child4_iter)) {
             bson_iter_recurse(&child4_iter, &child5_iter);

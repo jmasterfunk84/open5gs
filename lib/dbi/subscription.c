@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -39,12 +39,19 @@ int ogs_dbi_auth_info(char *supi, ogs_dbi_auth_info_t *auth_info)
     ogs_assert(auth_info);
 
     supi_type = ogs_id_get_type(supi);
-    ogs_assert(supi_type);
+    if (!supi_type) {
+        ogs_error("Invalid supi=%s", supi);
+        return OGS_ERROR;
+    }
     supi_id = ogs_id_get_value(supi);
-    ogs_assert(supi_id);
+    if (!supi_id) {
+        ogs_error("Invalid supi=%s", supi);
+        ogs_free(supi_type);
+        return OGS_ERROR;
+    }
 
     query = BCON_NEW(supi_type, BCON_UTF8(supi_id));
-#if MONGOC_MAJOR_VERSION >= 1 && MONGOC_MINOR_VERSION >= 5
+#if MONGOC_CHECK_VERSION(1, 5, 0)
     cursor = mongoc_collection_find_with_opts(
             ogs_mongoc()->collection.subscriber, query, NULL, NULL);
 #else
@@ -326,7 +333,7 @@ int ogs_dbi_subscription_data(char *supi,
     ogs_assert(supi_id);
 
     query = BCON_NEW(supi_type, BCON_UTF8(supi_id));
-#if MONGOC_MAJOR_VERSION >= 1 && MONGOC_MINOR_VERSION >= 5
+#if MONGOC_CHECK_VERSION(1, 5, 0)
     cursor = mongoc_collection_find_with_opts(
             ogs_mongoc()->collection.subscriber, query, NULL, NULL);
 #else
@@ -459,6 +466,7 @@ int ogs_dbi_subscription_data(char *supi,
             bson_iter_recurse(&iter, &child1_iter);
             while (bson_iter_next(&child1_iter)) {
                 ogs_slice_data_t *slice_data = NULL;
+                bool sst_presence = false;
 
                 ogs_assert(
                         subscription_data->num_of_slice < OGS_MAX_NUM_OF_SLICE);
@@ -476,6 +484,7 @@ int ogs_dbi_subscription_data(char *supi,
                     if (!strcmp(child2_key, OGS_SST_STRING) &&
                         BSON_ITER_HOLDS_INT32(&child2_iter)) {
                         slice_data->s_nssai.sst = bson_iter_int32(&child2_iter);
+                        sst_presence = true;
                     } else if (!strcmp(child2_key, OGS_SD_STRING) &&
                         BSON_ITER_HOLDS_UTF8(&child2_iter)) {
                         utf8 = bson_iter_utf8(&child2_iter, &length);
@@ -515,6 +524,11 @@ int ogs_dbi_subscription_data(char *supi,
                                     BSON_ITER_HOLDS_INT32(&child4_iter)) {
                                     session->session_type =
                                         bson_iter_int32(&child4_iter);
+                                } else if (!strcmp(child4_key,
+                                            OGS_LBO_ROAMING_ALLOWED_STRING) &&
+                                    BSON_ITER_HOLDS_BOOL(&child4_iter)) {
+                                    session->lbo_roaming_allowed =
+                                        bson_iter_bool(&child4_iter);
                                 } else if (!strcmp(child4_key,
                                             OGS_QOS_STRING) &&
                                     BSON_ITER_HOLDS_DOCUMENT(&child4_iter)) {
@@ -787,6 +801,12 @@ int ogs_dbi_subscription_data(char *supi,
                         }
                     }
                 }
+
+                if (!sst_presence) {
+                    ogs_error("No SST");
+                    continue;
+                }
+
                 subscription_data->num_of_slice++;
             }
         } else if (!strcmp(key, OGS_MME_HOST_STRING) &&

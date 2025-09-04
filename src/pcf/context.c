@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2025 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -23,7 +23,8 @@ static pcf_context_t self;
 
 int __pcf_log_domain;
 
-static OGS_POOL(pcf_ue_pool, pcf_ue_t);
+static OGS_POOL(pcf_ue_am_pool, pcf_ue_am_t);
+static OGS_POOL(pcf_ue_sm_pool, pcf_ue_sm_t);
 static OGS_POOL(pcf_sess_pool, pcf_sess_t);
 static OGS_POOL(pcf_app_pool, pcf_app_t);
 
@@ -42,14 +43,18 @@ void pcf_context_init(void)
     ogs_log_install_domain(&__ogs_dbi_domain, "dbi", ogs_core()->log.level);
     ogs_log_install_domain(&__pcf_log_domain, "pcf", ogs_core()->log.level);
 
-    ogs_pool_init(&pcf_ue_pool, ogs_global_conf()->max.ue);
+    ogs_pool_init(&pcf_ue_am_pool, ogs_global_conf()->max.ue);
+    ogs_pool_init(&pcf_ue_sm_pool, ogs_global_conf()->max.ue);
     ogs_pool_init(&pcf_sess_pool, ogs_app()->pool.sess);
     ogs_pool_init(&pcf_app_pool, ogs_app()->pool.sess);
 
-    ogs_list_init(&self.pcf_ue_list);
+    ogs_list_init(&self.pcf_ue_am_list);
+    ogs_list_init(&self.pcf_ue_sm_list);
 
-    self.supi_hash = ogs_hash_make();
-    ogs_assert(self.supi_hash);
+    self.supi_am_hash = ogs_hash_make();
+    ogs_assert(self.supi_am_hash);
+    self.supi_sm_hash = ogs_hash_make();
+    ogs_assert(self.supi_sm_hash);
     self.ipv4addr_hash = ogs_hash_make();
     ogs_assert(self.ipv4addr_hash);
     self.ipv6prefix_hash = ogs_hash_make();
@@ -62,10 +67,13 @@ void pcf_context_final(void)
 {
     ogs_assert(context_initialized == 1);
 
-    pcf_ue_remove_all();
+    pcf_ue_am_remove_all();
+    pcf_ue_sm_remove_all();
 
-    ogs_assert(self.supi_hash);
-    ogs_hash_destroy(self.supi_hash);
+    ogs_assert(self.supi_am_hash);
+    ogs_hash_destroy(self.supi_am_hash);
+    ogs_assert(self.supi_sm_hash);
+    ogs_hash_destroy(self.supi_sm_hash);
     ogs_assert(self.ipv4addr_hash);
     ogs_hash_destroy(self.ipv4addr_hash);
     ogs_assert(self.ipv6prefix_hash);
@@ -73,7 +81,8 @@ void pcf_context_final(void)
 
     ogs_pool_final(&pcf_app_pool);
     ogs_pool_final(&pcf_sess_pool);
-    ogs_pool_final(&pcf_ue_pool);
+    ogs_pool_final(&pcf_ue_am_pool);
+    ogs_pool_final(&pcf_ue_sm_pool);
 
     context_initialized = 0;
 }
@@ -119,6 +128,7 @@ static int parse_slice_conf(
     do {
         ogs_app_slice_conf_t *slice_conf = NULL;
         ogs_s_nssai_t s_nssai;
+        bool sst_presence = false;
         bool default_indicator = false;
 
         s_nssai.sst = 0;
@@ -131,13 +141,8 @@ static int parse_slice_conf(
             if (!strcmp(slice_key, OGS_SST_STRING)) {
                 const char *v = ogs_yaml_iter_value(&slice_iter);
                 if (v) {
+                    sst_presence = true;
                     s_nssai.sst = atoi(v);
-                    if (s_nssai.sst == 1 || s_nssai.sst == 2 ||
-                            s_nssai.sst == 3 || s_nssai.sst == 4) {
-                    } else {
-                        ogs_error("Unknown SST [%d]", s_nssai.sst);
-                        return OGS_ERROR;
-                    }
                 }
             } else if (!strcmp(slice_key, OGS_SD_STRING)) {
                 const char *v = ogs_yaml_iter_value(&slice_iter);
@@ -147,7 +152,7 @@ static int parse_slice_conf(
             }
         }
 
-        if (s_nssai.sst) {
+        if (sst_presence) {
             slice_conf = ogs_app_slice_conf_add(policy_conf, &s_nssai);
             if (!slice_conf) {
                 ogs_error("ogs_app_slice_conf_add() failed [SST:%d,SD:0x%x]",
@@ -213,6 +218,9 @@ static int parse_policy_conf(ogs_yaml_iter_t *parent)
     do {
         const char *mnc = NULL, *mcc = NULL;
         ogs_app_policy_conf_t *policy_conf = NULL;
+        ogs_supi_range_t supi_range;
+
+        memset(&supi_range, 0, sizeof(ogs_supi_range_t));
 
         OGS_YAML_ARRAY_NEXT(&policy_array, &policy_iter);
         while (ogs_yaml_iter_next(&policy_iter)) {
@@ -231,21 +239,31 @@ static int parse_policy_conf(ogs_yaml_iter_t *parent)
                         mnc = ogs_yaml_iter_value(&plmn_id_iter);
                     }
                 }
-
+            } else if (!strcmp(policy_key, "supi_range")) {
+                rv = ogs_app_parse_supi_range_conf(&policy_iter, &supi_range);
+                if (rv != OGS_OK) {
+                    ogs_error("ogs_app_parse_supi_range_conf() failed");
+                    return rv;
+                }
             }
         }
 
-        if (mcc && mnc) {
+        if (supi_range.num || (mcc && mnc)) {
             ogs_plmn_id_t plmn_id;
-            ogs_plmn_id_build(&plmn_id, atoi(mcc), atoi(mnc), strlen(mnc));
-            policy_conf = ogs_app_policy_conf_add(&plmn_id);
+            if (mcc && mnc)
+                ogs_plmn_id_build(&plmn_id, atoi(mcc), atoi(mnc), strlen(mnc));
+            policy_conf = ogs_app_policy_conf_add(
+                    supi_range.num ? &supi_range : NULL,
+                    (mcc && mnc) ? &plmn_id : NULL);
             if (!policy_conf) {
                 ogs_error("ogs_app_policy_conf_add() failed "
-                        "[MCC:%s,MNC:%s]", mcc, mnc);
+                        "[supi_range.num:%d] [MCC:%s, MNC:%s]",
+                        supi_range.num, mcc, mnc);
                 return OGS_ERROR;
             }
         } else {
-            ogs_error("No PLMN-ID [MCC:%s, MNC:%s]", mcc, mnc);
+            ogs_error("No SUPI Range[%d] OR PLMN-ID [MCC:%s, MNC:%s]",
+                    supi_range.num, mcc, mnc);
             return OGS_ERROR;
         }
 
@@ -275,6 +293,7 @@ int pcf_context_parse_config(void)
     int rv;
     yaml_document_t *document = NULL;
     ogs_yaml_iter_t root_iter;
+    int idx = 0;
 
     document = ogs_app()->document;
     ogs_assert(document);
@@ -286,7 +305,8 @@ int pcf_context_parse_config(void)
     while (ogs_yaml_iter_next(&root_iter)) {
         const char *root_key = ogs_yaml_iter_key(&root_iter);
         ogs_assert(root_key);
-        if (!strcmp(root_key, "pcf")) {
+        if ((!strcmp(root_key, "pcf")) &&
+            (idx++ == ogs_app()->config_section_id)) {
             ogs_yaml_iter_t pcf_iter;
             ogs_yaml_iter_recurse(&root_iter, &pcf_iter);
             while (ogs_yaml_iter_next(&pcf_iter)) {
@@ -324,116 +344,168 @@ int pcf_context_parse_config(void)
     return OGS_OK;
 }
 
-pcf_ue_t *pcf_ue_add(char *supi)
+pcf_ue_am_t *pcf_ue_am_add(char *supi)
 {
     pcf_event_t e;
-    pcf_ue_t *pcf_ue = NULL;
+    pcf_ue_am_t *pcf_ue_am = NULL;
 
     ogs_assert(supi);
 
-    ogs_pool_alloc(&pcf_ue_pool, &pcf_ue);
-    ogs_assert(pcf_ue);
-    memset(pcf_ue, 0, sizeof *pcf_ue);
+    ogs_pool_id_calloc(&pcf_ue_am_pool, &pcf_ue_am);
+    ogs_assert(pcf_ue_am);
 
     /* SBI Type */
-    pcf_ue->sbi.type = OGS_SBI_OBJ_UE_TYPE;
+    pcf_ue_am->sbi.type = OGS_SBI_OBJ_UE_TYPE;
 
     /* SBI Features */
-    OGS_SBI_FEATURES_SET(pcf_ue->am_policy_control_features,
+    OGS_SBI_FEATURES_SET(pcf_ue_am->am_policy_control_features,
             OGS_SBI_NPCF_AM_POLICY_CONTROL_UE_AMBR_AUTHORIZATION);
 
-    pcf_ue->association_id = ogs_msprintf("%d",
-            (int)ogs_pool_index(&pcf_ue_pool, pcf_ue));
-    ogs_assert(pcf_ue->association_id);
+    pcf_ue_am->association_id = ogs_msprintf("%d",
+            (int)ogs_pool_index(&pcf_ue_am_pool, pcf_ue_am));
+    ogs_assert(pcf_ue_am->association_id);
 
-    pcf_ue->supi = ogs_strdup(supi);
-    ogs_assert(pcf_ue->supi);
-    ogs_hash_set(self.supi_hash, pcf_ue->supi, strlen(pcf_ue->supi), pcf_ue);
+    pcf_ue_am->supi = ogs_strdup(supi);
+    ogs_assert(pcf_ue_am->supi);
+    ogs_hash_set(self.supi_am_hash, pcf_ue_am->supi, strlen(pcf_ue_am->supi), pcf_ue_am);
 
     memset(&e, 0, sizeof(e));
-    e.pcf_ue = pcf_ue;
-    ogs_fsm_init(&pcf_ue->sm, pcf_am_state_initial, pcf_am_state_final, &e);
+    e.pcf_ue_am_id = pcf_ue_am->id;
+    ogs_fsm_init(&pcf_ue_am->sm, pcf_am_state_initial, pcf_am_state_final, &e);
 
-    ogs_list_add(&self.pcf_ue_list, pcf_ue);
+    ogs_list_add(&self.pcf_ue_am_list, pcf_ue_am);
 
-    return pcf_ue;
+    return pcf_ue_am;
 }
 
-void pcf_ue_remove(pcf_ue_t *pcf_ue)
+void pcf_ue_am_remove(pcf_ue_am_t *pcf_ue_am)
 {
     pcf_event_t e;
 
-    ogs_assert(pcf_ue);
+    ogs_assert(pcf_ue_am);
 
-    ogs_list_remove(&self.pcf_ue_list, pcf_ue);
+    ogs_list_remove(&self.pcf_ue_am_list, pcf_ue_am);
 
     memset(&e, 0, sizeof(e));
-    e.pcf_ue = pcf_ue;
-    ogs_fsm_fini(&pcf_ue->sm, &e);
+    e.pcf_ue_am_id = pcf_ue_am->id;
+    ogs_fsm_fini(&pcf_ue_am->sm, &e);
 
     /* Free SBI object memory */
-    if (ogs_list_count(&pcf_ue->sbi.xact_list))
+    if (ogs_list_count(&pcf_ue_am->sbi.xact_list))
         ogs_error("UE transaction [%d]",
-                ogs_list_count(&pcf_ue->sbi.xact_list));
-    ogs_sbi_object_free(&pcf_ue->sbi);
+                ogs_list_count(&pcf_ue_am->sbi.xact_list));
+    ogs_sbi_object_free(&pcf_ue_am->sbi);
 
-    pcf_sess_remove_all(pcf_ue);
+    OpenAPI_policy_association_request_free(pcf_ue_am->policy_association_request);
+    if (pcf_ue_am->subscribed_ue_ambr)
+        OpenAPI_ambr_free(pcf_ue_am->subscribed_ue_ambr);
 
-    OpenAPI_policy_association_request_free(pcf_ue->policy_association_request);
-    if (pcf_ue->subscribed_ue_ambr)
-        OpenAPI_ambr_free(pcf_ue->subscribed_ue_ambr);
+    ogs_assert(pcf_ue_am->association_id);
+    ogs_free(pcf_ue_am->association_id);
 
-    ogs_assert(pcf_ue->association_id);
-    ogs_free(pcf_ue->association_id);
+    ogs_assert(pcf_ue_am->supi);
+    ogs_hash_set(self.supi_am_hash, pcf_ue_am->supi, strlen(pcf_ue_am->supi), NULL);
+    ogs_free(pcf_ue_am->supi);
 
-    ogs_assert(pcf_ue->supi);
-    ogs_hash_set(self.supi_hash, pcf_ue->supi, strlen(pcf_ue->supi), NULL);
-    ogs_free(pcf_ue->supi);
+    if (pcf_ue_am->notification_uri)
+        ogs_free(pcf_ue_am->notification_uri);
+    if (pcf_ue_am->namf.client)
+        ogs_sbi_client_remove(pcf_ue_am->namf.client);
 
-    if (pcf_ue->notification_uri)
-        ogs_free(pcf_ue->notification_uri);
-    if (pcf_ue->namf.client)
-        ogs_sbi_client_remove(pcf_ue->namf.client);
+    if (pcf_ue_am->gpsi)
+        ogs_free(pcf_ue_am->gpsi);
+    if (pcf_ue_am->pei)
+        ogs_free(pcf_ue_am->pei);
 
-    if (pcf_ue->gpsi)
-        ogs_free(pcf_ue->gpsi);
-    if (pcf_ue->pei)
-        ogs_free(pcf_ue->pei);
-
-    ogs_pool_free(&pcf_ue_pool, pcf_ue);
+    ogs_pool_id_free(&pcf_ue_am_pool, pcf_ue_am);
 }
 
-void pcf_ue_remove_all(void)
+void pcf_ue_am_remove_all(void)
 {
-    pcf_ue_t *pcf_ue = NULL, *next = NULL;;
+    pcf_ue_am_t *pcf_ue_am = NULL, *next = NULL;;
 
-    ogs_list_for_each_safe(&self.pcf_ue_list, next, pcf_ue)
-        pcf_ue_remove(pcf_ue);
+    ogs_list_for_each_safe(&self.pcf_ue_am_list, next, pcf_ue_am)
+        pcf_ue_am_remove(pcf_ue_am);
 }
 
-pcf_ue_t *pcf_ue_find_by_supi(char *supi)
+pcf_ue_am_t *pcf_ue_am_find_by_supi(char *supi)
 {
     ogs_assert(supi);
-    return (pcf_ue_t *)ogs_hash_get(self.supi_hash, supi, strlen(supi));
+    return (pcf_ue_am_t *)ogs_hash_get(self.supi_am_hash, supi, strlen(supi));
 }
 
-pcf_ue_t *pcf_ue_find_by_association_id(char *association_id)
+pcf_ue_am_t *pcf_ue_am_find_by_association_id(char *association_id)
 {
     ogs_assert(association_id);
-    return ogs_pool_find(&pcf_ue_pool, atoll(association_id));
+    return ogs_pool_find(&pcf_ue_am_pool, atoll(association_id));
 }
 
-pcf_sess_t *pcf_sess_add(pcf_ue_t *pcf_ue, uint8_t psi)
+pcf_ue_sm_t *pcf_ue_sm_add(char *supi)
+{
+    pcf_ue_sm_t *pcf_ue_sm = NULL;
+
+    ogs_assert(supi);
+
+    ogs_pool_id_calloc(&pcf_ue_sm_pool, &pcf_ue_sm);
+    ogs_assert(pcf_ue_sm);
+
+    pcf_ue_sm->supi = ogs_strdup(supi);
+    ogs_assert(pcf_ue_sm->supi);
+    ogs_hash_set(self.supi_sm_hash, pcf_ue_sm->supi, strlen(pcf_ue_sm->supi), pcf_ue_sm);
+
+    ogs_list_add(&self.pcf_ue_sm_list, pcf_ue_sm);
+
+    return pcf_ue_sm;
+}
+
+void pcf_ue_sm_remove(pcf_ue_sm_t *pcf_ue_sm)
+{
+    ogs_assert(pcf_ue_sm);
+
+    ogs_list_remove(&self.pcf_ue_sm_list, pcf_ue_sm);
+
+    pcf_sess_remove_all(pcf_ue_sm);
+
+    ogs_assert(pcf_ue_sm->supi);
+    ogs_hash_set(self.supi_sm_hash, pcf_ue_sm->supi, strlen(pcf_ue_sm->supi), NULL);
+    ogs_free(pcf_ue_sm->supi);
+
+    if (pcf_ue_sm->gpsi)
+        ogs_free(pcf_ue_sm->gpsi);
+
+    ogs_pool_id_free(&pcf_ue_sm_pool, pcf_ue_sm);
+}
+
+void pcf_ue_sm_remove_all(void)
+{
+    pcf_ue_sm_t *pcf_ue_sm = NULL, *next = NULL;;
+
+    ogs_list_for_each_safe(&self.pcf_ue_sm_list, next, pcf_ue_sm)
+        pcf_ue_sm_remove(pcf_ue_sm);
+}
+
+pcf_ue_sm_t *pcf_ue_sm_find_by_supi(char *supi)
+{
+    ogs_assert(supi);
+    return (pcf_ue_sm_t *)ogs_hash_get(self.supi_sm_hash, supi, strlen(supi));
+}
+
+pcf_ue_sm_t *pcf_ue_sm_find_by_association_id(char *association_id)
+{
+    ogs_assert(association_id);
+    return ogs_pool_find(&pcf_ue_sm_pool, atoll(association_id));
+}
+
+pcf_sess_t *pcf_sess_add(pcf_ue_sm_t *pcf_ue_sm, uint8_t psi)
 {
     pcf_event_t e;
     pcf_sess_t *sess = NULL;
 
-    ogs_assert(pcf_ue);
+    ogs_assert(pcf_ue_sm);
     ogs_assert(psi != OGS_NAS_PDU_SESSION_IDENTITY_UNASSIGNED);
 
-    ogs_pool_alloc(&pcf_sess_pool, &sess);
+    ogs_pool_id_calloc(&pcf_sess_pool, &sess);
     ogs_assert(sess);
-    memset(sess, 0, sizeof *sess);
 
     ogs_list_init(&sess->app_list);
 
@@ -456,17 +528,17 @@ pcf_sess_t *pcf_sess_add(pcf_ue_t *pcf_ue, uint8_t psi)
             (int)ogs_pool_index(&pcf_sess_pool, sess));
     ogs_assert(sess->sm_policy_id);
 
-    sess->pcf_ue = pcf_ue;
+    sess->pcf_ue_sm_id = pcf_ue_sm->id;
     sess->psi = psi;
 
     sess->s_nssai.sst = 0;
     sess->s_nssai.sd.v = OGS_S_NSSAI_NO_SD_VALUE;
 
     memset(&e, 0, sizeof(e));
-    e.sess = sess;
+    e.sess_id = sess->id;
     ogs_fsm_init(&sess->sm, pcf_sm_state_initial, pcf_sm_state_final, &e);
 
-    ogs_list_add(&pcf_ue->sess_list, sess);
+    ogs_list_add(&pcf_ue_sm->sess_list, sess);
 
     return sess;
 }
@@ -474,14 +546,16 @@ pcf_sess_t *pcf_sess_add(pcf_ue_t *pcf_ue, uint8_t psi)
 void pcf_sess_remove(pcf_sess_t *sess)
 {
     pcf_event_t e;
+    pcf_ue_sm_t *pcf_ue_sm = NULL;
 
     ogs_assert(sess);
-    ogs_assert(sess->pcf_ue);
+    pcf_ue_sm = pcf_ue_sm_find_by_id(sess->pcf_ue_sm_id);
+    ogs_assert(pcf_ue_sm);
 
-    ogs_list_remove(&sess->pcf_ue->sess_list, sess);
+    ogs_list_remove(&pcf_ue_sm->sess_list, sess);
 
     memset(&e, 0, sizeof(e));
-    e.sess = sess;
+    e.sess_id = sess->id;
     ogs_fsm_fini(&sess->sm, &e);
 
     /* Free SBI object memory */
@@ -495,8 +569,9 @@ void pcf_sess_remove(pcf_sess_t *sess)
     ogs_assert(sess->sm_policy_id);
     ogs_free(sess->sm_policy_id);
 
-    if (sess->binding_id)
-        ogs_free(sess->binding_id);
+    PCF_BINDING_CLEAR(sess);
+    if (sess->binding.client)
+        ogs_sbi_client_remove(sess->binding.client);
 
     if (sess->dnn)
         ogs_free(sess->dnn);
@@ -519,16 +594,16 @@ void pcf_sess_remove(pcf_sess_t *sess)
     if (sess->subscribed_default_qos)
         OpenAPI_subscribed_default_qos_free(sess->subscribed_default_qos);
 
-    ogs_pool_free(&pcf_sess_pool, sess);
+    ogs_pool_id_free(&pcf_sess_pool, sess);
 }
 
-void pcf_sess_remove_all(pcf_ue_t *pcf_ue)
+void pcf_sess_remove_all(pcf_ue_sm_t *pcf_ue_sm)
 {
     pcf_sess_t *sess = NULL, *next_sess = NULL;
 
-    ogs_assert(pcf_ue);
+    ogs_assert(pcf_ue_sm);
 
-    ogs_list_for_each_safe(&pcf_ue->sess_list, next_sess, sess)
+    ogs_list_for_each_safe(&pcf_ue_sm->sess_list, next_sess, sess)
         pcf_sess_remove(sess);
 }
 
@@ -622,11 +697,13 @@ pcf_sess_t *pcf_sess_find_by_sm_policy_id(char *sm_policy_id)
     return pcf_sess_find(atoll(sm_policy_id));
 }
 
-pcf_sess_t *pcf_sess_find_by_psi(pcf_ue_t *pcf_ue, uint8_t psi)
+pcf_sess_t *pcf_sess_find_by_psi(pcf_ue_sm_t *pcf_ue_sm, uint8_t psi)
 {
     pcf_sess_t *sess = NULL;
 
-    ogs_list_for_each(&pcf_ue->sess_list, sess)
+    ogs_assert(pcf_ue_sm);
+
+    ogs_list_for_each(&pcf_ue_sm->sess_list, sess)
         if (psi == sess->psi) return sess;
 
     return NULL;
@@ -649,7 +726,7 @@ pcf_sess_t *pcf_sess_find_by_ipv4addr(char *ipv4addr_string)
 }
 
 int pcf_sessions_number_by_snssai_and_dnn(
-        pcf_ue_t *pcf_ue, ogs_s_nssai_t *s_nssai, char *dnn)
+        pcf_ue_sm_t *pcf_ue_sm, ogs_s_nssai_t *s_nssai, char *dnn)
 {
     int number_of_sessions = 0;
     pcf_sess_t *sess = NULL;
@@ -657,7 +734,7 @@ int pcf_sessions_number_by_snssai_and_dnn(
     ogs_assert(s_nssai);
     ogs_assert(dnn);
 
-    ogs_list_for_each(&pcf_ue->sess_list, sess)
+    ogs_list_for_each(&pcf_ue_sm->sess_list, sess)
         if (sess->s_nssai.sst == s_nssai->sst &&
             sess->dnn && ogs_strcasecmp(sess->dnn, dnn) == 0)
             number_of_sessions++;
@@ -709,14 +786,19 @@ pcf_sess_t *pcf_sess_find_by_ipv6prefix(char *ipv6prefix_string)
             &ipv6prefix, (ipv6prefix.len >> 3) + 1);
 }
 
-pcf_ue_t *pcf_ue_cycle(pcf_ue_t *pcf_ue)
+pcf_ue_am_t *pcf_ue_am_find_by_id(ogs_pool_id_t id)
 {
-    return ogs_pool_cycle(&pcf_ue_pool, pcf_ue);
+    return ogs_pool_find_by_id(&pcf_ue_am_pool, id);
 }
 
-pcf_sess_t *pcf_sess_cycle(pcf_sess_t *sess)
+pcf_ue_sm_t *pcf_ue_sm_find_by_id(ogs_pool_id_t id)
 {
-    return ogs_pool_cycle(&pcf_sess_pool, sess);
+    return ogs_pool_find_by_id(&pcf_ue_sm_pool, id);
+}
+
+pcf_sess_t *pcf_sess_find_by_id(ogs_pool_id_t id)
+{
+    return ogs_pool_find_by_id(&pcf_sess_pool, id);
 }
 
 pcf_app_t *pcf_app_add(pcf_sess_t *sess)
@@ -788,45 +870,50 @@ pcf_app_t *pcf_app_find_by_app_session_id(char *app_session_id)
 
 int pcf_instance_get_load(void)
 {
-    return (((ogs_pool_size(&pcf_ue_pool) -
-            ogs_pool_avail(&pcf_ue_pool)) * 100) /
-            ogs_pool_size(&pcf_ue_pool));
+    return (((ogs_pool_size(&pcf_ue_sm_pool) -
+            ogs_pool_avail(&pcf_ue_sm_pool)) * 100) /
+            ogs_pool_size(&pcf_ue_sm_pool));
 }
 
-int pcf_db_qos_data(char *supi,
-        ogs_plmn_id_t *plmn_id, ogs_s_nssai_t *s_nssai, char *dnn,
-        ogs_session_data_t *session_data)
+int pcf_get_session_data(const char *supi,
+                         const ogs_plmn_id_t *plmn_id,
+                         const ogs_s_nssai_t *s_nssai,
+                         const char *dnn,
+                         ogs_session_data_t *session_data,
+                         int flags)
 {
-    int rv;
-
+    int rv = OGS_OK;
     ogs_app_policy_conf_t *policy_conf = NULL;
 
+    /* Validate input parameters */
     ogs_assert(supi);
     ogs_assert(s_nssai);
     ogs_assert(dnn);
     ogs_assert(session_data);
 
+    /* Initialize the session data structure */
     memset(session_data, 0, sizeof(*session_data));
 
-    if (plmn_id)
-        policy_conf = ogs_app_policy_conf_find_by_plmn_id(plmn_id);
-    else
-        ogs_warn("No PLMN_ID");
-
+    /* Attempt to locate a policy configuration */
+    policy_conf = ogs_app_policy_conf_find(supi, plmn_id);
     if (policy_conf) {
         rv = ogs_app_config_session_data(
-                plmn_id, s_nssai, dnn, session_data);
-        if (rv != OGS_OK)
-            ogs_error("ogs_app_config_session_data() failed - "
-                    "MCC[%d] MNC[%d] SST[%d] SD[0x%x] DNN[%s]",
-                    ogs_plmn_id_mcc(plmn_id), ogs_plmn_id_mnc(plmn_id),
-                    s_nssai->sst, s_nssai->sd.v, dnn);
+                supi, plmn_id, s_nssai, dnn, session_data);
+        if (rv != OGS_OK) {
+            if (!(flags & PCF_SESSION_DATA_FLAG_NO_ERROR_LOG))
+                ogs_error("ogs_app_config_session_data() failed - "
+                        "MCC[%d] MNC[%d] SST[%d] SD[0x%x] DNN[%s]",
+                        ogs_plmn_id_mcc(plmn_id), ogs_plmn_id_mnc(plmn_id),
+                        s_nssai->sst, s_nssai->sd.v, dnn);
+        }
     } else {
         rv = ogs_dbi_session_data(supi, s_nssai, dnn, session_data);
-        if (rv != OGS_OK)
-            ogs_error("ogs_dbi_session_data() failed - "
-                    "SUPI[%s] SST[%d] SD[0x%x] DNN[%s]",
-                    supi, s_nssai->sst, s_nssai->sd.v, dnn);
+        if (rv != OGS_OK) {
+            if (!(flags & PCF_SESSION_DATA_FLAG_NO_ERROR_LOG))
+                ogs_error("ogs_dbi_session_data() failed - "
+                        "SUPI[%s] SST[%d] SD[0x%x] DNN[%s]",
+                        supi, s_nssai->sst, s_nssai->sd.v, dnn);
+        }
     }
 
     return rv;

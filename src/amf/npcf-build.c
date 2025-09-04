@@ -38,7 +38,6 @@ ogs_sbi_request_t *amf_npcf_am_policy_control_build_create(
 
     ogs_assert(amf_ue);
     ogs_assert(amf_ue->supi);
-    ogs_assert(ran_ue_cycle(amf_ue->ran_ue));
 
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
@@ -92,12 +91,9 @@ ogs_sbi_request_t *amf_npcf_am_policy_control_build_create(
         ogs_error("No ueLocation.nr_location");
         goto end;
     }
-    ueLocation.nr_location->ue_location_timestamp =
-        ogs_sbi_gmtime_string(amf_ue->ue_location_timestamp);
-    if (!ueLocation.nr_location->ue_location_timestamp) {
-        ogs_error("No ueLocation.nr_location->ue_location_timestamp");
-        goto end;
-    }
+    if (amf_ue->ue_location_timestamp)
+        ueLocation.nr_location->ue_location_timestamp =
+            ogs_sbi_gmtime_string(amf_ue->ue_location_timestamp);
     PolicyAssociationRequest.user_loc = &ueLocation;
 
     PolicyAssociationRequest.time_zone =
@@ -221,15 +217,11 @@ ogs_sbi_request_t *amf_npcf_am_policy_control_build_delete(
 
     ogs_assert(amf_ue);
     ogs_assert(amf_ue->supi);
-    ogs_assert(amf_ue->policy_association_id);
+    ogs_assert(amf_ue->policy_association.resource_uri);
 
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_DELETE;
-    message.h.service.name =
-        (char *)OGS_SBI_SERVICE_NAME_NPCF_AM_POLICY_CONTROL;
-    message.h.api.version = (char *)OGS_SBI_API_V1;
-    message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_POLICIES;
-    message.h.resource.component[1] = amf_ue->policy_association_id;
+    message.h.uri = amf_ue->policy_association.resource_uri;
 
     request = ogs_sbi_build_request(&message);
     ogs_expect(request);

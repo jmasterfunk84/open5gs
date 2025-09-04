@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -143,6 +143,13 @@ char *ogs_home_network_domain_from_plmn_id(const ogs_plmn_id_t *plmn_id)
 {
     ogs_assert(plmn_id);
     return ogs_msprintf("5gc.mnc%03d.mcc%03d" FQDN_3GPPNETWORK_ORG,
+            ogs_plmn_id_mnc(plmn_id), ogs_plmn_id_mcc(plmn_id));
+}
+
+char *ogs_epc_domain_from_plmn_id(const ogs_plmn_id_t *plmn_id)
+{
+    ogs_assert(plmn_id);
+    return ogs_msprintf("epc.mnc%03d.mcc%03d" FQDN_3GPPNETWORK_ORG,
             ogs_plmn_id_mnc(plmn_id), ogs_plmn_id_mcc(plmn_id));
 }
 
@@ -391,7 +398,7 @@ ogs_uint24_t ogs_s_nssai_sd_from_string(const char *hex)
     if (hex == NULL)
         return sd;
 
-    return ogs_uint24_from_string((char *)hex);
+    return ogs_uint24_from_string_hexadecimal((char *)hex);
 }
 
 int ogs_fqdn_build(char *dst, const char *src, int length)
@@ -416,13 +423,13 @@ int ogs_fqdn_parse(char *dst, const char *src, int length)
     int i = 0, j = 0;
     uint8_t len = 0;
 
-    while (i+1 < length) {
+    while (i+1 <= length) {
         len = src[i++];
         if ((j + len + 1) > length) {
-            ogs_error("Invalid FQDN encoding[len:%d] + 1 > length[%d]",
-                    len, length);
+            ogs_error("Invalid FQDN encoding[j:%d+len:%d] + 1 > length[%d]",
+                    j, len, length);
             ogs_log_hexdump(OGS_LOG_ERROR, (unsigned char *)src, length);
-            return 0;
+            return -EINVAL;
         }
         memcpy(&dst[j], &src[i], len);
 
@@ -473,7 +480,7 @@ int ogs_pco_parse(ogs_pco_t *pco, unsigned char *data, int data_len)
         i++;
     }
     pco->num_of_id = i;
-    ogs_assert(size == data_len);
+    ogs_expect(size == data_len);
 
     return size;
 }

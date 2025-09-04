@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -36,26 +36,29 @@ int smf_pfcp_send_modify_list(
         ogs_pfcp_xact_t *xact, ogs_time_t duration);
 
 int smf_5gc_pfcp_send_session_establishment_request(
-        smf_sess_t *sess, uint64_t flags);
+        smf_sess_t *sess, ogs_sbi_stream_t *stream, uint64_t flags);
 int smf_5gc_pfcp_send_all_pdr_modification_request(
         smf_sess_t *sess, ogs_sbi_stream_t *stream,
-        uint64_t flags, ogs_time_t duration);
+        uint64_t flags, int trigger, ogs_time_t duration);
 int smf_5gc_pfcp_send_qos_flow_list_modification_request(
         smf_sess_t *sess, ogs_sbi_stream_t *stream,
+        uint64_t flags, ogs_time_t duration);
+int smf_5gc_pfcp_send_one_qos_flow_modification_request(
+        smf_bearer_t *qos_flow, ogs_sbi_stream_t *stream,
         uint64_t flags, ogs_time_t duration);
 int smf_5gc_pfcp_send_session_deletion_request(
         smf_sess_t *sess, ogs_sbi_stream_t *stream, int trigger);
 
 int smf_epc_pfcp_send_session_establishment_request(
-        smf_sess_t *sess, void *gtp_xact, uint64_t flags);
+        smf_sess_t *sess, ogs_pool_id_t gtp_xact_id, uint64_t flags);
 int smf_epc_pfcp_send_all_pdr_modification_request(
-        smf_sess_t *sess, void *gtp_xact, ogs_pkbuf_t *gtpbuf,
+        smf_sess_t *sess, ogs_pool_id_t gtp_xact_id, ogs_pkbuf_t *gtpbuf,
         uint64_t flags, uint8_t gtp_pti, uint8_t gtp_cause);
 int smf_epc_pfcp_send_one_bearer_modification_request(
-        smf_bearer_t *bearer, void *gtp_xact,
+        smf_bearer_t *bearer, ogs_pool_id_t gtp_xact_id,
         uint64_t flags, uint8_t gtp_pti, uint8_t gtp_cause);
 int smf_epc_pfcp_send_session_deletion_request(
-        smf_sess_t *sess, void *gtp_xact);
+        smf_sess_t *sess, ogs_pool_id_t gtp_xact_id);
 
 int smf_epc_pfcp_send_deactivation(smf_sess_t *sess, uint8_t gtp_cause);
 

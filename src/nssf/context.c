@@ -24,6 +24,7 @@ static nssf_context_t self;
 int __nssf_log_domain;
 
 static OGS_POOL(nssf_nsi_pool, nssf_nsi_t);
+static OGS_POOL(nssf_home_pool, nssf_home_t);
 
 static int context_initialized = 0;
 
@@ -37,6 +38,7 @@ void nssf_context_init(void)
     ogs_log_install_domain(&__nssf_log_domain, "nssf", ogs_core()->log.level);
 
     ogs_pool_init(&nssf_nsi_pool, ogs_app()->pool.nf);
+    ogs_pool_init(&nssf_home_pool, ogs_app()->pool.nf);
 
     context_initialized = 1;
 }
@@ -46,8 +48,10 @@ void nssf_context_final(void)
     ogs_assert(context_initialized == 1);
 
     nssf_nsi_remove_all();
+    nssf_home_remove_all();
 
     ogs_pool_final(&nssf_nsi_pool);
+    ogs_pool_final(&nssf_home_pool);
 
     context_initialized = 0;
 }
@@ -77,6 +81,7 @@ int nssf_context_parse_config(void)
     int rv;
     yaml_document_t *document = NULL;
     ogs_yaml_iter_t root_iter;
+    int idx = 0;
 
     document = ogs_app()->document;
     ogs_assert(document);
@@ -88,7 +93,8 @@ int nssf_context_parse_config(void)
     while (ogs_yaml_iter_next(&root_iter)) {
         const char *root_key = ogs_yaml_iter_key(&root_iter);
         ogs_assert(root_key);
-        if (!strcmp(root_key, "nssf")) {
+        if ((!strcmp(root_key, "nssf")) &&
+            (idx++ == ogs_app()->config_section_id)) {
             ogs_yaml_iter_t nssf_iter;
             ogs_yaml_iter_recurse(&root_iter, &nssf_iter);
             while (ogs_yaml_iter_next(&nssf_iter)) {
@@ -233,6 +239,10 @@ int nssf_context_parse_config(void)
                                                     addr, addr6, port, &h);
                                             ogs_assert(nrf_id);
 
+					    /* Clang scan-build SA: Argument with nonnull attribute passed null:
+					     * sst may be NULL in atoi(sst) if the "uri" key path is followed. */
+					    ogs_assert(sst);
+
                                             nsi = nssf_nsi_add(
                                                     nrf_id,
                                                     atoi(sst),
@@ -279,7 +289,6 @@ nssf_nsi_t *nssf_nsi_add(char *nrf_id, uint8_t sst, ogs_uint24_t sd)
     nssf_nsi_t *nsi = NULL;
 
     ogs_assert(nrf_id);
-    ogs_assert(sst);
 
     ogs_pool_alloc(&nssf_nsi_pool, &nsi);
     ogs_assert(nsi);
@@ -337,6 +346,75 @@ nssf_nsi_t *nssf_nsi_find_by_s_nssai(ogs_s_nssai_t *s_nssai)
     }
 
     return NULL;
+}
+
+nssf_home_t *nssf_home_add(ogs_plmn_id_t *plmn_id, ogs_s_nssai_t *s_nssai)
+{
+    nssf_home_t *home = NULL;
+
+    ogs_assert(plmn_id);
+    ogs_assert(s_nssai);
+
+    ogs_pool_id_calloc(&nssf_home_pool, &home);
+    if (home == NULL) {
+        ogs_error("Could not allocate home context from pool");
+        return NULL;
+    }
+
+    memcpy(&home->plmn_id, plmn_id, sizeof(ogs_plmn_id_t));
+    memcpy(&home->s_nssai, s_nssai, sizeof(ogs_s_nssai_t));
+
+    ogs_list_add(&self.home_list, home);
+
+    return home;
+}
+
+void nssf_home_remove(nssf_home_t *home)
+{
+    ogs_assert(home);
+
+    ogs_list_remove(&self.home_list, home);
+
+    if (home->nrf_id)
+        ogs_free(home->nrf_id);
+
+    if (home->nsi_id)
+        ogs_free(home->nsi_id);
+
+    /* Free SBI object memory */
+    ogs_sbi_object_free(&home->sbi);
+
+    ogs_pool_id_free(&nssf_home_pool, home);
+}
+
+void nssf_home_remove_all(void)
+{
+    nssf_home_t *home = NULL, *next_home = NULL;
+
+    ogs_list_for_each_safe(&self.home_list, next_home, home)
+        nssf_home_remove(home);
+}
+
+nssf_home_t *nssf_home_find(ogs_plmn_id_t *plmn_id, ogs_s_nssai_t *s_nssai)
+{
+    nssf_home_t *home = NULL;
+
+    ogs_assert(plmn_id);
+    ogs_assert(s_nssai);
+
+    ogs_list_for_each(&self.home_list, home) {
+        if (memcmp(&home->plmn_id, plmn_id, sizeof(ogs_plmn_id_t)) == 0 &&
+            memcmp(&home->s_nssai, s_nssai, sizeof(ogs_s_nssai_t)) == 0) {
+            return home;
+        }
+    }
+
+    return NULL;
+}
+
+nssf_home_t *nssf_home_find_by_id(ogs_pool_id_t id)
+{
+    return ogs_pool_find_by_id(&nssf_home_pool, id);
 }
 
 int get_nsi_load(void)

@@ -74,7 +74,7 @@ static void test1_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -498,7 +498,7 @@ static void test1_func(abts_case *tc, void *data)
     gsmbuf = testgsm_build_pdu_session_modification_request(
         qos_flow,
         0,
-        OGS_NAS_QOS_CODE_MODIFY_EXISTING_QOS_RULE_AND_REPLACE_PACKET_FILTERS,
+        OGS_NAS_QOS_CODE_MODIFY_EXISTING_QOS_RULE_AND_REPLACE_ALL_PACKET_FILTERS,
         0);
     ABTS_PTR_NOTNULL(tc, gsmbuf);
     gmmbuf = testgmm_build_ul_nas_transport(sess,
@@ -754,7 +754,7 @@ static void test2_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -1229,7 +1229,7 @@ static void test3_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -1684,7 +1684,7 @@ static void test4_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -2310,7 +2310,7 @@ static void test5_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -3027,7 +3027,7 @@ static void test6_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -3564,7 +3564,7 @@ static void test7_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -3966,6 +3966,18 @@ static void test7_func(abts_case *tc, void *data)
     test_ue_remove(test_ue);
 }
 
+#if !HOME_ROUTED_ROAMING_TEST
+/**
+ * test8_func:
+ *   - Simulates absence of N2 Resource Release Ack (step 8)
+ *     and PDU Session Release Accept (step 11) from gNB/UE.
+ *   - In Home Routed Roaming, V-SMF will not send the
+ *     Nsmf_PDUSession_Update Response (step 14), causing
+ *     the SBI client to timeout after 10 seconds.
+ *   - Subsequent deregistration triggers a PFCP deactivation
+ *     modification, but UPF has no session, leading to
+ *     a No Context error.
+ */
 static void test8_func(abts_case *tc, void *data)
 {
     int rv;
@@ -4017,7 +4029,7 @@ static void test8_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -4327,12 +4339,19 @@ static void test8_func(abts_case *tc, void *data)
     /* Clear Test UE Context */
     test_ue_remove(test_ue);
 }
+#endif
 
 
 abts_suite *test_af(abts_suite *suite)
 {
     suite = ADD_SUITE(suite)
 
+/**
+ * abts_suite test_af:
+ *   - Always run test1_func through test7_func.
+ *   - Conditionally include test8_func based on
+ *     HOME_ROUTED_ROAMING_TEST flag.
+ */
     abts_run_test(suite, test1_func, NULL);
     abts_run_test(suite, test2_func, NULL);
     abts_run_test(suite, test3_func, NULL);
@@ -4340,7 +4359,9 @@ abts_suite *test_af(abts_suite *suite)
     abts_run_test(suite, test5_func, NULL);
     abts_run_test(suite, test6_func, NULL);
     abts_run_test(suite, test7_func, NULL);
+#if !HOME_ROUTED_ROAMING_TEST
     abts_run_test(suite, test8_func, NULL);
+#endif
 
     return suite;
 }

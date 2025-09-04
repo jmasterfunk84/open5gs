@@ -44,7 +44,7 @@ ogs_sbi_request_t *smf_namf_comm_build_n1_n2_message_transfer(
     OpenAPI_ref_to_binary_data_t ngapData;
 
     ogs_assert(sess);
-    smf_ue = sess->smf_ue;
+    smf_ue = smf_ue_find_by_id(sess->smf_ue_id);
     ogs_assert(smf_ue);
     ogs_assert(smf_ue->supi);
 
@@ -105,7 +105,7 @@ ogs_sbi_request_t *smf_namf_comm_build_n1_n2_message_transfer(
         case SMF_NETWORK_REQUESTED_QOS_FLOW_MODIFICATION:
             n2InfoContent.ngap_ie_type = OpenAPI_ngap_ie_type_PDU_RES_MOD_REQ;
             break;
-        case SMF_NETWORK_REQUESTED_PDU_SESSION_RELEASE:
+        case SMF_UE_OR_NETWORK_REQUESTED_PDU_SESSION_RELEASE:
         case SMF_ERROR_INDICATON_RECEIVED_FROM_5G_AN:
             n2InfoContent.ngap_ie_type = OpenAPI_ngap_ie_type_PDU_RES_REL_CMD;
             break;

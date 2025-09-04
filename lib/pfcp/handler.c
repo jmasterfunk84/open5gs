@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2024 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -94,6 +94,7 @@ bool ogs_pfcp_cp_handle_association_setup_request(
         ogs_pfcp_association_setup_request_t *req)
 {
     int i;
+    int16_t decoded;
 
     ogs_assert(xact);
     ogs_assert(node);
@@ -112,8 +113,11 @@ bool ogs_pfcp_cp_handle_association_setup_request(
         if (message->presence == 0)
             break;
 
-        ogs_pfcp_parse_user_plane_ip_resource_info(&info, message);
-        ogs_gtpu_resource_add(&node->gtpu_resource_list, &info);
+        decoded = ogs_pfcp_parse_user_plane_ip_resource_info(&info, message);
+        if (message->len == decoded)
+            ogs_gtpu_resource_add(&node->gtpu_resource_list, &info);
+        else
+            ogs_error("Invalid User Plane IP Resource Info");
     }
 
     if (req->up_function_features.presence) {
@@ -126,14 +130,9 @@ bool ogs_pfcp_cp_handle_association_setup_request(
         }
     }
 
-    if (node->up_function_features.ftup == 0) {
-        char buf[OGS_ADDRSTRLEN];
-        ogs_sockaddr_t *addr = node->sa_list;
-        ogs_assert(addr);
-
-        ogs_warn("F-TEID allocation/release not supported with peer [%s]:%d",
-                OGS_ADDR(addr, buf), OGS_PORT(addr));
-    }
+    if (node->up_function_features.ftup == 0)
+        ogs_warn("F-TEID allocation/release not supported with peer %s",
+                ogs_sockaddr_to_string_static(node->addr_list));
 
     return true;
 }
@@ -143,6 +142,7 @@ bool ogs_pfcp_cp_handle_association_setup_response(
         ogs_pfcp_association_setup_response_t *rsp)
 {
     int i;
+    int16_t decoded;
 
     ogs_assert(xact);
     ogs_pfcp_xact_commit(xact);
@@ -160,8 +160,11 @@ bool ogs_pfcp_cp_handle_association_setup_response(
         if (message->presence == 0)
             break;
 
-        ogs_pfcp_parse_user_plane_ip_resource_info(&info, message);
-        ogs_gtpu_resource_add(&node->gtpu_resource_list, &info);
+        decoded = ogs_pfcp_parse_user_plane_ip_resource_info(&info, message);
+        if (message->len == decoded)
+            ogs_gtpu_resource_add(&node->gtpu_resource_list, &info);
+        else
+            ogs_error("Invalid User Plane IP Resource Info");
     }
 
     if (rsp->up_function_features.presence) {
@@ -174,14 +177,9 @@ bool ogs_pfcp_cp_handle_association_setup_response(
         }
     }
 
-    if (node->up_function_features.ftup == 0) {
-        char buf[OGS_ADDRSTRLEN];
-        ogs_sockaddr_t *addr = node->sa_list;
-        ogs_assert(addr);
-
-        ogs_warn("F-TEID allocation/release not supported with peer [%s]:%d",
-                OGS_ADDR(addr, buf), OGS_PORT(addr));
-    }
+    if (node->up_function_features.ftup == 0)
+        ogs_warn("F-TEID allocation/release not supported with peer %s",
+                ogs_sockaddr_to_string_static(node->addr_list));
 
     return true;
 }
@@ -218,15 +216,16 @@ bool ogs_pfcp_up_handle_association_setup_response(
 }
 
 bool ogs_pfcp_up_handle_pdr(
-        ogs_pfcp_pdr_t *pdr, uint8_t type,
-        ogs_gtp2_header_desc_t *recvhdr, ogs_pkbuf_t *recvbuf,
+        ogs_pfcp_pdr_t *pdr, uint8_t type, int len,
+        ogs_gtp2_header_desc_t *recvhdr, ogs_pkbuf_t *sendbuf,
         ogs_pfcp_user_plane_report_t *report)
 {
     ogs_pfcp_far_t *far = NULL;
-    ogs_pkbuf_t *sendbuf = NULL;
+
+    ogs_gtp2_header_desc_t sendhdr;
     bool buffering;
 
-    ogs_assert(recvbuf);
+    ogs_assert(sendbuf);
     ogs_assert(type);
     ogs_assert(pdr);
     ogs_assert(report);
@@ -234,42 +233,142 @@ bool ogs_pfcp_up_handle_pdr(
     far = pdr->far;
     ogs_assert(far);
 
-    memset(report, 0, sizeof(*report));
-
-    sendbuf = ogs_pkbuf_copy(recvbuf);
-    if (!sendbuf) {
-        ogs_error("ogs_pkbuf_copy() failed");
-        return false;
-    }
-
     buffering = false;
 
+    memset(report, 0, sizeof(*report));
+
+    if ((pdr->src_if == OGS_PFCP_INTERFACE_CORE &&
+         pdr->src_if_type_presence == true &&
+         pdr->src_if_type ==
+             OGS_PFCP_3GPP_INTERFACE_TYPE_N9_FOR_ROAMING) ||
+        (far->dst_if == OGS_PFCP_INTERFACE_CORE &&
+         far->dst_if_type_presence == true &&
+         far->dst_if_type ==
+             OGS_PFCP_3GPP_INTERFACE_TYPE_N9_FOR_ROAMING)) {
+    /*
+     * <Home Routed Roaming>
+     * - VPLMN
+     * o DL
+     *  PDR->src : Core/N9-for-roaming
+     *  FAT->dst : Access/N3
+     * o UL
+     *  PDR->src : Access/N3
+     *  FAT->dst : Core/N9-for-roaming
+     * - HPLMN
+     * o DL
+     *  PDR->src : Core/N6
+     *  FAT->dst : Access/N9-for-roaming
+     * o UL
+     *  PDR->src : Access/N9-for-roaming
+     *  FAT->dst : Core/N6
+     */
+
+    /*
+     * For Home Routed Roaming, when the UPF is located in the VPLMN,
+     * only the TEID in the GTP header is modified. Since the TEID
+     * can only exist in the Outer Header Creator during the Activation
+     * process, it is not filled in at this stage.
+     *
+     * The TEID might be determined later due to buffering, so it is
+     * filled in during the GPDU transmission stage.
+     */
+        ogs_pkbuf_push(sendbuf, len);
+
+    } else {
+    /*
+     * <Normal>
+     * o DL
+     *  PDR->src : Core/N6
+     *  FAT->dst : Access/N3
+     * o UL
+     *  PDR->src : Access/N3
+     *  FAT->dst : Core/N6
+     * o CP2UP
+     *  PDR->src : CP-function
+     *  FAT->dst : Access/N3
+     * o UP2CP
+     *  PDR->src : Access/N3
+     *  FAT->dst : CP-function
+     *
+     * <Indirect>
+     *  PDR->src : Access/UL-Forwarding
+     *  FAT->dst : Access/DL-Forwarding
+     */
+        memset(&sendhdr, 0, sizeof(sendhdr));
+
+        sendhdr.type = type;
+        sendhdr.teid = far->outer_header_creation.teid;
+
+        if (pdr->qer && pdr->qer->qfi) {
+            sendhdr.pdu_type =
+                OGS_GTP2_EXTENSION_HEADER_PDU_TYPE_DL_PDU_SESSION_INFORMATION;
+            sendhdr.qos_flow_identifier = pdr->qer->qfi;
+        } else if (pdr->src_if == OGS_PFCP_INTERFACE_ACCESS &&
+                far->dst_if == OGS_PFCP_INTERFACE_ACCESS &&
+                recvhdr->qos_flow_identifier) {
+/*
+ * HR Indirect Forwarding (source gNB -> V-UPF -> target gNB)
+ *
+ * Context:
+ * - Home-Routed roaming: the V-UPF is controlled by the V-SMF, which
+ *   typically does not provision QER/QFI for the indirect path.
+ * - During Xn/N2 handover the source gNB may forward remaining DL data
+ *   to the core using UL PDU Session Information (PSC PDU type = UL).
+ *
+ * Goal:
+ * - Preserve the PDU Session Container across the V-UPF hop and deliver
+ *   it to the target gNB with PDU type = DL while keeping the same QFI.
+ *
+ * What we do here:
+ * - If this PDR has no QER/QFI and the path is Access->Access, derive
+ *   PSC fields from the received header (recvhdr).
+ * - Force sendhdr.pdu_type = DL PDU Session Information.
+ * - Copy recvhdr->qos_flow_identifier into sendhdr.qos_flow_identifier.
+ * - The encapsulation routine will build a fresh GTP-U header and
+ *   generate the PSC extension from sendhdr fields. This converts UL
+ *   PSC to DL PSC and preserves the QFI for the target gNB.
+ *
+ * Why this is needed in HR:
+ * - With OHR+OHC, the incoming GTP-U (extensions included) is removed
+ *   and a new one is created. Without recreating PSC from sendhdr.*, the
+ *   extension header would be lost when QER is absent on the V-UPF.
+ */
+            sendhdr.pdu_type =
+                OGS_GTP2_EXTENSION_HEADER_PDU_TYPE_DL_PDU_SESSION_INFORMATION;
+            sendhdr.qos_flow_identifier = recvhdr->qos_flow_identifier;
+        }
+
+        if (recvhdr) {
+            /*
+             * Issue #2584
+             * Discussion #2477
+             *
+             * Forward PDCP Number via Indirect Tunnel during Handover
+             */
+            if (recvhdr->pdcp_number_presence == true) {
+                sendhdr.pdcp_number_presence = recvhdr->pdcp_number_presence;
+                sendhdr.pdcp_number = recvhdr->pdcp_number;
+            }
+
+            if (recvhdr->udp.presence == true) {
+                sendhdr.udp.presence = recvhdr->udp.presence;
+                sendhdr.udp.port = recvhdr->udp.port;
+            }
+        }
+
+        ogs_gtp2_encapsulate_header(&sendhdr, sendbuf);
+
+        ogs_trace("ENCAP GTP-U[%d], TEID[0x%x]", sendhdr.type, sendhdr.teid);
+    }
+
     if (!far->gnode) {
+
         buffering = true;
 
     } else {
         if (far->apply_action & OGS_PFCP_APPLY_ACTION_FORW) {
-            ogs_gtp2_header_desc_t sendhdr;
 
-            /* Forward packet */
-            memset(&sendhdr, 0, sizeof(sendhdr));
-            sendhdr.type = type;
-
-            if (recvhdr) {
-                /*
-                 * Issue #2584
-                 * Discussion #2477
-                 *
-                 * Forward PDCP Number via Indirect Tunnel during Handover
-                 */
-                if (recvhdr->pdcp_number_presence == true) {
-                    sendhdr.pdcp_number_presence =
-                        recvhdr->pdcp_number_presence;
-                    sendhdr.pdcp_number = recvhdr->pdcp_number;
-                }
-            }
-
-            ogs_pfcp_send_g_pdu(pdr, &sendhdr, sendbuf);
+            ogs_pfcp_send_gtpu(pdr, sendbuf);
 
         } else if (far->apply_action & OGS_PFCP_APPLY_ACTION_BUFF) {
 
@@ -283,14 +382,14 @@ bool ogs_pfcp_up_handle_pdr(
 
     if (buffering == true) {
 
-        if (far->num_of_buffered_packet == 0) {
+        if (far->num_of_buffered_gtpu == 0) {
             /* Only the first time a packet is buffered,
              * it reports downlink notifications. */
             report->type.downlink_data_report = 1;
         }
 
-        if (far->num_of_buffered_packet < OGS_MAX_NUM_OF_PACKET_BUFFER) {
-            far->buffered_packet[far->num_of_buffered_packet++] = sendbuf;
+        if (far->num_of_buffered_gtpu < OGS_MAX_NUM_OF_GTPU_BUFFER) {
+            far->buffered_gtpu[far->num_of_buffered_gtpu++] = sendbuf;
         } else {
             ogs_pkbuf_free(sendbuf);
         }
@@ -412,6 +511,11 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_create_pdr(ogs_pfcp_sess_t *sess,
 
     pdr->src_if = message->pdi.source_interface.u8;
 
+    if (message->pdi.source_interface_type.presence) {
+        pdr->src_if_type_presence = true;
+        pdr->src_if_type = message->pdi.source_interface_type.u8;
+    }
+
     ogs_pfcp_rule_remove_all(pdr);
 
     for (i = 0; i < OGS_MAX_NUM_OF_FLOW_IN_PDR; i++) {
@@ -424,7 +528,10 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_create_pdr(ogs_pfcp_sess_t *sess,
 
         len = ogs_pfcp_parse_sdf_filter(
                 &sdf_filter, &message->pdi.sdf_filter[i]);
-        ogs_assert(message->pdi.sdf_filter[i].len == len);
+        if (message->pdi.sdf_filter[i].len != len) {
+            ogs_error("Invalid SDF Filter");
+            break;
+        }
 
         /* Check Previous SDF Filter ID */
         if (sdf_filter.bid) {
@@ -518,12 +625,13 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_create_pdr(ogs_pfcp_sess_t *sess,
     if (message->pdi.network_instance.presence) {
         char dnn[OGS_MAX_DNN_LEN+1];
 
-        ogs_assert(0 < ogs_fqdn_parse(dnn,
-            message->pdi.network_instance.data,
-            ogs_min(message->pdi.network_instance.len, OGS_MAX_DNN_LEN)));
-
-        pdr->dnn = ogs_strdup(dnn);
-        ogs_assert(pdr->dnn);
+        if (ogs_fqdn_parse(dnn, message->pdi.network_instance.data,
+            ogs_min(message->pdi.network_instance.len, OGS_MAX_DNN_LEN)) > 0) {
+            pdr->dnn = ogs_strdup(dnn);
+            ogs_assert(pdr->dnn);
+        } else {
+            ogs_error("Invalid pdi.network_instance");
+        }
     }
 
     pdr->chid = false;
@@ -753,6 +861,11 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_update_pdr(ogs_pfcp_sess_t *sess,
 
         pdr->src_if = message->pdi.source_interface.u8;
 
+        if (message->pdi.source_interface_type.presence) {
+            pdr->src_if_type_presence = true;
+            pdr->src_if_type = message->pdi.source_interface_type.u8;
+        }
+
         ogs_pfcp_rule_remove_all(pdr);
 
         for (i = 0; i < OGS_MAX_NUM_OF_FLOW_IN_PDR; i++) {
@@ -765,7 +878,10 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_update_pdr(ogs_pfcp_sess_t *sess,
 
             len = ogs_pfcp_parse_sdf_filter(
                     &sdf_filter, &message->pdi.sdf_filter[i]);
-            ogs_assert(message->pdi.sdf_filter[i].len == len);
+            if (message->pdi.sdf_filter[i].len != len) {
+                ogs_error("Invalid SDF Filter");
+                break;
+            }
 
             /* Check Previous SDF Filter ID */
             if (sdf_filter.bid) {
@@ -855,14 +971,16 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_update_pdr(ogs_pfcp_sess_t *sess,
         if (message->pdi.network_instance.presence) {
             char dnn[OGS_MAX_DNN_LEN+1];
 
-            ogs_assert(0 < ogs_fqdn_parse(dnn,
-                message->pdi.network_instance.data,
-                ogs_min(message->pdi.network_instance.len, OGS_MAX_DNN_LEN)));
-
-            if (pdr->dnn)
-                ogs_free(pdr->dnn);
-            pdr->dnn = ogs_strdup(dnn);
-            ogs_assert(pdr->dnn);
+            if (ogs_fqdn_parse(dnn, message->pdi.network_instance.data,
+                ogs_min(message->pdi.network_instance.len,
+                    OGS_MAX_DNN_LEN)) > 0) {
+                if (pdr->dnn)
+                    ogs_free(pdr->dnn);
+                pdr->dnn = ogs_strdup(dnn);
+                ogs_assert(pdr->dnn);
+            } else {
+                ogs_error("Invalid pdi.network_instance");
+            }
         }
 
         if (message->pdi.local_f_teid.presence) {
@@ -875,6 +993,14 @@ ogs_pfcp_pdr_t *ogs_pfcp_handle_update_pdr(ogs_pfcp_sess_t *sess,
         if (message->pdi.qfi.presence) {
             pdr->qfi = message->pdi.qfi.u8;
         }
+    }
+
+    if (message->outer_header_removal.presence) {
+        pdr->outer_header_removal_len =
+            ogs_min(message->outer_header_removal.len,
+                    sizeof(pdr->outer_header_removal));
+        memcpy(&pdr->outer_header_removal, message->outer_header_removal.data,
+                pdr->outer_header_removal_len);
     }
 
     return pdr;
@@ -961,16 +1087,25 @@ ogs_pfcp_far_t *ogs_pfcp_handle_create_far(ogs_pfcp_sess_t *sess,
                 message->forwarding_parameters.destination_interface.u8;
         }
 
+        if (message->forwarding_parameters.destination_interface_type.
+                presence) {
+            far->dst_if_type_presence = true;
+            far->dst_if_type = message->forwarding_parameters.
+                destination_interface_type.u8;
+        }
+
         if (message->forwarding_parameters.network_instance.presence) {
             char dnn[OGS_MAX_DNN_LEN+1];
 
-            ogs_assert(0 < ogs_fqdn_parse(dnn,
+            if (ogs_fqdn_parse(dnn,
                 message->forwarding_parameters.network_instance.data,
-                    ogs_min(message->forwarding_parameters.network_instance.len,
-                        OGS_MAX_DNN_LEN)));
-
-            far->dnn = ogs_strdup(dnn);
-            ogs_assert(far->dnn);
+                ogs_min(message->forwarding_parameters.network_instance.len,
+                    OGS_MAX_DNN_LEN)) > 0) {
+                far->dnn = ogs_strdup(dnn);
+                ogs_assert(far->dnn);
+            } else {
+                ogs_error("Invalid forwarding_parameters.network_instance");
+            }
         }
 
         if (message->forwarding_parameters.outer_header_creation.presence) {
@@ -1066,18 +1201,28 @@ ogs_pfcp_far_t *ogs_pfcp_handle_update_far(ogs_pfcp_sess_t *sess,
                 message->update_forwarding_parameters.destination_interface.u8;
         }
 
+        if (message->update_forwarding_parameters.destination_interface_type.
+                presence) {
+            far->dst_if_type_presence = true;
+            far->dst_if_type = message->update_forwarding_parameters.
+                destination_interface_type.u8;
+        }
+
         if (message->update_forwarding_parameters.network_instance.presence) {
             char dnn[OGS_MAX_DNN_LEN+1];
 
-            ogs_assert(0 < ogs_fqdn_parse(dnn,
+            if (ogs_fqdn_parse(dnn,
                 message->update_forwarding_parameters.network_instance.data,
-                    ogs_min(message->update_forwarding_parameters.
-                        network_instance.len, OGS_MAX_DNN_LEN)));
-
-            if (far->dnn)
-                ogs_free(far->dnn);
-            far->dnn = ogs_strdup(dnn);
-            ogs_assert(far->dnn);
+                ogs_min(message->update_forwarding_parameters.
+                    network_instance.len, OGS_MAX_DNN_LEN)) > 0) {
+                if (far->dnn)
+                    ogs_free(far->dnn);
+                far->dnn = ogs_strdup(dnn);
+                ogs_assert(far->dnn);
+            } else {
+                ogs_error("Invalid "
+                        "update_forwarding_parameters.network_instance");
+            }
         }
 
         if (message->update_forwarding_parameters.
@@ -1307,6 +1452,7 @@ ogs_pfcp_urr_t *ogs_pfcp_handle_create_urr(ogs_pfcp_sess_t *sess,
         ogs_pfcp_tlv_create_urr_t *message,
         uint8_t *cause_value, uint8_t *offending_ie_value)
 {
+    int16_t decoded;
     ogs_pfcp_urr_t *urr = NULL;
 
     ogs_assert(message);
@@ -1355,12 +1501,26 @@ ogs_pfcp_urr_t *ogs_pfcp_handle_create_urr(ogs_pfcp_sess_t *sess,
 
     if (message->volume_threshold.presence &&
         (urr->meas_method & OGS_PFCP_MEASUREMENT_METHOD_VOLUME)) {
-        ogs_pfcp_parse_volume(&urr->vol_threshold, &message->volume_threshold);
+        decoded = ogs_pfcp_parse_volume(
+                &urr->vol_threshold, &message->volume_threshold);
+        if (message->volume_threshold.len != decoded) {
+            ogs_error("Invalid Volume Threshold");
+            *cause_value = OGS_PFCP_CAUSE_MANDATORY_IE_INCORRECT;
+            *offending_ie_value = OGS_PFCP_VOLUME_THRESHOLD_TYPE;
+            return NULL;
+        }
     }
 
     if (message->volume_quota.presence &&
         (urr->meas_method & OGS_PFCP_MEASUREMENT_METHOD_VOLUME)) {
-        ogs_pfcp_parse_volume(&urr->vol_quota, &message->volume_quota);
+        decoded = ogs_pfcp_parse_volume(
+                &urr->vol_quota, &message->volume_quota);
+        if (message->volume_quota.len != decoded) {
+            ogs_error("Invalid Volume Quota");
+            *cause_value = OGS_PFCP_CAUSE_MANDATORY_IE_INCORRECT;
+            *offending_ie_value = OGS_PFCP_VOLUME_QUOTA_TYPE;
+            return NULL;
+        }
     }
 
     if (message->event_threshold.presence &&
@@ -1409,6 +1569,7 @@ ogs_pfcp_urr_t *ogs_pfcp_handle_update_urr(ogs_pfcp_sess_t *sess,
         ogs_pfcp_tlv_update_urr_t *message,
         uint8_t *cause_value, uint8_t *offending_ie_value)
 {
+    int16_t decoded;
     ogs_pfcp_urr_t *urr = NULL;
 
     ogs_assert(message);
@@ -1447,12 +1608,26 @@ ogs_pfcp_urr_t *ogs_pfcp_handle_update_urr(ogs_pfcp_sess_t *sess,
 
     if (message->volume_threshold.presence &&
         (urr->meas_method & OGS_PFCP_MEASUREMENT_METHOD_VOLUME)) {
-        ogs_pfcp_parse_volume(&urr->vol_threshold, &message->volume_threshold);
+        decoded = ogs_pfcp_parse_volume(
+                &urr->vol_threshold, &message->volume_threshold);
+        if (message->volume_threshold.len != decoded) {
+            ogs_error("Invalid Volume Threshold");
+            *cause_value = OGS_PFCP_CAUSE_MANDATORY_IE_INCORRECT;
+            *offending_ie_value = OGS_PFCP_VOLUME_THRESHOLD_TYPE;
+            return NULL;
+        }
     }
 
     if (message->volume_quota.presence &&
         (urr->meas_method & OGS_PFCP_MEASUREMENT_METHOD_VOLUME)) {
-        ogs_pfcp_parse_volume(&urr->vol_quota, &message->volume_quota);
+        decoded = ogs_pfcp_parse_volume(
+                &urr->vol_quota, &message->volume_quota);
+        if (message->volume_quota.len != decoded) {
+            ogs_error("Invalid Volume Quota");
+            *cause_value = OGS_PFCP_CAUSE_MANDATORY_IE_INCORRECT;
+            *offending_ie_value = OGS_PFCP_VOLUME_QUOTA_TYPE;
+            return NULL;
+        }
     }
 
     if (message->event_threshold.presence &&

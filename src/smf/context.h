@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2025 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -64,6 +64,61 @@ typedef struct smf_ctf_config_s {
 
 int smf_ctf_config_init(smf_ctf_config_t *ctf_config);
 
+typedef struct smf_nsmf_pdusession_param_s {
+    OpenAPI_request_indication_e request_indication;
+
+    OpenAPI_cause_e cause;
+
+    struct {
+        int group;
+        int value;
+    } ngap_cause;
+
+    int gmm_cause;
+    int gsm_cause;
+
+    struct {
+    ED4(uint8_t serving_network:1;,
+        uint8_t ue_location:1;,
+        uint8_t ue_timezone:1;,
+        uint8_t spare:4;)
+    };
+
+    uint32_t dl_teid;
+    ogs_ip_t dl_ip;
+
+    OpenAPI_access_type_e an_type;
+    OpenAPI_rat_type_e rat_type;
+
+    OpenAPI_up_cnx_state_e up_cnx_state;
+
+#define QOS_RULE_CODE_FROM_PFCP_FLAGS(pfcp_flags) \
+        (pfcp_flags & OGS_PFCP_MODIFY_CREATE) ? \
+            OGS_NAS_QOS_CODE_CREATE_NEW_QOS_RULE : \
+        (pfcp_flags & OGS_PFCP_MODIFY_REMOVE) ? \
+            OGS_NAS_QOS_CODE_DELETE_EXISTING_QOS_RULE : \
+        (pfcp_flags & OGS_PFCP_MODIFY_TFT_NEW) ? \
+            OGS_NAS_QOS_CODE_CREATE_NEW_QOS_RULE : \
+        (pfcp_flags & OGS_PFCP_MODIFY_TFT_ADD) ? \
+            OGS_NAS_QOS_CODE_MODIFY_EXISTING_QOS_RULE_AND_ADD_PACKET_FILTERS : \
+        (pfcp_flags & OGS_PFCP_MODIFY_TFT_REPLACE) ? \
+            OGS_NAS_QOS_CODE_MODIFY_EXISTING_QOS_RULE_AND_REPLACE_ALL_PACKET_FILTERS : \
+        (pfcp_flags & OGS_PFCP_MODIFY_TFT_DELETE) ? \
+            OGS_NAS_QOS_CODE_MODIFY_EXISTING_QOS_RULE_AND_DELETE_PACKET_FILTERS : 0
+    uint8_t qos_rule_code;
+#define QOS_RULE_FLOW_DESCRIPTION_CODE_FROM_PFCP_FLAGS(pfcp_flags) \
+        (pfcp_flags & OGS_PFCP_MODIFY_CREATE) ? \
+            OGS_NAS_CREATE_NEW_QOS_FLOW_DESCRIPTION : \
+        (pfcp_flags & OGS_PFCP_MODIFY_REMOVE) ? \
+            OGS_NAS_DELETE_NEW_QOS_FLOW_DESCRIPTION : \
+        (pfcp_flags & OGS_PFCP_MODIFY_QOS_MODIFY) ? \
+            OGS_NAS_MODIFY_NEW_QOS_FLOW_DESCRIPTION : 0
+    uint8_t qos_flow_description_code;
+
+    uint64_t pfcp_flags;
+
+} smf_nsmf_pdusession_param_t;
+
 typedef struct smf_context_s {
     smf_ctf_config_t    ctf_config;
     const char*         diam_conf_path;   /* SMF Diameter conf path */
@@ -74,10 +129,10 @@ typedef struct smf_context_s {
     const char      *dns6[MAX_NUM_OF_DNS];
 
 #define MAX_NUM_OF_P_CSCF           16
-    const char      *p_cscf[MAX_NUM_OF_P_CSCF];
+    char            *p_cscf[MAX_NUM_OF_P_CSCF];
     int             num_of_p_cscf;
     int             p_cscf_index;
-    const char      *p_cscf6[MAX_NUM_OF_P_CSCF];
+    char            *p_cscf6[MAX_NUM_OF_P_CSCF];
     int             num_of_p_cscf6;
     int             p_cscf6_index;
 
@@ -112,9 +167,13 @@ typedef struct smf_gtp_node_s {
 
 typedef struct smf_ue_s {
     ogs_lnode_t lnode;
+    ogs_pool_id_t id;
 
     /* SUPI */
     char *supi;
+
+    /* GPSI */
+    char *gpsi;
 
     /* IMSI */
     uint8_t imsi[OGS_MAX_IMSI_LEN];
@@ -138,7 +197,7 @@ typedef struct smf_ue_s {
     do { \
         smf_ue_t *smf_ue = NULL; \
         ogs_assert(__sESS); \
-        smf_ue = (__sESS)->smf_ue; \
+        smf_ue = smf_ue_find_by_id((__sESS)->smf_ue_id); \
         ogs_assert(smf_ue); \
         smf_metrics_inst_by_slice_add(&(__sESS)->serving_plmn_id, \
                 &(__sESS)->s_nssai, SMF_METR_GAUGE_SM_SESSIONNBR, -1); \
@@ -155,11 +214,15 @@ typedef struct smf_pf_s {
     ogs_lnode_t     lnode;
     ogs_lnode_t     to_add_node;
 
+    ogs_pool_id_t   id;
+
 ED3(uint8_t spare:2;,
     uint8_t direction:2;,
     uint8_t identifier:4;)
 
     uint8_t precedence;             /* Only used in EPC */
+
+    uint32_t sdf_filter_id;         /* SDF Filter ID */
 
     uint8_t *identifier_node;       /* Pool-Node for Identifier */
     uint8_t *precedence_node;       /* Pool-Node for Precedence */
@@ -167,11 +230,12 @@ ED3(uint8_t spare:2;,
     ogs_ipfw_rule_t ipfw_rule;
     char *flow_description;
 
-    smf_bearer_t    *bearer;
+    ogs_pool_id_t bearer_id;
 } smf_pf_t;
 
 typedef struct smf_bearer_s {
     ogs_lnode_t     lnode;          /**< A node of list_t */
+    ogs_pool_id_t   id;
 
     ogs_lnode_t     to_modify_node;
     ogs_lnode_t     to_delete_node;
@@ -210,12 +274,13 @@ typedef struct smf_bearer_s {
     uint8_t num_of_pf_to_delete;
     uint8_t pf_to_delete[OGS_MAX_NUM_OF_FLOW_IN_NAS];
 
-    smf_sess_t      *sess;
+    ogs_pool_id_t   sess_id;
 } smf_bearer_t;
 
 #define SMF_SESS(pfcp_sess) ogs_container_of(pfcp_sess, smf_sess_t, pfcp)
 typedef struct smf_sess_s {
     ogs_sbi_object_t sbi;
+    ogs_pool_id_t id;
 
     uint32_t        index;              /* An index of this node */
     ogs_pool_id_t   *smf_n4_seid_node;  /* A node of SMF-N4-SEID */
@@ -226,6 +291,8 @@ typedef struct smf_sess_s {
         uint32_t gx_cca_init_err; /* Gx CCA RXed error code */
         bool gy_ccr_init_in_flight; /* Waiting for Gy CCA */
         uint32_t gy_cca_init_err; /* Gy CCA RXed error code */
+        bool s6b_aar_in_flight; /* Waiting for S6B AAR */
+        uint32_t s6b_aaa_err; /* S6B AAA RXed error code */
         bool gx_ccr_term_in_flight; /* Waiting for Gx CCA */
         uint32_t gx_cca_term_err; /* Gx CCA RXed error code */
         bool gy_ccr_term_in_flight; /* Waiting for Gy CCA */
@@ -245,15 +312,19 @@ typedef struct smf_sess_s {
     uint32_t        sgw_s5c_teid;   /* SGW-S5C-TEID is received from SGW */
     ogs_ip_t        sgw_s5c_ip;     /* SGW-S5C IPv4/IPv6 */
 
-    uint64_t        smf_n4_seid;    /* SMF SEID is dervied from NODE */
+    uint64_t        smf_n4_seid;    /* SMF SEID is derived from NODE */
     uint64_t        upf_n4_seid;    /* UPF SEID is received from Peer */
 
-    uint32_t        upf_n3_teid;    /* UPF-N3 TEID */
-    ogs_sockaddr_t  *upf_n3_addr;   /* UPF-N3 IPv4 */
-    ogs_sockaddr_t  *upf_n3_addr6;  /* UPF-N3 IPv6 */
-
-    uint32_t        gnb_n3_teid;    /* gNB-N3 TEID */
-    ogs_ip_t        gnb_n3_ip;      /* gNB-N3 IPv4/IPv6 */
+    uint32_t        local_dl_teid;      /* Local Downlink TEID */
+    ogs_sockaddr_t  *local_dl_addr;     /* Local Downlink IPv4 */
+    ogs_sockaddr_t  *local_dl_addr6;    /* Local Downlink IPv6 */
+    uint32_t        remote_dl_teid;     /* Remote Downlink TEID */
+    ogs_ip_t        remote_dl_ip;       /* Remote Downlink IPv4/IPv6 */
+    uint32_t        local_ul_teid;      /* Local Uplink TEID */
+    ogs_sockaddr_t  *local_ul_addr;     /* Local Uplink IPv4 */
+    ogs_sockaddr_t  *local_ul_addr6;    /* Local Uplink IPv6 */
+    uint32_t        remote_ul_teid;     /* Remote Uplink TEID */
+    ogs_ip_t        remote_ul_ip;       /* Remote Uplink IPv4/IPv6 */
 
     char            *gx_sid;        /* Gx Session ID */
     char            *gy_sid;        /* Gx Session ID */
@@ -269,18 +340,109 @@ typedef struct smf_sess_s {
     } while(0)
     OGS_POOL(qfi_pool, uint8_t);
 
-    char            *sm_context_ref; /* smContextRef */
     uint8_t         psi; /* PDU session identity */
     uint8_t         pti; /* 5GS-NAS : Procedure transaction identity */
+    uint8_t         request_type;   /* Request type */
 
+    char            *sm_context_ref; /* smContextRef */
     char            *sm_context_status_uri; /* SmContextStatusNotification */
     struct {
         ogs_sbi_client_t *client;
     } namf;
 
+#define PDU_SESSION_IN_VSMF(__sESS)  \
+    ((__sESS) && (__sESS)->pdu_session_ref)
+#define STORE_PDU_SESSION(__sESS, __rESOURCE_URI, __rEF) \
+    do { \
+        ogs_assert(__sESS); \
+        ogs_assert(__rESOURCE_URI); \
+        ogs_assert(__rEF); \
+        CLEAR_PDU_SESSION(__sESS); \
+        (__sESS)->pdu_session_resource_uri = ogs_strdup(__rESOURCE_URI); \
+        ogs_assert((__sESS)->pdu_session_resource_uri); \
+        (__sESS)->pdu_session_ref = ogs_strdup(__rEF); \
+        ogs_assert((__sESS)->pdu_session_ref); \
+    } while(0);
+#define CLEAR_PDU_SESSION(__sESS) \
+    do { \
+        ogs_assert(__sESS); \
+        if ((__sESS)->pdu_session_ref) \
+            ogs_free((__sESS)->pdu_session_ref); \
+        (__sESS)->pdu_session_ref = NULL; \
+        if ((__sESS)->pdu_session_resource_uri) \
+            ogs_free((__sESS)->pdu_session_resource_uri); \
+        (__sESS)->pdu_session_resource_uri = NULL; \
+    } while(0);
+    char *pdu_session_ref;
+    char *pdu_session_resource_uri;
+
+    /* SMF sends the RESPONSE
+     * of [POST] /nsmf-pdusession/v1/pdu-sessions */
+    struct {
+        ogs_sbi_client_t *client;
+    } pdu_session;
+
     /* PCF sends the RESPONSE
      * of [POST] /npcf-smpolocycontrol/v1/policies */
-    char *policy_association_id;
+#define PCF_SM_POLICY_ASSOCIATED(__sESS) \
+    ((__sESS) && ((__sESS)->policy_association.id))
+#define PCF_SM_POLICY_CLEAR(__sESS) \
+    do { \
+        ogs_assert((__sESS)); \
+        if ((__sESS)->policy_association.resource_uri) \
+            ogs_free((__sESS)->policy_association.resource_uri); \
+        (__sESS)->policy_association.resource_uri = NULL; \
+        if ((__sESS)->policy_association.id) \
+            ogs_free((__sESS)->policy_association.id); \
+        (__sESS)->policy_association.id = NULL; \
+    } while(0)
+#define PCF_SM_POLICY_STORE(__sESS, __rESOURCE_URI, __iD) \
+    do { \
+        ogs_assert((__sESS)); \
+        ogs_assert((__rESOURCE_URI)); \
+        ogs_assert((__iD)); \
+        PCF_SM_POLICY_CLEAR(__sESS); \
+        (__sESS)->policy_association.resource_uri = ogs_strdup(__rESOURCE_URI); \
+        ogs_assert((__sESS)->policy_association.resource_uri); \
+        (__sESS)->policy_association.id = ogs_strdup(__iD); \
+        ogs_assert((__sESS)->policy_association.id); \
+    } while(0)
+    struct {
+        char *resource_uri;
+        char *id;
+        ogs_sbi_client_t *client;
+    } policy_association;
+
+    /* SubscriptionId of Subscription to Data Change Notification to UDM */
+#define UDM_SDM_SUBSCRIBED(__sESS) \
+    ((__sESS) && ((__sESS)->data_change_subscription.id))
+#define UDM_SDM_CLEAR(__sESS) \
+    do { \
+        ogs_assert((__sESS)); \
+        if ((__sESS)->data_change_subscription.resource_uri) \
+            ogs_free((__sESS)->data_change_subscription.resource_uri); \
+        (__sESS)->data_change_subscription.resource_uri = NULL; \
+        if ((__sESS)->data_change_subscription.id) \
+            ogs_free((__sESS)->data_change_subscription.id); \
+        (__sESS)->data_change_subscription.id = NULL; \
+    } while(0)
+#define UDM_SDM_STORE(__sESS, __rESOURCE_URI, __iD) \
+    do { \
+        ogs_assert((__sESS)); \
+        ogs_assert((__rESOURCE_URI)); \
+        ogs_assert((__iD)); \
+        UDM_SDM_CLEAR(__sESS); \
+        (__sESS)->data_change_subscription.resource_uri = \
+            ogs_strdup(__rESOURCE_URI); \
+        ogs_assert((__sESS)->data_change_subscription.resource_uri); \
+        (__sESS)->data_change_subscription.id = ogs_strdup(__iD); \
+        ogs_assert((__sESS)->data_change_subscription.id); \
+    } while(0)
+    struct {
+        char *resource_uri;
+        char *id;
+        ogs_sbi_client_t *client;
+    } data_change_subscription;
 
     OpenAPI_up_cnx_state_e up_cnx_state;
 
@@ -297,32 +459,111 @@ typedef struct smf_sess_s {
     ogs_nr_cgi_t    nr_cgi;
     ogs_time_t      ue_location_timestamp;
 
+#define HOME_ROUTED_ROAMING_IN_VSMF(__sESS) \
+    ((__sESS) && (__sESS)->h_smf_uri)
+    char            *h_smf_uri;
+    struct {
+        ogs_sbi_client_t *client;
+    } h_smf;
+
+    char            *h_smf_id;
+
+    /* Saved from H-SMF */
+    ogs_nas_extended_protocol_configuration_options_t
+        h_smf_extended_protocol_configuration_options;
+    ogs_nas_5gsm_cause_t h_smf_gsm_cause;
+
+    /* Saved from H-SMF */
+#define CLEAR_QOS_FLOWS_SETUP_LIST(__lIST) \
+    do { \
+        OpenAPI_lnode_t *node = NULL; \
+        OpenAPI_list_for_each((__lIST), node) { \
+            OpenAPI_qos_flow_setup_item_t *qosFlowSetupItem = node->data; \
+            if (qosFlowSetupItem) \
+                OpenAPI_qos_flow_setup_item_free(qosFlowSetupItem); \
+        } \
+        OpenAPI_list_free((__lIST)); \
+        (__lIST) = NULL; \
+    } while(0)
+    OpenAPI_list_t *h_smf_qos_flows_setup_list;
+#define CLEAR_QOS_FLOWS_ADD_MOD_REQUEST_LIST(__lIST) \
+    do { \
+        OpenAPI_lnode_t *node = NULL; \
+        OpenAPI_list_for_each((__lIST), node) { \
+            OpenAPI_qos_flow_add_modify_request_item_t \
+                *qosFlowAddModifyRequestItem = node->data; \
+            if (qosFlowAddModifyRequestItem) \
+                OpenAPI_qos_flow_add_modify_request_item_free( \
+                        qosFlowAddModifyRequestItem); \
+        } \
+        OpenAPI_list_free((__lIST)); \
+        (__lIST) = NULL; \
+    } while(0)
+    OpenAPI_list_t *h_smf_qos_flows_add_mod_request_list;
+#define CLEAR_QOS_FLOWS_REL_REQUEST_LIST(__lIST) \
+    do { \
+        OpenAPI_lnode_t *node = NULL; \
+        OpenAPI_list_for_each((__lIST), node) { \
+            OpenAPI_qos_flow_release_request_item_t \
+                *qosFlowReleaseRequestItem = node->data; \
+            if (qosFlowReleaseRequestItem) \
+                OpenAPI_qos_flow_release_request_item_free( \
+                        qosFlowReleaseRequestItem); \
+        } \
+        OpenAPI_list_free((__lIST)); \
+        (__lIST) = NULL; \
+    } while(0)
+    OpenAPI_list_t *h_smf_qos_flows_rel_request_list;
+
+#define HOME_ROUTED_ROAMING_IN_HSMF(__sESS) \
+    ((__sESS) && (__sESS)->vsmf_pdu_session_uri)
+    char            *vsmf_pdu_session_uri;
+    struct {
+        ogs_sbi_client_t *client;
+    } v_smf;
+
+    /*
+     * Keeps the n1SmMsg Content (n1smbuf) in the context of the V-SMF
+     * for use when creating the n1SmBufFromUe to send to the H-SMF.
+     */
+    ogs_pkbuf_t     *n1SmBufFromUe;
+
     /* PCF ID */
     char            *pcf_id;
 
     /* Serving NF (AMF) Id */
-    char            *serving_nf_id;
+    char            *amf_nf_id;
+
+    /* Guami */
+    ogs_guami_t     guami;
 
     /* Integrity protection maximum data rate */
     struct {
-        uint8_t mbr_dl;
-        uint8_t mbr_ul;
+        OpenAPI_max_integrity_protected_data_rate_e mbr_dl;
+        OpenAPI_max_integrity_protected_data_rate_e mbr_ul;
     } integrity_protection;
 
     /* S_NSSAI */
     ogs_s_nssai_t s_nssai;
     ogs_s_nssai_t mapped_hplmn;
+    bool mapped_hplmn_presence;
 
     /* PDN Configuration */
     ogs_session_t session;
     uint8_t ue_session_type;
     uint8_t ue_ssc_mode;
 
+    /* PDN Address Allocation (PAA) */
+    ogs_paa_t paa;
+
     /* DNN */
     char *full_dnn;
 
     ogs_pfcp_ue_ip_t *ipv4;
     ogs_pfcp_ue_ip_t *ipv6;
+
+    /* AN Type */
+    OpenAPI_access_type_e an_type;
 
     /* RAT Type */
     uint8_t gtp_rat_type;
@@ -331,6 +572,7 @@ typedef struct smf_sess_s {
     struct {
         uint8_t version; /* GTPC version */
         ogs_tlv_octet_t ue_pco;
+        ogs_tlv_octet_t ue_apco;
         ogs_tlv_octet_t ue_epco;
         ogs_tlv_octet_t user_location_information;
         ogs_tlv_octet_t ue_timezone;
@@ -352,6 +594,9 @@ typedef struct smf_sess_s {
         uint64_t dl_octets;
         ogs_time_t duration;
         uint32_t reporting_reason; /* OGS_DIAM_GY_REPORTING_REASON_* */
+        /* Whether Gy Final-Unit-Indication was received.
+         * Triggers session release upon Rx of next PFCP Report Req */
+        bool final_unit;
         /* Snapshot of measurement when last report was sent: */
         struct {
             uint64_t ul_octets;
@@ -384,11 +629,6 @@ typedef struct smf_sess_s {
         int pdu_session_resource_release;
     } ngap_state;
 
-#define SMF_UECM_STATE_NONE                                     0
-#define SMF_UECM_STATE_REGISTERED                               1
-#define SMF_UECM_STATE_DEREGISTERED_BY_AMF                      2
-#define SMF_UECM_STATE_DEREGISTERED_BY_N1_N2_RELEASE            3
-
     /* Handover */
     struct {
         bool prepared;
@@ -400,17 +640,23 @@ typedef struct smf_sess_s {
         ogs_ip_t gnb_n3_ip;
 
         /* Indirect DL Forwarding */
-        uint32_t upf_dl_teid;
-        ogs_sockaddr_t *upf_dl_addr;
-        ogs_sockaddr_t *upf_dl_addr6;
-        uint32_t gnb_dl_teid;
-        ogs_ip_t gnb_dl_ip;
+        uint32_t local_dl_teid;
+        ogs_sockaddr_t *local_dl_addr;
+        ogs_sockaddr_t *local_dl_addr6;
+        uint32_t remote_dl_teid;
+        ogs_ip_t remote_dl_ip;
     } handover;
 
     /* Charging */
     struct {
         uint32_t id;
     } charging;
+
+    /* AAA Node Identifier */
+    struct {
+        char *name;
+        char *realm;
+    } aaa_server_identifier;
 
     /* Data Forwarding between the CP and UP functions */
     ogs_pfcp_pdr_t  *cp2up_pdr;
@@ -426,10 +672,45 @@ typedef struct smf_sess_s {
     ogs_gtp_node_t  *gnode;
     ogs_pfcp_node_t *pfcp_node;
 
-    smf_ue_t *smf_ue;
+    ogs_pool_id_t smf_ue_id;
 
+    OpenAPI_resource_status_e resource_status;
     bool n1_released;
     bool n2_released;
+/*
+ * Section 4.3.3.3 'UE or network requested PDU Session Modification
+ * (home-routed roaming)'
+ * - Step 1a: Nsmf_PDUSession_UpdateSMContext Request (AMF -> V-SMF):
+ * - Step 4a: Nsmf_PDUSession_UpdateSMContext Response (V-SMF -> AMF):
+ */
+    ogs_pool_id_t amf_to_vsmf_modify_stream_id;
+/*
+ * Section 4.3.3.3 'UE or network requested PDU Session Modification
+ * (home-routed roaming)'
+ * - Step 3:  Nsmf_PDUSession_UpdateSMContext Request (V-SMF -> H-SMF):
+ * - Step 15: Nsmf_PDUSession_UpdateSMContext Response (V-SMF -> H-SMF):
+ */
+    ogs_pool_id_t vsmf_to_hsmf_modify_stream_id;
+/*
+ * Section 4.3.4.3 'UE or network requested PDU Session Release for
+ * Home-routed Roaming'
+ * - Step 1a: Nsmf_PDUSession_UpdateSMContext Request (AMF -> V-SMF):
+ * - Step 5b: Nsmf_PDUSession_UpdateSMContext Response (V-SMF -> AMF):
+ */
+    ogs_pool_id_t amf_to_vsmf_release_stream_id;
+/*
+ * Section 4.3.4.3 'UE or network requested PDU Session Release for
+ * Home-routed Roaming'
+ * - Step 3a: Nsmf_PDUSession_UpdateSMContext Request (V-SMF -> H-SMF):
+ * - Step 14: Nsmf_PDUSession_UpdateSMContext Response (V-SMF -> H-SMF):
+ */
+    ogs_pool_id_t vsmf_to_hsmf_release_stream_id;
+
+    smf_nsmf_pdusession_param_t nsmf_param;
+
+    bool establishment_accept_sent;
+    ogs_sbi_xact_t *pending_modification_xact;
+
 } smf_sess_t;
 
 void smf_context_init(void);
@@ -454,7 +735,8 @@ smf_sess_t *smf_sess_add_by_gtp1_message(ogs_gtp1_message_t *message);
 smf_sess_t *smf_sess_add_by_gtp2_message(ogs_gtp2_message_t *message);
 smf_sess_t *smf_sess_add_by_apn(smf_ue_t *smf_ue, char *apn, uint8_t rat_type);
 
-smf_sess_t *smf_sess_add_by_sbi_message(ogs_sbi_message_t *message);
+smf_sess_t *smf_sess_add_by_sm_context(ogs_sbi_message_t *message);
+smf_sess_t *smf_sess_add_by_pdu_session(ogs_sbi_message_t *message);
 smf_sess_t *smf_sess_add_by_psi(smf_ue_t *smf_ue, uint8_t psi);
 
 void smf_sess_select_upf(smf_sess_t *sess);
@@ -472,6 +754,7 @@ smf_sess_t *smf_sess_find_by_apn(smf_ue_t *smf_ue, char *apn, uint8_t rat_type);
 smf_sess_t *smf_sess_find_by_psi(smf_ue_t *smf_ue, uint8_t psi);
 smf_sess_t *smf_sess_find_by_charging_id(uint32_t charging_id);
 smf_sess_t *smf_sess_find_by_sm_context_ref(char *sm_context_ref);
+smf_sess_t *smf_sess_find_by_pdu_session_ref(char *pdu_session_ref);
 smf_sess_t *smf_sess_find_by_ipv4(uint32_t addr);
 smf_sess_t *smf_sess_find_by_ipv6(uint32_t *addr6);
 smf_sess_t *smf_sess_find_by_paging_n1n2message_location(
@@ -491,6 +774,8 @@ smf_bearer_t *smf_qos_flow_find_by_qfi(smf_sess_t *sess, uint8_t qfi);
 smf_bearer_t *smf_qos_flow_find_by_pcc_rule_id(
         smf_sess_t *sess, char *pcc_rule_id);
 
+smf_bearer_t *smf_vcn_tunnel_add(smf_sess_t *sess);
+
 smf_bearer_t *smf_bearer_add(smf_sess_t *sess);
 int smf_bearer_remove(smf_bearer_t *bearer);
 void smf_bearer_remove_all(smf_sess_t *sess);
@@ -506,15 +791,17 @@ smf_bearer_t *smf_default_bearer_in_sess(smf_sess_t *sess);
 void smf_bearer_tft_update(smf_bearer_t *bearer);
 void smf_bearer_qos_update(smf_bearer_t *bearer);
 
-smf_ue_t *smf_ue_cycle(smf_ue_t *smf_ue);
-smf_sess_t *smf_sess_cycle(smf_sess_t *sess);
-smf_bearer_t *smf_qos_flow_cycle(smf_bearer_t *qos_flow);
-smf_bearer_t *smf_bearer_cycle(smf_bearer_t *bearer);
+smf_ue_t *smf_ue_find_by_id(ogs_pool_id_t id);
+smf_sess_t *smf_sess_find_by_id(ogs_pool_id_t id);
+smf_bearer_t *smf_bearer_find_by_id(ogs_pool_id_t id);
+smf_bearer_t *smf_qos_flow_find_by_id(ogs_pool_id_t id);
+smf_pf_t *smf_pf_find_by_id(ogs_pool_id_t id);
 
 smf_pf_t *smf_pf_add(smf_bearer_t *bearer);
 int smf_pf_remove(smf_pf_t *pf);
 void smf_pf_remove_all(smf_bearer_t *bearer);
-smf_pf_t *smf_pf_find_by_id(smf_bearer_t *smf_bearer, uint8_t id);
+smf_pf_t *smf_pf_find_by_identifier(
+        smf_bearer_t *bearer, uint8_t identifier);
 smf_pf_t *smf_pf_find_by_flow(
     smf_bearer_t *bearer, uint8_t direction, char *flow_description);
 smf_pf_t *smf_pf_first(smf_bearer_t *bearer);

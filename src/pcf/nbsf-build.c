@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019-2025 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -22,7 +22,7 @@
 ogs_sbi_request_t *pcf_nbsf_management_build_register(
         pcf_sess_t *sess, void *data)
 {
-    pcf_ue_t *pcf_ue = NULL;
+    pcf_ue_sm_t *pcf_ue_sm = NULL;
 
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
@@ -35,14 +35,13 @@ ogs_sbi_request_t *pcf_nbsf_management_build_register(
     ogs_sbi_nf_instance_t *nf_instance = NULL;
     ogs_sbi_nf_service_t *nf_service = NULL;
 
+    OpenAPI_nf_type_e requester_nf_type = OpenAPI_nf_type_NULL;
+
     int i;
 
     ogs_assert(sess);
-    pcf_ue = sess->pcf_ue;
-    ogs_assert(pcf_ue);
-
-    nf_instance = data;
-    ogs_assert(nf_instance);
+    pcf_ue_sm = pcf_ue_sm_find_by_id(sess->pcf_ue_sm_id);
+    ogs_assert(pcf_ue_sm);
 
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
@@ -54,8 +53,8 @@ ogs_sbi_request_t *pcf_nbsf_management_build_register(
     memset(&PcfBinding, 0, sizeof(PcfBinding));
     memset(&sNssai, 0, sizeof(sNssai));
 
-    PcfBinding.supi = pcf_ue->supi;
-    PcfBinding.gpsi = pcf_ue->gpsi;
+    PcfBinding.supi = pcf_ue_sm->supi;
+    PcfBinding.gpsi = pcf_ue_sm->gpsi;
 
     PcfBinding.ipv4_addr = sess->ipv4addr_string;
     PcfBinding.ipv6_prefix = sess->ipv6prefix_string;
@@ -68,6 +67,13 @@ ogs_sbi_request_t *pcf_nbsf_management_build_register(
         goto end;
     }
     PcfBinding.dnn = sess->dnn;
+
+    requester_nf_type = NF_INSTANCE_TYPE(ogs_sbi_self()->nf_instance);
+    ogs_assert(requester_nf_type);
+    nf_instance = ogs_sbi_nf_instance_find_by_service_type(
+                    OGS_SBI_SERVICE_TYPE_NPCF_POLICYAUTHORIZATION,
+                    requester_nf_type);
+    ogs_assert(nf_instance);
 
     nf_service = ogs_sbi_nf_service_find_by_name(
             nf_instance, (char *)OGS_SBI_SERVICE_NAME_NPCF_POLICYAUTHORIZATION);
@@ -127,10 +133,6 @@ ogs_sbi_request_t *pcf_nbsf_management_build_register(
         }
     }
 
-    if (!sess->s_nssai.sst) {
-        ogs_error("No SST");
-        goto end;
-    }
     if (PcfIpEndPointList->count)
         PcfBinding.pcf_ip_end_points = PcfIpEndPointList;
     else
@@ -181,23 +183,19 @@ end:
 ogs_sbi_request_t *pcf_nbsf_management_build_de_register(
         pcf_sess_t *sess, void *data)
 {
-    pcf_ue_t *pcf_ue = NULL;
+    pcf_ue_sm_t *pcf_ue_sm = NULL;
 
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
 
     ogs_assert(sess);
-    pcf_ue = sess->pcf_ue;
-    ogs_assert(pcf_ue);
-    ogs_assert(sess->binding_id);
+    pcf_ue_sm = pcf_ue_sm_find_by_id(sess->pcf_ue_sm_id);
+    ogs_assert(pcf_ue_sm);
+    ogs_assert(sess->binding.resource_uri);
 
     memset(&message, 0, sizeof(message));
     message.h.method = (char *)OGS_SBI_HTTP_METHOD_DELETE;
-    message.h.service.name = (char *)OGS_SBI_SERVICE_NAME_NBSF_MANAGEMENT;
-    message.h.api.version = (char *)OGS_SBI_API_V1;
-    message.h.resource.component[0] =
-        (char *)OGS_SBI_RESOURCE_NAME_PCF_BINDINGS;
-    message.h.resource.component[1] = sess->binding_id;
+    message.h.uri = sess->binding.resource_uri;
 
     request = ogs_sbi_build_request(&message);
     ogs_expect(request);

@@ -65,7 +65,7 @@ static void test1_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -426,7 +426,7 @@ static void test2_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -787,7 +787,7 @@ static void test3_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -1045,7 +1045,7 @@ static void test4_issues2842_func(abts_case *tc, void *data)
     test_ue->opc_string = "e8ed289deba952e4283b54e88e6183ca";
 
     /* gNB connects to AMF */
-    ngap = testngap_client(AF_INET);
+    ngap = testngap_client(1, AF_INET);
     ABTS_PTR_NOTNULL(tc, ngap);
 
     /* gNB connects to UPF */
@@ -1401,6 +1401,39 @@ static void test4_issues2842_func(abts_case *tc, void *data)
     test_ue_remove(test_ue);
 }
 
+static void test5_func(abts_case *tc, void *data)
+{
+    int rv;
+    ogs_socknode_t *ngap;
+    ogs_pkbuf_t *sendbuf;
+    ogs_pkbuf_t *recvbuf;
+    ogs_ngap_message_t message;
+
+    ngap = testngap_client(1, AF_INET);
+    ABTS_PTR_NOTNULL(tc, ngap);
+
+    sendbuf = testngap_build_ng_setup_request(0x4000, 22);
+    ABTS_PTR_NOTNULL(tc, sendbuf);
+    rv = testgnb_ngap_send(ngap, sendbuf);
+    ABTS_INT_EQUAL(tc, OGS_OK, rv);
+
+    recvbuf = testgnb_ngap_read(ngap);
+    ABTS_PTR_NOTNULL(tc, recvbuf);
+    ogs_pkbuf_free(recvbuf);
+
+    sendbuf = test_ngap_build_malformed_initial_ue_message(0);
+    ABTS_PTR_NOTNULL(tc, sendbuf);
+
+    rv = testgnb_ngap_send(ngap, sendbuf);
+    ABTS_INT_EQUAL(tc, OGS_OK, rv);
+
+    recvbuf = testgnb_ngap_read(ngap);
+    ABTS_PTR_NOTNULL(tc, recvbuf);
+    ogs_pkbuf_free(recvbuf);
+
+    testgnb_ngap_close(ngap);
+}
+
 abts_suite *test_crash(abts_suite *suite)
 {
     suite = ADD_SUITE(suite)
@@ -1409,6 +1442,7 @@ abts_suite *test_crash(abts_suite *suite)
     abts_run_test(suite, test2_func, NULL);
     abts_run_test(suite, test3_func, NULL);
     abts_run_test(suite, test4_issues2842_func, NULL);
+    abts_run_test(suite, test5_func, NULL);
 
     return suite;
 }
