@@ -400,8 +400,8 @@ bool udr_nudr_dr_handle_subscription_context(
             ogs_error("Invalid HTTP method [%s]", recvmsg->h.method);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream,
-                    OGS_SBI_HTTP_STATUS_MEHTOD_NOT_ALLOWED,
-                    recvmsg, "Invalid HTTP method", recvmsg->h.method));
+                    OGS_SBI_HTTP_STATUS_METHOD_NOT_ALLOWED,
+                    recvmsg, "Invalid HTTP method", recvmsg->h.method, NULL));
         END
         break;
     CASE(OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS)
@@ -415,7 +415,7 @@ bool udr_nudr_dr_handle_subscription_context(
                 ogs_assert(true ==
                     ogs_sbi_server_send_error(
                         stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                        recvmsg, "No SmsfRegistration", supi));
+                        recvmsg, "No SmsfRegistration", supi, NULL));
                 return false;
             }
 
@@ -458,7 +458,7 @@ bool udr_nudr_dr_handle_subscription_context(
                 ogs_assert(true ==
                     ogs_sbi_server_send_error(
                         stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                        recvmsg, "No SmsfRegistration", supi));
+                        recvmsg, "No SmsfRegistration", supi, NULL));
                 return false;
             }
 

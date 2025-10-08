@@ -627,13 +627,10 @@ typedef struct ogs_sbi_message_s {
     OpenAPI_ue_context_transfer_rsp_data_t *UeContextTransferRspData;
     OpenAPI_ue_reg_status_update_req_data_t *UeRegStatusUpdateReqData;
     OpenAPI_ue_reg_status_update_rsp_data_t *UeRegStatusUpdateRspData;
-    OpenAPI_ue_sms_context_data_t *UeSmsContextData;
     OpenAPI_smsf_registration_t *SmsfRegistration;
     OpenAPI_sms_management_subscription_data_t *SmsManagementSubscriptionData;
     OpenAPI_sms_subscription_data_t *SmsSubscriptionData;
     OpenAPI_ue_context_in_smsf_data_t *UeContextInSmsfData;
-    OpenAPI_sms_record_data_t *SmsRecordData;
-    OpenAPI_sms_record_delivery_data_t *SmsRecordDeliveryData;
 
     ogs_sbi_links_t *links;
 

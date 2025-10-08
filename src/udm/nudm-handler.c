@@ -634,7 +634,7 @@ bool udm_nudm_uecm_handle_smsf_registration(
         ogs_error("[%s] No SmsfRegistration", udm_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                message, "No SmsfRegistration", udm_ue->supi));
+                message, "No SmsfRegistration", udm_ue->supi, NULL));
         return false;
     }
 
@@ -642,7 +642,7 @@ bool udm_nudm_uecm_handle_smsf_registration(
         ogs_error("[%s] No smsfInstanceId", udm_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                message, "No smsfInstanceId", udm_ue->supi));
+                message, "No smsfInstanceId", udm_ue->supi, NULL));
         return false;
     }
 
@@ -650,7 +650,7 @@ bool udm_nudm_uecm_handle_smsf_registration(
         ogs_error("[%s] No PlmnId", udm_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                message, "No PlmnId", udm_ue->supi));
+                message, "No PlmnId", udm_ue->supi, NULL));
         return false;
     }
 
@@ -658,7 +658,7 @@ bool udm_nudm_uecm_handle_smsf_registration(
         ogs_error("[%s] No PlmnId.Mnc", udm_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                message, "No PlmnId.Mnc", udm_ue->supi));
+                message, "No PlmnId.Mnc", udm_ue->supi, NULL));
         return false;
     }
 
@@ -666,7 +666,7 @@ bool udm_nudm_uecm_handle_smsf_registration(
         ogs_error("[%s] No PlmnId.Mcc", udm_ue->supi);
         ogs_assert(true ==
             ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                message, "No PlmnId.Mcc", udm_ue->supi));
+                message, "No PlmnId.Mcc", udm_ue->supi, NULL));
         return false;
     }
 
@@ -675,7 +675,7 @@ bool udm_nudm_uecm_handle_smsf_registration(
             message->SmsfRegistration);
 
     r = udm_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDR_DR, NULL,
-            udm_nudr_dr_build_update_smsf_context, udm_ue, stream, NULL);
+            udm_nudr_dr_build_update_smsf_context, udm_ue, stream, UDM_SBI_NO_STATE, NULL);
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);
 
@@ -692,7 +692,7 @@ bool udm_nudm_uecm_handle_smsf_deregistration(
     ogs_assert(message);
 
     r = udm_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDR_DR, NULL,
-            udm_nudr_dr_build_delete_smsf_context, udm_ue, stream, NULL);
+            udm_nudr_dr_build_delete_smsf_context, udm_ue, stream, UDM_SBI_NO_STATE, NULL);
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);
 

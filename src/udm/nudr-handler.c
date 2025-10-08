@@ -469,7 +469,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_assert(true ==
                 ogs_sbi_server_send_error(
                     stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    recvmsg, strerror, NULL));
+                    recvmsg, strerror, NULL, NULL));
             ogs_free(strerror);
             return false;
         END
@@ -621,7 +621,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_error("[%s] No SmsfRegistration", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    recvmsg, "No SmsfRegistration", udm_ue->supi));
+                    recvmsg, "No SmsfRegistration", udm_ue->supi, NULL));
             return false;
         }
 
@@ -629,7 +629,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_error("[%s] No smsfInstanceId", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    recvmsg, "No smsfInstanceId", udm_ue->supi));
+                    recvmsg, "No smsfInstanceId", udm_ue->supi, NULL));
             return false;
         }
 
@@ -637,7 +637,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_error("[%s] No PlmnId", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    recvmsg, "No PlmnId", udm_ue->supi));
+                    recvmsg, "No PlmnId", udm_ue->supi, NULL));
             return false;
         }
 
@@ -645,7 +645,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_error("[%s] No PlmnId.Mnc", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    recvmsg, "No PlmnId.Mnc", udm_ue->supi));
+                    recvmsg, "No PlmnId.Mnc", udm_ue->supi, NULL));
             return false;
         }
 
@@ -653,7 +653,7 @@ bool udm_nudr_dr_handle_subscription_context(
             ogs_error("[%s] No PlmnId.Mcc", udm_ue->supi);
             ogs_assert(true ==
                 ogs_sbi_server_send_error(stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
-                    recvmsg, "No PlmnId.Mcc", udm_ue->supi));
+                    recvmsg, "No PlmnId.Mcc", udm_ue->supi, NULL));
             return false;
         }
 
@@ -903,7 +903,7 @@ bool udm_nudr_dr_handle_subscription_provisioned(
                 ogs_sbi_server_send_error(
                     stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
                     recvmsg, "No SmsManagementSubscriptionData",
-                    udm_ue->supi));
+                    udm_ue->supi, NULL));
             return false;
         }
 
@@ -932,7 +932,7 @@ bool udm_nudr_dr_handle_subscription_provisioned(
                 ogs_sbi_server_send_error(
                     stream, OGS_SBI_HTTP_STATUS_BAD_REQUEST,
                     recvmsg, "No SmsSubscriptionData",
-                    udm_ue->supi));
+                    udm_ue->supi, NULL));
             return false;
         }
 
