@@ -97,6 +97,8 @@ extern "C" {
 #define OGS_SBI_RESOURCE_NAME_SMF_SELECTION_SUBSCRIPTION_DATA \
                                             "smf-selection-subscription-data"
 #define OGS_SBI_RESOURCE_NAME_SDM_SUBSCRIPTIONS     "sdm-subscriptions"
+#define OGS_SBI_RESOURCE_NAME_SMS_DATA              "sms-data"
+#define OGS_SBI_RESOURCE_NAME_UE_CONTEXT_IN_SMSF_DATA "ue-context-in-smsf-data"
 
 #define OGS_SBI_RESOURCE_NAME_SECURITY_INFORMATION  "security-information"
 #define OGS_SBI_RESOURCE_NAME_GENERATE_AUTH_DATA    "generate-auth-data"
@@ -104,6 +106,7 @@ extern "C" {
 #define OGS_SBI_RESOURCE_NAME_REGISTRATIONS         "registrations"
 #define OGS_SBI_RESOURCE_NAME_AMF_3GPP_ACCESS       "amf-3gpp-access"
 #define OGS_SBI_RESOURCE_NAME_SMF_REGISTRATIONS     "smf-registrations"
+#define OGS_SBI_RESOURCE_NAME_SMSF_3GPP_ACCESS      "smsf-3gpp-access"
 
 #define OGS_SBI_RESOURCE_NAME_SUBSCRIPTION_DATA     "subscription-data"
 #define OGS_SBI_RESOURCE_NAME_AUTHENTICATION_DATA   "authentication-data"
@@ -115,6 +118,7 @@ extern "C" {
 #define OGS_SBI_RESOURCE_NAME_POLICY_DATA           "policy-data"
 #define OGS_SBI_RESOURCE_NAME_UES                   "ues"
 #define OGS_SBI_RESOURCE_NAME_AM_DATA               "am-data"
+#define OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA   "sms-mng-data"
 
 #define OGS_SBI_RESOURCE_NAME_SM_CONTEXTS           "sm-contexts"
 #define OGS_SBI_RESOURCE_NAME_MODIFY                "modify"
@@ -130,6 +134,8 @@ extern "C" {
 #define OGS_SBI_RESOURCE_NAME_N1_N2_MESSAGES        "n1-n2-messages"
 #define OGS_SBI_RESOURCE_NAME_TRANSFER              "transfer"
 #define OGS_SBI_RESOURCE_NAME_TRANSFER_UPDATE       "transfer-update"
+
+#define OGS_SBI_RESOURCE_NAME_SEND_SMS              "sendsms"
 
 #define OGS_SBI_RESOURCE_NAME_SM_CONTEXT_STATUS     "sm-context-status"
 #define OGS_SBI_RESOURCE_NAME_AM_POLICY_NOTIFY      "am-policy-notify"
@@ -273,6 +279,7 @@ extern "C" {
 #define OGS_SBI_APPLICATION_3GPPHAL_TYPE            "3gppHal+json"
 #define OGS_SBI_APPLICATION_5GNAS_TYPE              "vnd.3gpp.5gnas"
 #define OGS_SBI_APPLICATION_NGAP_TYPE               "vnd.3gpp.ngap"
+#define OGS_SBI_APPLICATION_SMS_TYPE                "vnd.3gpp.sms"
 
 #define OGS_SBI_CUSTOM_3GPP_COMMON                  "3gpp-Sbi-"
 #define OGS_SBI_CUSTOM_MESSAGE_PRIORITY  \
@@ -387,6 +394,8 @@ extern "C" {
     OGS_SBI_APPLICATION_TYPE "/" OGS_SBI_APPLICATION_5GNAS_TYPE
 #define OGS_SBI_CONTENT_NGAP_TYPE                   \
     OGS_SBI_APPLICATION_TYPE "/" OGS_SBI_APPLICATION_NGAP_TYPE
+#define OGS_SBI_CONTENT_SMS_TYPE                   \
+    OGS_SBI_APPLICATION_TYPE "/" OGS_SBI_APPLICATION_SMS_TYPE
 
 #define OGS_SBI_MULTIPART_TYPE                      "multipart"
 #define OGS_SBI_MULTIPART_RELATED_TYPE              "related"
@@ -396,6 +405,7 @@ extern "C" {
 #define OGS_SBI_CONTENT_ID                          "Content-Id"
 #define OGS_SBI_CONTENT_5GNAS_SM_ID                 "5gnas-sm"
 #define OGS_SBI_CONTENT_NGAP_SM_ID                  "ngap-sm"
+#define OGS_SBI_CONTENT_SMS_ID                      "sms"
 
 #define OGS_SBI_CALLBACK_NSMF_PDUSESSION_UPDATE \
     "Nsmf_PDUSession_Update"
@@ -617,6 +627,13 @@ typedef struct ogs_sbi_message_s {
     OpenAPI_ue_context_transfer_rsp_data_t *UeContextTransferRspData;
     OpenAPI_ue_reg_status_update_req_data_t *UeRegStatusUpdateReqData;
     OpenAPI_ue_reg_status_update_rsp_data_t *UeRegStatusUpdateRspData;
+    OpenAPI_ue_sms_context_data_t *UeSmsContextData;
+    OpenAPI_smsf_registration_t *SmsfRegistration;
+    OpenAPI_sms_management_subscription_data_t *SmsManagementSubscriptionData;
+    OpenAPI_sms_subscription_data_t *SmsSubscriptionData;
+    OpenAPI_ue_context_in_smsf_data_t *UeContextInSmsfData;
+    OpenAPI_sms_record_data_t *SmsRecordData;
+    OpenAPI_sms_record_delivery_data_t *SmsRecordDeliveryData;
 
     ogs_sbi_links_t *links;
 
