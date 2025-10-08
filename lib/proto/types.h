@@ -455,6 +455,7 @@ typedef struct ogs_qos_s {
      * Values 9 to 15 may be assigned to resources that are authorized
      * by the home network and thus applicable when a UE is roaming. */
         uint8_t     priority_level;
+        uint8_t     subscribed_priority_level;
 /*
  * Ch 7.3.40 Allocation-Retenion-Proirty in TS 29.272 V15.9.0
  *

@@ -341,7 +341,7 @@ ogs_pkbuf_t *mme_s11_build_create_session_request(
 
         memset(&bearer_qos, 0, sizeof(bearer_qos));
         bearer_qos.qci = session->qos.index;
-        bearer_qos.priority_level = session->qos.arp.priority_level;
+        bearer_qos.priority_level = session->qos.arp.subscribed_priority_level;
         bearer_qos.pre_emption_capability =
             session->qos.arp.pre_emption_capability;
         bearer_qos.pre_emption_vulnerability =

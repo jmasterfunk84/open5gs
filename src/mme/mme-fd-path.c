@@ -520,7 +520,7 @@ static int mme_s6a_subscription_data_from_avp(struct avp *avp,
                         if (avpch5) {
                             ret = fd_msg_avp_hdr(avpch5, &hdr);
                             ogs_assert(ret == 0);
-                            session->qos.arp.priority_level =
+                            session->qos.arp.subscribed_priority_level =
                                 hdr->avp_value->i32;
                         } else {
                             ogs_error("no_ARP");
