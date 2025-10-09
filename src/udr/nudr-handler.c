@@ -471,6 +471,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     bool processAmData = false;
     bool processSmfSel = false;
     bool processSmData = false;
+    bool processSmsMgmtData = false;
+    bool processSmsData = false;
     bool returnProvisionedData = false;
 
     ogs_sbi_message_t sendmsg;
@@ -484,6 +486,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     OpenAPI_session_management_subscription_data_t
         *SessionManagementSubscriptionData = NULL;
     OpenAPI_smf_selection_subscription_data_t SmfSelectionSubscriptionData;
+    OpenAPI_sms_management_subscription_data_t SmsManagementSubscriptionData;
+    OpenAPI_sms_subscription_data_t SmsSubscriptionData;
 
     OpenAPI_list_t *GpsiList = NULL;
     OpenAPI_ambr_rm_t SubscribedUeAmbr;
@@ -523,6 +527,10 @@ bool udr_nudr_dr_handle_subscription_provisioned(
     memset(&subscription_data, 0, sizeof(ogs_subscription_data_t));
     memset(&SmfSelectionSubscriptionData, 0,
             sizeof(SmfSelectionSubscriptionData));
+    memset(&SmsManagementSubscriptionData, 0, 
+            sizeof(SmsManagementSubscriptionData));
+    memset(&SmsSubscriptionData, 0, 
+            sizeof(SmsSubscriptionData));
 
     supi = recvmsg->h.resource.component[1];
     if (!supi) {
@@ -562,6 +570,12 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         CASE(OGS_SBI_RESOURCE_NAME_SM_DATA)
             processSmData = true;
             break;
+        CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
+            processSmsMgmtData = true;
+            break;
+        CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+            processSmsData = true;
+            break;
         DEFAULT
             strerror = ogs_msprintf("Invalid resource name [%s]",
                     recvmsg->h.resource.component[4]);
@@ -586,6 +600,14 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                     processSmData = true;
                     validParams = true;
                     break;
+                CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
+                    processSmsMgmtData = true;
+                    validParams = true;
+                    break;
+                CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+                    processSmsData = true;
+                    validParams = true;
+                    break;
                 DEFAULT
                     ogs_error("Unexpected dataset-name! [%s]",
                             recvmsg->param.dataset_names[i]);
@@ -600,6 +622,8 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             processAmData = true;
             processSmfSel = true;
             processSmData = true;
+            processSmsMgmtData = true;
+            processSmsData = true;
         }
     }
 
@@ -1086,6 +1110,45 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             ogs_assert(true == ogs_sbi_server_send_response(stream, response));
         }
     }
+    if (processSmsMgmtData) {
+        SmsManagementSubscriptionData.is_mt_sms_subscribed = true;
+        SmsManagementSubscriptionData.mt_sms_subscribed = true;
+        SmsManagementSubscriptionData.is_mt_sms_barring_all = false;
+        SmsManagementSubscriptionData.mt_sms_barring_all = false;
+        SmsManagementSubscriptionData.is_mt_sms_barring_roaming = false;
+        SmsManagementSubscriptionData.mt_sms_barring_roaming = false;
+        SmsManagementSubscriptionData.is_mo_sms_subscribed = true;
+        SmsManagementSubscriptionData.mo_sms_subscribed = true;
+        SmsManagementSubscriptionData.is_mo_sms_barring_all = false;
+        SmsManagementSubscriptionData.mo_sms_barring_all = false;
+        SmsManagementSubscriptionData.is_mo_sms_barring_all = false;
+        SmsManagementSubscriptionData.mo_sms_barring_all = false;
+
+        if (!returnProvisionedData) {
+            memset(&sendmsg, 0, sizeof(sendmsg));
+            sendmsg.SmsManagementSubscriptionData =
+                    &SmsManagementSubscriptionData;
+
+            response = ogs_sbi_build_response(
+                    &sendmsg, OGS_SBI_HTTP_STATUS_OK);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+        }
+    }
+    if (processSmsData) {
+        SmsSubscriptionData.is_sms_subscribed = true;
+        SmsSubscriptionData.sms_subscribed = true;
+
+        if (!returnProvisionedData) {
+            memset(&sendmsg, 0, sizeof(sendmsg));
+            sendmsg.SmsSubscriptionData = &SmsSubscriptionData;
+
+            response = ogs_sbi_build_response(
+                    &sendmsg, OGS_SBI_HTTP_STATUS_OK);
+            ogs_assert(response);
+            ogs_assert(true == ogs_sbi_server_send_response(stream, response));
+        }
+    }
 
     /* Build Provisioned Data Sets */
     if (returnProvisionedData) {
@@ -1102,6 +1165,12 @@ bool udr_nudr_dr_handle_subscription_provisioned(
         }
         if (processSmData) {
             ProvisionedDataSets.sm_data = &smSubsData;
+        }
+        if (processSmsMgmtData) {
+            ProvisionedDataSets.sms_mng_data = &SmsManagementSubscriptionData;
+        }
+        if (processSmsData) {
+            ProvisionedDataSets.sms_subs_data = SmsSubscriptionData;
         }
         memset(&sendmsg, 0, sizeof(sendmsg));
         sendmsg.ProvisionedDataSets = &ProvisionedDataSets;
