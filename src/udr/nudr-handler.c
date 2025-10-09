@@ -1170,7 +1170,7 @@ bool udr_nudr_dr_handle_subscription_provisioned(
             ProvisionedDataSets.sms_mng_data = &SmsManagementSubscriptionData;
         }
         if (processSmsData) {
-            ProvisionedDataSets.sms_subs_data = SmsSubscriptionData;
+            ProvisionedDataSets.sms_subs_data = &SmsSubscriptionData;
         }
         memset(&sendmsg, 0, sizeof(sendmsg));
         sendmsg.ProvisionedDataSets = &ProvisionedDataSets;
