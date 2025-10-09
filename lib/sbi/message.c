@@ -244,6 +244,8 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
         OpenAPI_sms_management_subscription_data_free(message->SmsManagementSubscriptionData);
     if (message->SmsSubscriptionData)
         OpenAPI_sms_subscription_data_free(message->SmsSubscriptionData);
+    if (message->UeContextInSmsfData)
+        OpenAPI_ue_context_in_smsf_data_free(message->UeContextInSmsfData);
 
     /* HTTP Part */
     for (i = 0; i < message->num_of_part; i++) {
@@ -1758,6 +1760,10 @@ static char *build_json(ogs_sbi_message_t *message)
     } else if (message->SmsSubscriptionData) {
         item = OpenAPI_sms_subscription_data_convertToJSON(
             message->SmsSubscriptionData);
+        ogs_assert(item);
+    } else if (message->UeContextInSmsfData) {
+        item = OpenAPI_ue_context_in_smsf_data_convertToJSON(
+            message->UeContextInSmsfData);
         ogs_assert(item);
     }
 
