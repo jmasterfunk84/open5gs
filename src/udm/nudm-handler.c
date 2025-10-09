@@ -675,7 +675,8 @@ bool udm_nudm_uecm_handle_smsf_registration(
             message->SmsfRegistration);
 
     r = udm_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDR_DR, NULL,
-            udm_nudr_dr_build_update_smsf_context, udm_ue, stream, UDM_SBI_NO_STATE, NULL);
+            udm_nudr_dr_build_update_smsf_context, udm_ue, stream,
+            UDM_SBI_NO_STATE, NULL);
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);
 
@@ -692,7 +693,8 @@ bool udm_nudm_uecm_handle_smsf_deregistration(
     ogs_assert(message);
 
     r = udm_ue_sbi_discover_and_send(OGS_SBI_SERVICE_TYPE_NUDR_DR, NULL,
-            udm_nudr_dr_build_delete_smsf_context, udm_ue, stream, UDM_SBI_NO_STATE, NULL);
+            udm_nudr_dr_build_delete_smsf_context, udm_ue, stream,
+            UDM_SBI_NO_STATE, NULL);
     ogs_expect(r == OGS_OK);
     ogs_assert(r != OGS_ERROR);
 
