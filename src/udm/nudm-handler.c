@@ -849,7 +849,6 @@ bool udm_nudm_sdm_handle_subscription_delete(
     ogs_assert(stream);
     ogs_assert(recvmsg);
 
-
     if (!recvmsg->h.resource.component[2]) {
         ogs_error("[%s] No subscriptionID", udm_ue->supi);
         ogs_assert(true ==

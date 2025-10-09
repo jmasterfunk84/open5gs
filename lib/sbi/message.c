@@ -240,6 +240,10 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
     }
     if (message->SmsfRegistration)
         OpenAPI_smsf_registration_free(message->SmsfRegistration);
+    if (message->SmsManagementSubscriptionData)
+        OpenAPI_sms_management_subscription_data_free(message->SmsManagementSubscriptionData);
+    if (message->SmsSubscriptionData)
+        OpenAPI_sms_subscription_data_free(message->SmsSubscriptionData);
 
     /* HTTP Part */
     for (i = 0; i < message->num_of_part; i++) {
@@ -1726,6 +1730,34 @@ static char *build_json(ogs_sbi_message_t *message)
     } else if (message->SecNegotiateRspData) {
         item = OpenAPI_sec_negotiate_rsp_data_convertToJSON(
             message->SecNegotiateRspData);
+        ogs_assert(item);
+    } else if (message->UeContextTransferReqData) {
+        item = OpenAPI_ue_context_transfer_req_data_convertToJSON(
+                message->UeContextTransferReqData);
+        ogs_assert(item);
+    } else if (message->UeContextTransferRspData) {
+        item = OpenAPI_ue_context_transfer_rsp_data_convertToJSON(
+                message->UeContextTransferRspData);
+        ogs_assert(item);
+    } else if (message->UeRegStatusUpdateReqData) {
+        item = OpenAPI_ue_reg_status_update_req_data_convertToJSON(
+                message->UeRegStatusUpdateReqData);
+        ogs_assert(item);
+    } else if (message->UeRegStatusUpdateRspData) {
+        item = OpenAPI_ue_reg_status_update_rsp_data_convertToJSON(
+                message->UeRegStatusUpdateRspData);
+        ogs_assert(item);
+    } else if (message->SmsfRegistration) {
+        item = OpenAPI_smsf_registration_convertToJSON(
+            message->SmsfRegistration);
+        ogs_assert(item);
+    } else if (message->SmsManagementSubscriptionData) {
+        item = OpenAPI_sms_management_subscription_data_convertToJSON(
+            message->SmsManagementSubscriptionData);
+        ogs_assert(item);
+    } else if (message->SmsSubscriptionData) {
+        item = OpenAPI_sms_subscription_data_convertToJSON(
+            message->SmsSubscriptionData);
         ogs_assert(item);
     }
 
@@ -3294,7 +3326,6 @@ static int on_part_data(
         CASE(OGS_SBI_CONTENT_JSON_TYPE)
         CASE(OGS_SBI_CONTENT_5GNAS_TYPE)
         CASE(OGS_SBI_CONTENT_NGAP_TYPE)
-        CASE(OGS_SBI_CONTENT_SMS_TYPE)
             size_t offset = 0;
 
             if (data->part[data->num_of_part].content == NULL) {
@@ -3424,7 +3455,6 @@ static int parse_multipart(
 
         CASE(OGS_SBI_CONTENT_5GNAS_TYPE)
         CASE(OGS_SBI_CONTENT_NGAP_TYPE)
-        CASE(OGS_SBI_CONTENT_SMS_TYPE)
             http->part[http->num_of_part].content_id =
                 data.part[i].content_id;
             http->part[http->num_of_part].content_type =
