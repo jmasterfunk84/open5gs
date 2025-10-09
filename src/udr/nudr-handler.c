@@ -600,11 +600,11 @@ bool udr_nudr_dr_handle_subscription_provisioned(
                     processSmData = true;
                     validParams = true;
                     break;
-                CASE(OGS_SBI_RESOURCE_NAME_SMS_MANAGEMENT_DATA)
+                CASE(OGS_SBI_PARAM_DATASET_NAME_SMS_MNG)
                     processSmsMgmtData = true;
                     validParams = true;
                     break;
-                CASE(OGS_SBI_RESOURCE_NAME_SMS_DATA)
+                CASE(OGS_SBI_PARAM_DATASET_NAME_SMS_SUB)
                     processSmsData = true;
                     validParams = true;
                     break;

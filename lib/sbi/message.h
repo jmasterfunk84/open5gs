@@ -377,6 +377,9 @@ extern "C" {
 #define OGS_SBI_PARAM_DATASET_NAME_AM                    "AM"
 #define OGS_SBI_PARAM_DATASET_NAME_SMF_SEL               "SMF_SEL"
 #define OGS_SBI_PARAM_DATASET_NAME_SM                    "SM"
+#define OGS_SBI_PARAM_DATASET_NAME_SMS_SUB               "SMS_SUB"
+#define OGS_SBI_PARAM_DATASET_NAME_SMS_MNG               "SMS_MNG"
+#define OGS_SBI_PARAM_DATASET_NAME_UEC_SMSF              "UEC_SMSF"
 #define OGS_SBI_MAX_NUM_OF_DATASETNAMES                   8
 
 #define OGS_SBI_CONTENT_JSON_TYPE                   \
