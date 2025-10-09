@@ -141,7 +141,7 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
                         ogs_assert(true ==
                             ogs_sbi_server_send_error(stream,
                                 OGS_SBI_HTTP_STATUS_BAD_REQUEST, message,
-                                "Invalid resource name", message->h.method));
+                                "Invalid resource name", message->h.method, NULL));
                     END
                     break;
 
@@ -210,7 +210,7 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
                         ogs_assert(true ==
                             ogs_sbi_server_send_error(stream,
                                 OGS_SBI_HTTP_STATUS_BAD_REQUEST, message,
-                                "Invalid resource name", message->h.method));
+                                "Invalid resource name", message->h.method, NULL));
                     END
                     break;
 
@@ -220,7 +220,7 @@ void udm_ue_state_operational(ogs_fsm_t *s, udm_event_t *e)
                     ogs_assert(true ==
                         ogs_sbi_server_send_error(stream,
                             OGS_SBI_HTTP_STATUS_BAD_REQUEST, message,
-                            "Invalid HTTP method", message->h.method));
+                            "Invalid HTTP method", message->h.method, NULL));
                 END
                 break;
 
