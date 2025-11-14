@@ -40,6 +40,7 @@ bool ausf_nudm_ueau_handle_get(ausf_ue_t *ausf_ue,
     ogs_sbi_message_t sendmsg;
     ogs_sbi_header_t header;
     ogs_sbi_response_t *response = NULL;
+    ausf_ue_t *old_ausf_ue = NULL;
 
     char hxres_star_string[OGS_KEYSTRLEN(OGS_MAX_RES_LEN)];
 
@@ -174,6 +175,12 @@ bool ausf_nudm_ueau_handle_get(ausf_ue_t *ausf_ue,
                 ausf_ue->supi, strlen(ausf_ue->supi), NULL);
         ogs_free(ausf_ue->supi);
     }
+
+    old_ausf_ue = ausf_ue_find_by_supi(AuthenticationInfoResult->supi);
+    if (old_ausf_ue) {
+        ausf_ue_remove(old_ausf_ue);
+    }
+
     ausf_ue->supi = ogs_strdup(AuthenticationInfoResult->supi);
     ogs_assert(ausf_ue->supi);
     ogs_hash_set(ausf_self()->supi_hash,

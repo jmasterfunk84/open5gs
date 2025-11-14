@@ -153,6 +153,9 @@ ausf_ue_t *ausf_ue_add(char *suci)
 
     ogs_list_add(&self.ausf_ue_list, ausf_ue);
 
+    ogs_debug("[Added] Number of AUSF-UEs is now %d",
+        ogs_list_count(&self.ausf_ue_list));
+
     return ausf_ue;
 }
 
@@ -192,6 +195,9 @@ void ausf_ue_remove(ausf_ue_t *ausf_ue)
         ogs_free(ausf_ue->serving_network_name);
     
     ogs_pool_id_free(&ausf_ue_pool, ausf_ue);
+
+    ogs_debug("[Removed] Number of AUSF-UEs is now %d",
+        ogs_list_count(&self.ausf_ue_list));
 }
 
 void ausf_ue_remove_all(void)

@@ -196,6 +196,9 @@ udm_ue_t *udm_ue_add(char *suci)
 
     ogs_list_add(&self.udm_ue_list, udm_ue);
 
+    ogs_debug("[Added] Number of UDM-UEs is now %d",
+        ogs_list_count(&self.udm_ue_list));
+
     return udm_ue;
 }
 
@@ -242,6 +245,9 @@ void udm_ue_remove(udm_ue_t *udm_ue)
         ogs_free(udm_ue->dereg_callback_uri);
 
     ogs_pool_id_free(&udm_ue_pool, udm_ue);
+
+    ogs_debug("[Removed] Number of UDM-UEs is now %d",
+        ogs_list_count(&self.udm_ue_list));
 }
 
 void udm_ue_remove_all(void)
