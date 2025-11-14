@@ -115,20 +115,12 @@
 #include "sbi/openapi/external/cJSON.h"
 #include "metrics/prometheus/json_pager.h"
 
-static size_t g_ue_page = 0;
-static size_t g_ue_page_size = 0;
 
-void amf_metrics_ue_info_set_pager(size_t page, size_t page_size)
+size_t amf_dump_ue_info(char *buf, size_t buflen, size_t page, size_t page_size)
 {
-    g_ue_page = page;
-    g_ue_page_size = page_size;
-}
-
-size_t amf_dump_ue_info(char *buf, size_t buflen)
-{
-    size_t page = g_ue_page;
-    size_t page_size = g_ue_page_size ? g_ue_page_size : 100;
+    page_size = page_size ? page_size : 100;
     if (page_size > 100) page_size = 100;
+
     return amf_dump_ue_info_paged(buf, buflen, page, page_size);
 }
 
@@ -343,9 +335,11 @@ static int add_location(cJSON *parent, const amf_ue_t *ue)
 static int add_msisdn_array(cJSON *parent, const amf_ue_t *ue)
 {
     cJSON *arr = cJSON_CreateArray();
+    int i;
+
     if (!arr) return -1;
 
-    for (int i = 0; i < ue->num_of_msisdn; i++) {
+    for (i = 0; i < ue->num_of_msisdn; i++) {
         if (!ue->msisdn[i] || !ue->msisdn[i][0]) continue;
         cJSON *s = cJSON_CreateString(ue->msisdn[i]);
         if (!s) { cJSON_Delete(arr); return -1; }
@@ -478,10 +472,12 @@ static int add_requested_allowed_slices(cJSON *parent, const amf_ue_t *ue)
 {
     cJSON *req = cJSON_CreateArray();
     cJSON *allow = cJSON_CreateArray();
+    int i;
+
     if (!req || !allow) { if (req) cJSON_Delete(req); if (allow) cJSON_Delete(allow); return -1; }
 
     /* requested */
-    for (int i = 0; i < ue->requested_nssai.num_of_s_nssai; i++) {
+    for (i = 0; i < ue->requested_nssai.num_of_s_nssai; i++) {
         const ogs_nas_s_nssai_ie_t *ie = &ue->requested_nssai.s_nssai[i];
         cJSON *sn = cJSON_CreateObject();
         if (!sn) { cJSON_Delete(req); cJSON_Delete(allow); return -1; }
@@ -493,7 +489,7 @@ static int add_requested_allowed_slices(cJSON *parent, const amf_ue_t *ue)
     }
 
     /* allowed */
-    for (int i = 0; i < ue->allowed_nssai.num_of_s_nssai; i++) {
+    for (i = 0; i < ue->allowed_nssai.num_of_s_nssai; i++) {
         const ogs_nas_s_nssai_ie_t *ie = &ue->allowed_nssai.s_nssai[i];
         cJSON *sn = cJSON_CreateObject();
         if (!sn) { cJSON_Delete(req); cJSON_Delete(allow); return -1; }
@@ -537,7 +533,8 @@ static int add_am_policy_features(cJSON *parent, const amf_ue_t *ue)
     cJSON *labels = cJSON_CreateArray();
     if (!bits || !labels) { if (bits) cJSON_Delete(bits); if (labels) cJSON_Delete(labels); cJSON_Delete(feat); return -1; }
 
-    for (int i = 0; i < 64; i++) {
+    int i;
+    for (i = 0; i < 64; i++) {
         if ((f >> i) & 1ULL) {
             cJSON *bi = cJSON_CreateNumber((double)i);
             if (!bi) { cJSON_Delete(bits); cJSON_Delete(labels); cJSON_Delete(feat); return -1; }

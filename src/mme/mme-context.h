@@ -100,6 +100,8 @@ typedef struct mme_context_s {
     ogs_list_t      csmap_list;     /* TAI-LAI Map List */
     ogs_list_t      hssmap_list;    /* PLMN HSS Map List */
 
+    ogs_list_t      emerg_list;     /* Emergency number list */
+
     /* Served GUMME */
     int             num_of_served_gummei;
     served_gummei_t served_gummei[OGS_MAX_NUM_OF_SERVED_GUMMEI];
@@ -163,6 +165,10 @@ typedef struct mme_context_s {
             ogs_time_t value;       /* Timer Value(Seconds) */
         } t3402, t3412, t3423;
     } time;
+
+    struct {
+        const char *dnn;            /* Emergency APN */
+    } emergency;
 } mme_context_t;
 
 typedef struct mme_sgsn_route_s {
@@ -266,6 +272,15 @@ typedef struct mme_enb_s {
     ogs_list_t      enb_ue_list;
 
 } mme_enb_t;
+
+typedef struct mme_emerg_s {
+    ogs_lnode_t     lnode;
+    ogs_pool_id_t   id;
+
+    uint8_t         categories; /* Service categories */
+    const char      *digits;    /* Emergency number */
+
+} mme_emerg_t;
 
 struct enb_ue_s {
     ogs_lnode_t     lnode;
@@ -431,10 +446,10 @@ struct mme_ue_s {
         ogs_nas_detach_type_t detach;
     } nas_eps;
 
-#define MME_TAU_TYPE_INITIAL_UE_MESSAGE    1
-#define MME_TAU_TYPE_UPLINK_NAS_TRANPORT   2
-#define MME_TAU_TYPE_UNPROTECTED_INGERITY  3
-    uint8_t tracking_area_update_request_type;
+    uint64_t tracking_area_update_request_presencemask;
+    uint16_t tracking_area_update_request_ebcs_value;
+    S1AP_ProcedureCode_t tracking_area_update_accept_proc;
+
 
     /* 1. MME initiated detach request to the UE.
      *    (nas_eps.type = MME_EPS_TYPE_DETACH_REQUEST_TO_UE)
@@ -799,6 +814,7 @@ struct mme_ue_s {
 
 #define GTP_COUNTER_CREATE_SESSION_BY_PATH_SWITCH               1
 #define GTP_COUNTER_DELETE_SESSION_BY_PATH_SWITCH               2
+#define GTP_COUNTER_DELETE_SESSION_BY_TAU                       3
     struct {
         uint8_t request;
         uint8_t response;
@@ -1224,6 +1240,10 @@ uint8_t mme_selected_enc_algorithm(mme_ue_t *mme_ue);
 
 void mme_ue_save_memento(mme_ue_t *mme_ue, mme_ue_memento_t *memento);
 void mme_ue_restore_memento(mme_ue_t *mme_ue, const mme_ue_memento_t *memento);
+
+mme_emerg_t *mme_emerg_add(uint8_t categories, const char *digits);
+void mme_emerg_remove(mme_emerg_t *emerg);
+void mme_emerg_remove_all(void);
 
 #ifdef __cplusplus
 }

@@ -73,20 +73,12 @@
 #define ENB_INFO_PAGE_SIZE_DEFAULT 100U
 #endif
 
-static size_t g_enb_page = 0;
-static size_t g_enb_page_size = 0;
 
-void mme_metrics_enb_info_set_pager(size_t page, size_t page_size)
+size_t mme_dump_enb_info(char *buf, size_t buflen, size_t page, size_t page_size)
 {
-    g_enb_page = page;
-    g_enb_page_size = page_size;
-}
-
-size_t mme_dump_enb_info(char *buf, size_t buflen)
-{
-    size_t page = g_enb_page;
-    size_t page_size = g_enb_page_size ? g_enb_page_size : ENB_INFO_PAGE_SIZE_DEFAULT;
+    page_size = page_size ? page_size : ENB_INFO_PAGE_SIZE_DEFAULT;
     if (page_size > ENB_INFO_PAGE_SIZE_DEFAULT) page_size = ENB_INFO_PAGE_SIZE_DEFAULT;
+
     return mme_dump_enb_info_paged(buf, buflen, page, page_size);
 }
 
@@ -206,8 +198,9 @@ size_t mme_dump_enb_info_paged(char *buf, size_t buflen, size_t page, size_t pag
             if (!tas) { cJSON_Delete(e); oom = true; break; }
 
             bool inner_oom = false;
+            int t;
 
-            for (int t = 0; t < enb->num_of_supported_ta_list; t++) {
+            for (t = 0; t < enb->num_of_supported_ta_list; t++) {
                 cJSON *ta = cJSON_CreateObject();
                 if (!ta) { inner_oom = true; break; }
 
